@@ -95,6 +95,9 @@ const PARENT_SUPPORT_MIN = 800;
 const PARENT_SUPPORT_MAX = 160000;
 const PARENT_INCOME_SHIFT_MIN = 0.1;
 const PARENT_INCOME_SHIFT_MAX = 0.5;
+const LIFE_SPEED_MIN = 0.5;
+const LIFE_SPEED_MAX = 2;
+const LIFE_SPEED_STEP = 0.25;
 
 type Mode =
   | "title"
@@ -197,6 +200,7 @@ export class Game {
   private stats: Stats = { ...START_STATS };
   private age = 0;
   private gender: Gender = "male";
+  private lifeSpeed = 1;
   private weight = START_WEIGHT;
   private money = START_MONEY; // real dollars (bank balance), can grow large
   // the three pillars of Health (each 0..100) — health is composed from them
@@ -289,6 +293,7 @@ export class Game {
       stage: STAGES[this.stageIndex]?.id,
       upperScene: this.upperScene(),
       age: Math.round(this.age * 10) / 10,
+      lifeSpeed: this.lifeSpeed,
       familyZoneShare: this.familyZoneShare(),
       zoneSplitY: this.zoneSplitY(),
       lifeExp: this.lifeExp(),
@@ -398,8 +403,9 @@ export class Game {
 
   // --- lifecycle ------------------------------------------------------------
 
-  private newGame(keepBiography = false): void {
+  private newGame(keepBiography = false, startStageIndex = 0): void {
     if (!keepBiography) this.biography = null; // normal play is never a replay
+    const startIndex = keepBiography ? 0 : this.normalizeStageIndex(startStageIndex);
     this.stats = { ...START_STATS };
     this.age = 0;
     this.weight = START_WEIGHT;
@@ -450,8 +456,12 @@ export class Game {
     this.story = null;
     this.renderInventory();
     this.sampleHealth();
-    this.loadStage(0);
-    this.hint(`👪 Family start: ${formatMoney(this.familyFund)}. Mommy & Daddy support: ~${formatMoney(this.parentAnnualSupport)}/yr.`);
+    this.loadStage(startIndex);
+    const start = STAGES[startIndex];
+    const familyText = `Family fund: ${formatMoney(this.familyFund)}. Mommy & Daddy: ~${formatMoney(this.parentAnnualSupport)}/yr.`;
+    this.hint(startIndex === 0
+      ? `👪 ${familyText} Life speed: ${this.lifeSpeedLabel()}.`
+      : `${start.emoji} Started at ${start.name} (age ${start.ageStart}). ${familyText} Speed: ${this.lifeSpeedLabel()}.`);
   }
 
   private loadStage(i: number, restoring = false): void {
@@ -720,10 +730,33 @@ export class Game {
   // --- per-stage balance helpers -------------------------------------------
 
   private stageStep(): number {
+    return this.baseStageStep() * this.lifeSpeed;
+  }
+
+  private baseStageStep(): number {
     const s = STAGES[this.stageIndex];
     // a gentle pace — each chapter now gives ~4× the old number of actions, so
     // there's real time to study, exercise, dodge and live before the gate opens.
     return Math.max(0.03, Math.min(0.9, (s.ageEnd - s.ageStart) / 28));
+  }
+
+  private optionAgeCost(opt: LifeOption): number {
+    return (opt.ageCost ?? this.baseStageStep()) * this.lifeSpeed;
+  }
+
+  private setLifeSpeed(value: number): void {
+    const raw = Number.isFinite(value) ? value : 1;
+    const stepped = LIFE_SPEED_MIN + Math.round((raw - LIFE_SPEED_MIN) / LIFE_SPEED_STEP) * LIFE_SPEED_STEP;
+    this.lifeSpeed = Math.max(LIFE_SPEED_MIN, Math.min(LIFE_SPEED_MAX, stepped));
+    this.renderHud();
+  }
+
+  private lifeSpeedLabel(): string {
+    return `${this.lifeSpeed.toFixed(2).replace(/\.?0+$/, "")}x`;
+  }
+
+  private normalizeStageIndex(i: number): number {
+    return Math.max(0, Math.min(STAGES.length - 1, Math.round(Number.isFinite(i) ? i : 0)));
   }
 
   /** The chapter gate is open once you're old enough — or always, when replaying
@@ -1049,7 +1082,7 @@ export class Game {
     const wDelta = opt.weight ?? this.autoWeightDelta(opt);
     this.weight = clampStat(this.weight + wDelta);
 
-    this.age += opt.ageCost ?? this.stageStep();
+    this.age += this.optionAgeCost(opt);
     this.passiveTick();
     this.sampleHealth();
     if (opt.once) {
@@ -2099,7 +2132,7 @@ export class Game {
     }
     this.ui.ageLabel.textContent = String(Math.floor(this.age));
     this.ui.leLabel.textContent =
-      this.mode === "title" || this.mode === "setup" ? "" : ` · ~${this.lifeExp()}y`;
+      this.mode === "title" || this.mode === "setup" ? "" : ` · ~${this.lifeExp()}y · ${this.lifeSpeedLabel()}`;
     this.ui.warn.style.display =
       this.mode === "playing" && (this.stats.health < 25 || weightStatus(this.weight) === "obese")
         ? "block"
@@ -2214,6 +2247,13 @@ export class Game {
     this.ui.overlay.innerHTML = `
       <div class="plj-card plj-title plj-settings-card">
         <h2>⚙️ Settings</h2>
+        <div class="plj-speed-box">
+          <div class="plj-speed-head">
+            <span>Life speed</span>
+            <strong id="plj-set-speed-readout">${this.lifeSpeedLabel()}</strong>
+          </div>
+          <input id="plj-set-speed" type="range" min="${LIFE_SPEED_MIN}" max="${LIFE_SPEED_MAX}" step="${LIFE_SPEED_STEP}" value="${this.lifeSpeed}">
+        </div>
         <div class="plj-set-list">
           <button class="plj-btn" id="plj-set-resume">▶ Resume</button>
           <button class="plj-btn plj-btn-ghost" id="plj-set-skip">⏭ Skip this chapter</button>
@@ -2224,6 +2264,13 @@ export class Game {
       </div>`;
     this.ui.overlay.classList.add("show");
     const ov = this.ui.overlay;
+    const speedInput = ov.querySelector<HTMLInputElement>("#plj-set-speed")!;
+    const speedReadout = ov.querySelector<HTMLElement>("#plj-set-speed-readout")!;
+    speedInput.oninput = () => {
+      this.setLifeSpeed(Number(speedInput.value));
+      speedInput.value = String(this.lifeSpeed);
+      speedReadout.textContent = this.lifeSpeedLabel();
+    };
     ov.querySelector<HTMLButtonElement>("#plj-set-resume")!.onclick = () => { this.mode = "playing"; this.clearOverlay(); };
     ov.querySelector<HTMLButtonElement>("#plj-set-skip")!.onclick = () => { this.mode = "playing"; this.clearOverlay(); this.skipStage(); };
     ov.querySelector<HTMLButtonElement>("#plj-set-guide")!.onclick = () => {
@@ -2278,24 +2325,46 @@ export class Game {
   private showSetup(): void {
     this.mode = "setup";
     this.biography = null;
+    const stageOptions = STAGES.map((s, i) =>
+      `<option value="${i}">${s.emoji} ${esc(s.name)} · age ${s.ageStart}-${s.ageEnd}</option>`
+    ).join("");
     this.ui.overlay.innerHTML = `
       <div class="plj-card plj-title">
         <h2>A new life begins…</h2>
         <p class="plj-sub">Name your character (optional) — it shows on your career profile.</p>
         <div class="plj-bio-head"><input id="plj-setup-name" placeholder="Name (optional)" maxlength="40"></div>
+        <div class="plj-setup-grid">
+          <label class="plj-setup-field">
+            <span>Start stage</span>
+            <select id="plj-start-stage">${stageOptions}</select>
+          </label>
+          <label class="plj-setup-field">
+            <span>Life speed <b id="plj-life-speed-readout">${this.lifeSpeedLabel()}</b></span>
+            <input id="plj-life-speed" type="range" min="${LIFE_SPEED_MIN}" max="${LIFE_SPEED_MAX}" step="${LIFE_SPEED_STEP}" value="${this.lifeSpeed}">
+          </label>
+        </div>
         <p class="plj-sub">Is it a boy or a girl?</p>
         <div class="plj-genders">
           <button class="plj-gender" data-g="male"><span class="plj-gender-face">👦</span><span>Boy</span></button>
           <button class="plj-gender" data-g="female"><span class="plj-gender-face">👧</span><span>Girl</span></button>
         </div>
-        <p class="plj-foot">You'll grow from a newborn all the way to old age.</p>
+        <p class="plj-foot">Default speed keeps the current pace.</p>
       </div>`;
     this.ui.overlay.classList.add("show");
+    const speedInput = this.ui.overlay.querySelector<HTMLInputElement>("#plj-life-speed")!;
+    const speedReadout = this.ui.overlay.querySelector<HTMLElement>("#plj-life-speed-readout")!;
+    speedInput.oninput = () => {
+      this.setLifeSpeed(Number(speedInput.value));
+      speedInput.value = String(this.lifeSpeed);
+      speedReadout.textContent = this.lifeSpeedLabel();
+    };
     this.ui.overlay.querySelectorAll<HTMLButtonElement>(".plj-gender").forEach((btn) => {
       btn.onclick = () => {
         this.playerName = (this.ui.overlay.querySelector<HTMLInputElement>("#plj-setup-name")?.value ?? "").slice(0, 40);
         this.gender = btn.dataset.g === "female" ? "female" : "male";
-        this.newGame();
+        const startIndex = this.normalizeStageIndex(Number(this.ui.overlay.querySelector<HTMLSelectElement>("#plj-start-stage")?.value ?? 0));
+        this.setLifeSpeed(Number(speedInput.value));
+        this.newGame(false, startIndex);
       };
     });
   }

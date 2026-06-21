@@ -405,6 +405,15 @@ body {
   .plj-inv-emoji {
     font-size: 18px;
   }
+  .plj-setup-grid {
+    grid-template-columns: 1fr;
+  }
+  .plj-genders {
+    gap: 10px;
+  }
+  .plj-gender {
+    width: 108px;
+  }
 }
 
 /* ---- overlay (title / partner / ending) --------------------------------- */
@@ -665,7 +674,36 @@ body {
   margin-top: 6px;
 }
 .plj-settings-card {
-  max-width: 320px;
+  max-width: 360px;
+}
+.plj-speed-box {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 10px 0 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.18);
+  text-align: left;
+}
+.plj-speed-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  color: var(--ink);
+  font-size: 13px;
+}
+.plj-speed-head strong,
+.plj-setup-field b {
+  color: #7ed957;
+  font-size: 13px;
+}
+.plj-speed-box input,
+.plj-setup-field input[type="range"] {
+  width: 100%;
+  accent-color: var(--pink);
 }
 
 /* ---- career profile ----------------------------------------------------- */
@@ -761,6 +799,39 @@ body {
   gap: 16px;
   margin: 16px 0;
 }
+.plj-setup-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin: 10px 0 12px;
+  text-align: left;
+}
+.plj-setup-field {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  min-width: 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+.plj-setup-field span {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.plj-setup-field select {
+  background: #160f2c;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  color: var(--ink);
+  font: inherit;
+  font-size: 12px;
+  min-height: 38px;
+  padding: 8px 9px;
+  width: 100%;
+  box-sizing: border-box;
+}
 .plj-gender {
   display: flex;
   flex-direction: column;
@@ -853,6 +924,7 @@ body {
 .plj-bio-head input,
 .plj-bio-add input,
 .plj-bio-add select,
+.plj-setup-field select,
 .plj-bio-title {
   background: #160f2c;
   border: 1px solid var(--line);
