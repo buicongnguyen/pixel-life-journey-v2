@@ -140,6 +140,9 @@ interface TrainingQuestion {
   win: string;
 }
 
+type TrainingQuestionBank = Record<TrainingLevel, TrainingQuestion[]>;
+
+const TRAINING_DATABASE_URL = "./data/training-questions.json";
 const TRAINING_LEVELS: { id: TrainingLevel; label: string }[] = [
   { id: "starter", label: "Lv 1" },
   { id: "practice", label: "Lv 2" },
@@ -167,6 +170,7 @@ const TRAINING_CATEGORY_META: Record<TrainingCategory, { icon: string; title: st
     summary: "Money, career, risk, and long-term planning.",
   },
 };
+const TRAINING_CATEGORIES: TrainingCategory[] = ["iq", "eq", "strategy"];
 const TRAINING_PUZZLES = [
   {
     q: "A clock shows 3:15. What is the angle between the hour and minute hands?",
@@ -1275,6 +1279,7 @@ export class Game {
   private habitCount = 0;
   private trainingQuestionIndex: Record<TrainingCategory, number> = { iq: 0, eq: 0, strategy: 0 };
   private trainingLevel: Record<TrainingCategory, TrainingLevel> = { iq: "starter", eq: "starter", strategy: "starter" };
+  private trainingDatabase: Partial<Record<TrainingCategory, TrainingQuestionBank>> | null = null;
   private eventCooldown = 2;
   private usedEvents = new Set<string>();
   private eventsLog: string[] = [];
@@ -1329,6 +1334,7 @@ export class Game {
   constructor(mount: HTMLElement) {
     this.ui = createUI(mount);
     this.bindInput();
+    void this.loadTrainingDatabase();
     this.showTitle();
     this.renderInventory();
     requestAnimationFrame(this.frame);
@@ -4206,8 +4212,64 @@ export class Game {
     this.renderHud();
   }
 
+  private parseTrainingQuestion(value: unknown): TrainingQuestion | null {
+    const row = value as Partial<TrainingQuestion> | null;
+    if (!row || typeof row.q !== "string" || !Array.isArray(row.answers) || typeof row.correct !== "number" || typeof row.win !== "string") return null;
+    const answers = row.answers.filter((answer): answer is string => typeof answer === "string" && answer.trim().length > 0).slice(0, 3);
+    const correct = Math.round(row.correct);
+    if (answers.length !== 3 || correct < 0 || correct >= answers.length) return null;
+    return {
+      q: row.q.trim(),
+      answers,
+      correct,
+      win: row.win.trim(),
+    };
+  }
+
+  private parseTrainingBank(value: unknown): Partial<Record<TrainingCategory, TrainingQuestionBank>> | null {
+    const root = value as { categories?: unknown } | null;
+    const categories = root?.categories as Partial<Record<TrainingCategory, Partial<Record<TrainingLevel, unknown>>>> | undefined;
+    if (!categories) return null;
+    const parsed: Partial<Record<TrainingCategory, TrainingQuestionBank>> = {};
+    for (const category of TRAINING_CATEGORIES) {
+      const categoryRows = categories[category];
+      if (!categoryRows) continue;
+      const bank = {} as TrainingQuestionBank;
+      let complete = true;
+      for (const { id: level } of TRAINING_LEVELS) {
+        const rows = categoryRows[level];
+        if (!Array.isArray(rows)) {
+          complete = false;
+          break;
+        }
+        bank[level] = rows.map((row) => this.parseTrainingQuestion(row)).filter((row): row is TrainingQuestion => !!row);
+        if (!bank[level].length) {
+          complete = false;
+          break;
+        }
+      }
+      if (complete) parsed[category] = bank;
+    }
+    return Object.keys(parsed).length ? parsed : null;
+  }
+
+  private async loadTrainingDatabase(): Promise<void> {
+    try {
+      const response = await fetch(TRAINING_DATABASE_URL, { cache: "no-cache" });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const parsed = this.parseTrainingBank(await response.json());
+      if (!parsed) throw new Error("invalid training database");
+      this.trainingDatabase = parsed;
+      if (this.mode === "training") this.showTraining();
+    } catch (err) {
+      console.warn("[pixel-life] using built-in training questions", err);
+    }
+  }
+
   private trainingQuestions(category: TrainingCategory): readonly TrainingQuestion[] {
     const level = this.trainingLevel[category];
+    const external = this.trainingDatabase?.[category]?.[level];
+    if (external?.length) return external;
     if (category === "iq") {
       const [from, to] = TRAINING_IQ_RANGES[level];
       return [...TRAINING_PUZZLES.slice(from, Math.min(to, TRAINING_PUZZLES.length)), ...TRAINING_IQ_EXTRA_BANKS[level]];
@@ -4215,13 +4277,22 @@ export class Game {
     return [...TRAINING_BANKS[category][level], ...TRAINING_EXTRA_BANKS[category][level]];
   }
 
+  private fallbackTrainingCategoryTotal(category: TrainingCategory): number {
+    if (category === "iq") {
+      return TRAINING_PUZZLES.length + Object.values(TRAINING_IQ_EXTRA_BANKS).reduce((sum, questions) => sum + questions.length, 0);
+    }
+    return Object.values(TRAINING_BANKS[category]).reduce((sum, questions) => sum + questions.length, 0) +
+      Object.values(TRAINING_EXTRA_BANKS[category]).reduce((sum, questions) => sum + questions.length, 0);
+  }
+
+  private trainingCategoryTotal(category: TrainingCategory): number {
+    const external = this.trainingDatabase?.[category];
+    if (external) return TRAINING_LEVELS.reduce((sum, level) => sum + (external[level.id]?.length ?? 0), 0);
+    return this.fallbackTrainingCategoryTotal(category);
+  }
+
   private trainingTotalQuestions(): number {
-    const iqExtra = Object.values(TRAINING_IQ_EXTRA_BANKS).reduce((sum, questions) => sum + questions.length, 0);
-    const core = Object.values(TRAINING_BANKS).reduce((sum, bank) =>
-      sum + Object.values(bank).reduce((inner, questions) => inner + questions.length, 0), 0);
-    const extra = Object.values(TRAINING_EXTRA_BANKS).reduce((sum, bank) =>
-      sum + Object.values(bank).reduce((inner, questions) => inner + questions.length, 0), 0);
-    return TRAINING_PUZZLES.length + iqExtra + core + extra;
+    return TRAINING_CATEGORIES.reduce((sum, category) => sum + this.trainingCategoryTotal(category), 0);
   }
 
   private setTrainingLevel(category: TrainingCategory, level: TrainingLevel): void {
@@ -4336,7 +4407,7 @@ export class Game {
       return;
     }
     this.mode = "training";
-    const quizRows = (["iq", "eq", "strategy"] as TrainingCategory[]).map((category) => this.trainingQuizRow(category)).join("");
+    const quizRows = TRAINING_CATEGORIES.map((category) => this.trainingQuizRow(category)).join("");
     this.ui.overlay.innerHTML = `
       <div class="plj-card plj-training-card">
         <div class="plj-family-head">

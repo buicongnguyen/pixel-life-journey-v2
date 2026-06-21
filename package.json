@@ -6,6 +6,7 @@
   "description": "Pixel Life Journey — a 2D pixel-art life simulation. Walk a character left-to-right through every stage of life, balance Health, Happiness, Wealth, Fun and Smarts, and read the story of the life you lived.",
   "scripts": {
     "dev": "vite",
+    "generate:training": "node scripts/generate-training-questions.mjs",
     "build": "tsc && vite build",
     "preview": "vite preview",
     "check": "tsc --noEmit"
