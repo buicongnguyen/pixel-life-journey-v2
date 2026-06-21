@@ -264,15 +264,16 @@ body {
 
 /* ---- touch controls (overlaid on the canvas) ---------------------------- */
 .plj-touch {
+  --plj-control-gap: clamp(28px, 6vw, 42px);
   position: absolute;
   left: 0;
   right: 0;
   bottom: 10px;
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-start;
   align-items: flex-end;
   padding: 0 12px;
-  gap: 10px;
+  gap: var(--plj-control-gap);
   pointer-events: none; /* taps fall through to nothing — only the buttons act */
   user-select: none;
   z-index: 3;
@@ -379,8 +380,8 @@ body {
 }
 @media (max-width: 420px) {
   .plj-touch {
+    --plj-control-gap: clamp(20px, 7vw, 30px);
     padding: 0 8px;
-    gap: 7px;
   }
   .plj-dpad {
     grid-template-columns: repeat(3, 40px);
