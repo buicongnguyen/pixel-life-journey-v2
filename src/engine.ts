@@ -281,6 +281,96 @@ const TRAINING_PUZZLES = [
     correct: 2,
     win: "Multiples pattern spotted. +2 IQ.",
   },
+  {
+    q: "A drawer has red, blue, and green marbles. How many must you grab to guarantee two are the same color?",
+    answers: ["3", "4", "5"],
+    correct: 1,
+    win: "Pigeonhole thinking unlocked. +2 IQ.",
+  },
+  {
+    q: "You enter a dark room with one match, a candle, and a lamp. What should you light first?",
+    answers: ["the candle", "the lamp", "the match"],
+    correct: 2,
+    win: "Careful first-step logic. +2 IQ.",
+  },
+  {
+    q: "What letter comes next: O, T, T, F, F, S, S, ?",
+    answers: ["E", "N", "T"],
+    correct: 0,
+    win: "You saw the number initials. +2 IQ.",
+  },
+  {
+    q: "Two mothers and two daughters share three snacks equally, with one snack each. How is that possible?",
+    answers: ["one is a grandmother", "one snack is split", "there are four people"],
+    correct: 0,
+    win: "Family-relationship trick solved. +2 IQ.",
+  },
+  {
+    q: "You face north. Turn right twice, then left once. Which way are you facing?",
+    answers: ["east", "south", "west"],
+    correct: 0,
+    win: "Mental rotation worked. +2 IQ.",
+  },
+  {
+    q: "A clock is set right at noon but loses 10 minutes every hour. What time will it show at 3:00 real time?",
+    answers: ["2:30", "2:40", "3:10"],
+    correct: 0,
+    win: "Time-drift reasoning solved. +2 IQ.",
+  },
+  {
+    q: "All Zips are Zaps. No Zaps are Zops. Can any Zip be a Zop?",
+    answers: ["yes", "no", "only some"],
+    correct: 1,
+    win: "Set logic is clean. +2 IQ.",
+  },
+  {
+    q: "How many letters are in the phrase 'the alphabet'?",
+    answers: ["8", "11", "26"],
+    correct: 1,
+    win: "You read the words, not the idea. +2 IQ.",
+  },
+  {
+    q: "What pair comes next: AZ, BY, CX, ?",
+    answers: ["DW", "DU", "EV"],
+    correct: 0,
+    win: "Opposite alphabet pattern found. +2 IQ.",
+  },
+  {
+    q: "Two fathers and two sons sit together, but there are only three people. How?",
+    answers: ["grandfather, father, son", "one is imaginary", "two are twins"],
+    correct: 0,
+    win: "Overlapping roles spotted. +2 IQ.",
+  },
+  {
+    q: "A loud clap scares five birds off a fence. Two were closest to the sound. How many birds stay?",
+    answers: ["3", "5", "0"],
+    correct: 2,
+    win: "Real-world consequence noticed. +2 IQ.",
+  },
+  {
+    q: "Which word becomes longer when you add two letters to it?",
+    answers: ["long", "short", "wide"],
+    correct: 1,
+    win: "Wordplay trap solved. +2 IQ.",
+  },
+  {
+    q: "A boat is full of people, but there is not a single person on it. Why?",
+    answers: ["everyone is married", "the boat is empty", "it is underwater"],
+    correct: 0,
+    win: "The wording twist landed. +2 IQ.",
+  },
+  {
+    q: "Which number's English spelling has letters in alphabetical order?",
+    answers: ["forty", "sixty", "ninety"],
+    correct: 0,
+    win: "Letter-order pattern solved. +2 IQ.",
+  },
+  {
+    q: "A word is hidden here: SILENT can be rearranged into what?",
+    answers: ["listen", "inlets", "both"],
+    correct: 2,
+    win: "Anagram flexibility. +2 IQ.",
+  },
 ] as const;
 
 type Mode =
