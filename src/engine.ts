@@ -787,6 +787,302 @@ const TRAINING_BANKS: Record<Exclude<TrainingCategory, "iq">, Record<TrainingLev
     ],
   },
 };
+const TRAINING_IQ_EXTRA_BANKS: Record<TrainingLevel, TrainingQuestion[]> = {
+  starter: [
+    {
+      q: "Which number comes next: 5, 10, 20, 40, ?",
+      answers: ["45", "60", "80"],
+      correct: 2,
+      win: "Doubling pattern solved. +2 IQ.",
+    },
+    {
+      q: "Which word does not belong: blue, green, chair, red?",
+      answers: ["blue", "chair", "red"],
+      correct: 1,
+      win: "Category trap cleared. +2 IQ.",
+    },
+    {
+      q: "If a week has 7 days, how many days are in 3 weeks?",
+      answers: ["14", "21", "28"],
+      correct: 1,
+      win: "Simple multiplication stayed sharp. +2 IQ.",
+    },
+    {
+      q: "What letter comes next: A, C, F, J, O, ?",
+      answers: ["S", "U", "V"],
+      correct: 1,
+      win: "Growing letter gaps found. +2 IQ.",
+    },
+    {
+      q: "A basket has 4 apples. You take 2. How many apples do you have?",
+      answers: ["2", "4", "6"],
+      correct: 0,
+      win: "Wording trap handled. +2 IQ.",
+    },
+  ],
+  practice: [
+    {
+      q: "If 3 painters paint 3 walls in 3 hours, how long do 9 painters need for 9 walls?",
+      answers: ["3 hours", "6 hours", "9 hours"],
+      correct: 0,
+      win: "Rate scaling stayed clean. +2 IQ.",
+    },
+    {
+      q: "A is east of B. C is east of A. Who is farthest east?",
+      answers: ["A", "B", "C"],
+      correct: 2,
+      win: "Spatial ordering solved. +2 IQ.",
+    },
+    {
+      q: "What comes next: 1, 1, 2, 3, 5, 8, ?",
+      answers: ["11", "13", "16"],
+      correct: 1,
+      win: "Fibonacci flow spotted. +2 IQ.",
+    },
+    {
+      q: "If all Mips are Nops, and all Nops are Lums, are all Mips definitely Lums?",
+      answers: ["yes", "no", "only half"],
+      correct: 0,
+      win: "Chain logic clicked. +2 IQ.",
+    },
+    {
+      q: "Which pair continues: 2Z, 4Y, 8X, ?",
+      answers: ["10W", "16W", "16V"],
+      correct: 1,
+      win: "Number doubling and letter countdown solved. +2 IQ.",
+    },
+  ],
+  advanced: [
+    {
+      q: "A box has 2 red, 2 blue, and 2 yellow socks. How many socks guarantee a matching pair?",
+      answers: ["3", "4", "5"],
+      correct: 1,
+      win: "Worst-case reasoning unlocked. +2 IQ.",
+    },
+    {
+      q: "If no artists are robots, and some coders are artists, what must be true?",
+      answers: ["some coders are not robots", "all coders are robots", "no coders exist"],
+      correct: 0,
+      win: "Logic overlap solved. +2 IQ.",
+    },
+    {
+      q: "A clock gains 5 minutes every hour. After 6 real hours, how far fast is it?",
+      answers: ["20 minutes", "30 minutes", "60 minutes"],
+      correct: 1,
+      win: "Accumulated drift calculated. +2 IQ.",
+    },
+    {
+      q: "What comes next: 1, 4, 9, 16, 25, ?",
+      answers: ["30", "36", "49"],
+      correct: 1,
+      win: "Square sequence held steady. +2 IQ.",
+    },
+    {
+      q: "If two coins total 30 cents and one is not a nickel, what are they?",
+      answers: ["quarter and nickel", "two dimes", "quarter and penny"],
+      correct: 0,
+      win: "The other coin can be the nickel. +2 IQ.",
+    },
+  ],
+};
+const TRAINING_EXTRA_BANKS: Record<Exclude<TrainingCategory, "iq">, Record<TrainingLevel, TrainingQuestion[]>> = {
+  eq: {
+    starter: [
+      {
+        q: "You feel your body getting tense during a talk. What is a good first clue?",
+        answers: ["you may be triggered", "you are always right", "the other person must leave"],
+        correct: 0,
+        win: "Body-signal awareness improved. +EQ.",
+      },
+      {
+        q: "A younger sibling keeps asking questions. What response builds connection?",
+        answers: ["answer kindly or set a gentle time", "call them annoying", "ignore them all day"],
+        correct: 0,
+        win: "Patience became a relationship skill. +EQ.",
+      },
+      {
+        q: "A friend looks proud of a drawing. What is a supportive response?",
+        answers: ["ask what they like about it", "point out flaws first", "change the topic"],
+        correct: 0,
+        win: "Encouragement landed well. +EQ.",
+      },
+      {
+        q: "You are too tired to help. What is emotionally honest?",
+        answers: ["I care, but I need rest first", "yes, then resent it", "vanish without words"],
+        correct: 0,
+        win: "Honest limits protected trust. +EQ.",
+      },
+      {
+        q: "Someone says thank you. What small habit strengthens bonds?",
+        answers: ["receive it warmly", "reject the thanks", "make it awkward"],
+        correct: 0,
+        win: "Warm receiving is a skill too. +EQ.",
+      },
+    ],
+    practice: [
+      {
+        q: "A teammate gives a bad idea in public. What protects dignity?",
+        answers: ["ask a clarifying question", "laugh at them", "call it stupid"],
+        correct: 0,
+        win: "Respect kept collaboration alive. +EQ.",
+      },
+      {
+        q: "A parent repeats advice you know. What can reduce conflict?",
+        answers: ["thank them and state your plan", "roll your eyes", "start a new fight"],
+        correct: 0,
+        win: "You balanced respect and autonomy. +EQ.",
+      },
+      {
+        q: "Your friend is happy about something you dislike. What shows empathy?",
+        answers: ["be happy for their happiness", "ruin the moment", "compare it to your taste"],
+        correct: 0,
+        win: "Empathy separated their joy from your taste. +EQ.",
+      },
+      {
+        q: "You said yes too quickly and regret it. What is best?",
+        answers: ["renegotiate early and clearly", "miss the promise silently", "blame the calendar"],
+        correct: 0,
+        win: "Repair came before failure. +EQ.",
+      },
+      {
+        q: "A joke hurts someone even if you meant well. What matters now?",
+        answers: ["repair the impact", "argue about intent only", "repeat the joke"],
+        correct: 0,
+        win: "Impact got care. +EQ.",
+      },
+    ],
+    advanced: [
+      {
+        q: "Two family members tell opposite stories. What is the safest role?",
+        answers: ["listen for needs before judging", "become the judge instantly", "spread both stories"],
+        correct: 0,
+        win: "You slowed the triangle down. +EQ.",
+      },
+      {
+        q: "A friend keeps venting but never changes. What boundary is kind?",
+        answers: ["I can listen for ten minutes, then need rest", "never talk again", "solve their life for them"],
+        correct: 0,
+        win: "Compassion gained a boundary. +EQ.",
+      },
+      {
+        q: "A group excludes one person by habit. What is leadership?",
+        answers: ["create a real chance for them to join", "join the exclusion", "pretend it is invisible"],
+        correct: 0,
+        win: "Inclusive leadership rose. +EQ.",
+      },
+      {
+        q: "Someone apologizes badly but seems sincere. What can you do?",
+        answers: ["state what repair would help", "punish forever", "pretend it never happened"],
+        correct: 0,
+        win: "Repair got concrete. +EQ.",
+      },
+      {
+        q: "You must give hard feedback to someone fragile. What helps?",
+        answers: ["be specific, kind, and actionable", "hide all truth", "attack personality"],
+        correct: 0,
+        win: "Care and clarity worked together. +EQ.",
+      },
+    ],
+  },
+  strategy: {
+    starter: [
+      {
+        q: "What is the first step before making a big purchase?",
+        answers: ["check needs, budget, and trade-offs", "buy fast", "copy a celebrity"],
+        correct: 0,
+        win: "Purchase planning improved. +Strategy.",
+      },
+      {
+        q: "What does income mean?",
+        answers: ["money coming in", "money owed", "money already spent"],
+        correct: 0,
+        win: "Money vocabulary sharpened. +Strategy.",
+      },
+      {
+        q: "What does expense mean?",
+        answers: ["money going out", "free income", "a secret bonus"],
+        correct: 0,
+        win: "Expense tracking clicked. +Strategy.",
+      },
+      {
+        q: "What is a good reason to learn a new skill?",
+        answers: ["raise future options", "avoid all work", "guarantee luck"],
+        correct: 0,
+        win: "Skill investment made sense. +Strategy.",
+      },
+      {
+        q: "Which is usually a better emergency fund place?",
+        answers: ["safe and easy to access", "locked in risky bets", "hidden in a game"],
+        correct: 0,
+        win: "Emergency planning improved. +Strategy.",
+      },
+    ],
+    practice: [
+      {
+        q: "What is the best reason to track net worth yearly?",
+        answers: ["see long-term direction", "feel rich for one day", "avoid decisions"],
+        correct: 0,
+        win: "Long-term tracking improved. +Strategy.",
+      },
+      {
+        q: "You get a raise. What protects your future?",
+        answers: ["increase saving before lifestyle grows", "spend it all instantly", "hide it"],
+        correct: 0,
+        win: "Lifestyle creep avoided. +Strategy.",
+      },
+      {
+        q: "What makes a career story stronger in interviews?",
+        answers: ["challenge, action, result", "random details only", "long excuses"],
+        correct: 0,
+        win: "Interview storytelling leveled up. +Strategy.",
+      },
+      {
+        q: "Before choosing a major or job path, what should you compare?",
+        answers: ["interest, skill, market demand", "only popularity", "only room color"],
+        correct: 0,
+        win: "Career fit got sharper. +Strategy.",
+      },
+      {
+        q: "What is the value of an informational interview?",
+        answers: ["learn real work from insiders", "ask for money first", "skip research"],
+        correct: 0,
+        win: "Career research network grew. +Strategy.",
+      },
+    ],
+    advanced: [
+      {
+        q: "A high salary requires 80-hour weeks. What should you calculate?",
+        answers: ["hourly value and health cost", "title sparkle only", "desk size"],
+        correct: 0,
+        win: "Total career cost became visible. +Strategy.",
+      },
+      {
+        q: "What is the danger of investing with borrowed money?",
+        answers: ["losses can be amplified", "profits become illegal", "risk becomes zero"],
+        correct: 0,
+        win: "Leverage risk spotted. +Strategy.",
+      },
+      {
+        q: "A rental house has income and repairs. What matters most?",
+        answers: ["net cash flow after costs", "paint color only", "rent before any expenses"],
+        correct: 0,
+        win: "Rental math improved. +Strategy.",
+      },
+      {
+        q: "When switching jobs, why keep relationships warm?",
+        answers: ["future opportunities travel through trust", "everyone forgets skills", "it replaces work"],
+        correct: 0,
+        win: "Reputation strategy improved. +Strategy.",
+      },
+      {
+        q: "A plan works only in perfect conditions. What should you add?",
+        answers: ["margin of safety", "more optimism only", "a louder slogan"],
+        correct: 0,
+        win: "Resilient planning unlocked. +Strategy.",
+      },
+    ],
+  },
+};
 
 type Mode =
   | "title"
@@ -3015,9 +3311,78 @@ export class Game {
     const familyY = this.familyTreeGateY();
     const assetsY = this.assetsGateY();
     const trainingY = this.trainingGateY();
-    if (canTraining) this.drawUtilityGate(ctx, UTILITY_GATE_X, trainingY, TRAINING_GATE_R, "Training", "🎓", "#5db8ff", t);
+    if (canTraining) this.drawTrainingSchoolGate(ctx, UTILITY_GATE_X, trainingY, t);
     if (canAssets) this.drawUtilityGate(ctx, UTILITY_GATE_X, assetsY, ASSETS_GATE_R, "Assets", "💼", "#7ed957", t);
     if (canFamilyTree) this.drawUtilityGate(ctx, UTILITY_GATE_X, familyY, FAMILY_TREE_GATE_R, "Family Tree", "🌳", "#ffd23f", t);
+  }
+
+  private drawTrainingSchoolGate(ctx: CanvasRenderingContext2D, x: number, y: number, t: number): void {
+    const color = "#5db8ff";
+    const pulse = 0.5 + 0.16 * Math.sin(t * 3 + y * 0.03);
+    const w = 46;
+    const h = 34;
+    const top = y - 18;
+    const left = x - w / 2;
+    ctx.save();
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillStyle = "rgba(0,0,0,0.28)";
+    ctx.beginPath();
+    ctx.ellipse(x + 2, y + 22, 24, 5, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.globalAlpha = pulse;
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 3;
+    roundRect(ctx, left - 4, top - 4, w + 8, h + 8, 7);
+    ctx.stroke();
+    ctx.globalAlpha = 1;
+
+    ctx.fillStyle = "#f6dd8a";
+    roundRect(ctx, left, top + 8, w, h - 8, 4);
+    ctx.fill();
+    ctx.strokeStyle = "#1b142b";
+    ctx.lineWidth = 2;
+    roundRect(ctx, left, top + 8, w, h - 8, 4);
+    ctx.stroke();
+
+    ctx.fillStyle = "#d94d58";
+    ctx.beginPath();
+    ctx.moveTo(x, top);
+    ctx.lineTo(left - 3, top + 12);
+    ctx.lineTo(x + w / 2 + 3, top + 12);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.fillStyle = "#e8f7ff";
+    for (const wx of [left + 10, left + w - 16]) {
+      roundRect(ctx, wx, top + 16, 10, 9, 2);
+      ctx.fill();
+      ctx.stroke();
+    }
+    ctx.fillStyle = "#5db8ff";
+    roundRect(ctx, x - 5, top + 19, 10, 15, 2);
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = "#fff8df";
+    ctx.font = "bold 8px 'Trebuchet MS', system-ui, sans-serif";
+    ctx.fillText("IQ", x, top + 13);
+
+    const labelW = 58;
+    const labelH = 14;
+    const labelY = y + 22;
+    ctx.fillStyle = "rgba(18,12,30,0.9)";
+    roundRect(ctx, x - labelW / 2, labelY, labelW, labelH, 5);
+    ctx.fill();
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 1.25;
+    roundRect(ctx, x - labelW / 2, labelY, labelW, labelH, 5);
+    ctx.stroke();
+    ctx.font = "bold 7.5px 'Trebuchet MS', system-ui, sans-serif";
+    ctx.fillStyle = "#fff8df";
+    ctx.fillText("Training", x, labelY + labelH / 2);
+    ctx.restore();
   }
 
   private drawUtilityGate(
@@ -3675,7 +4040,7 @@ export class Game {
 
     const utilityButtons = `
       <div class="plj-mini-actions">
-        <button class="plj-mini-pill" id="plj-tree-training">🎓 Training</button>
+        <button class="plj-mini-pill" id="plj-tree-training">🏫 Training</button>
         ${this.canShowAssetsGate() ? `<button class="plj-mini-pill" id="plj-tree-assets">💼 Assets</button>` : ""}
       </div>`;
     this.ui.overlay.innerHTML = `
@@ -3845,14 +4210,18 @@ export class Game {
     const level = this.trainingLevel[category];
     if (category === "iq") {
       const [from, to] = TRAINING_IQ_RANGES[level];
-      return TRAINING_PUZZLES.slice(from, Math.min(to, TRAINING_PUZZLES.length));
+      return [...TRAINING_PUZZLES.slice(from, Math.min(to, TRAINING_PUZZLES.length)), ...TRAINING_IQ_EXTRA_BANKS[level]];
     }
-    return TRAINING_BANKS[category][level];
+    return [...TRAINING_BANKS[category][level], ...TRAINING_EXTRA_BANKS[category][level]];
   }
 
   private trainingTotalQuestions(): number {
-    return TRAINING_PUZZLES.length + Object.values(TRAINING_BANKS).reduce((sum, bank) =>
+    const iqExtra = Object.values(TRAINING_IQ_EXTRA_BANKS).reduce((sum, questions) => sum + questions.length, 0);
+    const core = Object.values(TRAINING_BANKS).reduce((sum, bank) =>
       sum + Object.values(bank).reduce((inner, questions) => inner + questions.length, 0), 0);
+    const extra = Object.values(TRAINING_EXTRA_BANKS).reduce((sum, bank) =>
+      sum + Object.values(bank).reduce((inner, questions) => inner + questions.length, 0), 0);
+    return TRAINING_PUZZLES.length + iqExtra + core + extra;
   }
 
   private setTrainingLevel(category: TrainingCategory, level: TrainingLevel): void {
@@ -3971,7 +4340,7 @@ export class Game {
     this.ui.overlay.innerHTML = `
       <div class="plj-card plj-training-card">
         <div class="plj-family-head">
-          <h2>🎓 Training</h2>
+          <h2>🏫 Training</h2>
           <div class="plj-mini-actions">
             ${this.canShowAssetsGate() ? `<button class="plj-mini-pill" id="plj-training-assets">💼 Assets</button>` : ""}
             ${this.canShowFamilyTreeGate() ? `<button class="plj-mini-pill" id="plj-training-tree">🌳 Family Tree</button>` : ""}
@@ -4081,7 +4450,7 @@ export class Game {
         <div class="plj-family-head">
           <h2>💼 Assets</h2>
           <div class="plj-mini-actions">
-            <button class="plj-mini-pill" id="plj-assets-training">🎓 Training</button>
+            <button class="plj-mini-pill" id="plj-assets-training">🏫 Training</button>
             <button class="plj-mini-pill" id="plj-assets-tree">🌳 Family Tree</button>
           </div>
         </div>
