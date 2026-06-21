@@ -528,9 +528,9 @@ function drawSideStanding(ctx: CanvasRenderingContext2D, cx: number, footY: numb
   const hipY = baseY - legH;
   const torsoTopY = hipY - torsoH + stoop;
   const neckTopY = torsoTopY - neckH + stoop * 0.5;
-  const headCx = cx + dir * H * 0.09 + lean + stoop * 0.5;
+  const headCx = cx + dir * H * 0.075 + lean * 0.55 + stoop * 0.5;
   const headCy = neckTopY - headH / 2;
-  const torsoCx = cx + dir * H * 0.024;
+  const torsoCx = cx + dir * H * 0.02 + lean * 0.18;
   const shoulderY = torsoTopY + headH * 0.14;
   const handY = torsoTopY + torsoH * 0.94;
   const elbowY = torsoTopY + torsoH * 0.55;
@@ -572,8 +572,21 @@ function drawSideStanding(ctx: CanvasRenderingContext2D, cx: number, footY: numb
     ctx.closePath();
     ctx.fill();
   }
+  const neckTopX = headCx - dir * headW * 0.16;
+  const neckBottomX = torsoCx + dir * sideShoulderW * 0.08;
+  const neckBottomY = torsoTopY + headH * 0.1;
   ctx.fillStyle = shade(look.skin, 20);
-  ctx.fillRect(cx + dir * H * 0.02 - neckH * 0.28, torsoTopY - neckH + 1, neckH * 0.56, neckH + headH * 0.08);
+  ctx.beginPath();
+  ctx.moveTo(neckTopX - neckH * 0.32, neckTopY + 1);
+  ctx.lineTo(neckTopX + neckH * 0.32, neckTopY + 1);
+  ctx.lineTo(neckBottomX + neckH * 0.42, neckBottomY);
+  ctx.lineTo(neckBottomX - neckH * 0.42, neckBottomY);
+  ctx.closePath();
+  ctx.fill();
+  ctx.strokeStyle = OUTLINE;
+  ctx.lineWidth = Math.max(1, OUTLINE_W * 0.75);
+  ctx.stroke();
+  ellipse(ctx, neckTopX, neckTopY + neckH * 0.15, neckH * 0.4, neckH * 0.3, look.skin);
 
   limb(ctx, cx - dir * sideShoulderW * 0.08, shoulderY, cx - dir * sideShoulderW * 0.16 - dir * stride * 0.15, elbowY, armW * 0.88, shade(look.shirt, 12));
   limb(ctx, cx - dir * sideShoulderW * 0.16 - dir * stride * 0.15, elbowY, cx - dir * sideShoulderW * 0.05 - dir * stride * 0.25, handY, armW * 0.8, shade(look.shirt, 6));
