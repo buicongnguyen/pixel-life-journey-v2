@@ -328,7 +328,7 @@ function drawStanding(ctx: CanvasRenderingContext2D, cx: number, footY: number, 
   const torsoTopY = hipY - torsoH + stoop;
   const neckTopY = torsoTopY - neckH + stoop * 0.5;
   const headCx = cx + stoop * 0.5;
-  const headCy = neckTopY - headH / 2;
+  const headCy = neckTopY - headH / 2 + headH * 0.075;
 
   const skin = look.skin;
   const skinD = shade(skin, 20);
@@ -529,7 +529,7 @@ function drawSideStanding(ctx: CanvasRenderingContext2D, cx: number, footY: numb
   const torsoTopY = hipY - torsoH + stoop;
   const neckTopY = torsoTopY - neckH + stoop * 0.5;
   const headCx = cx + dir * H * 0.075 + lean * 0.55 + stoop * 0.5;
-  const headCy = neckTopY - headH / 2;
+  const headCy = neckTopY - headH / 2 + headH * 0.075;
   const torsoCx = cx + dir * H * 0.02 + lean * 0.18;
   const shoulderY = torsoTopY + headH * 0.14;
   const handY = torsoTopY + torsoH * 0.94;
@@ -629,7 +629,7 @@ function drawBackStanding(ctx: CanvasRenderingContext2D, cx: number, footY: numb
   const torsoTopY = hipY - torsoH + stoop;
   const neckTopY = torsoTopY - neckH + stoop * 0.5;
   const headCx = cx;
-  const headCy = neckTopY - headH / 2;
+  const headCy = neckTopY - headH / 2 + headH * 0.075;
   const stride = swing * H * 0.048;
   const lift = Math.abs(swing) * H * 0.024;
   const shoeY = baseY - H * 0.03;
@@ -1105,7 +1105,7 @@ function drawCrawlingBaby(ctx: CanvasRenderingContext2D, cx: number, footY: numb
   const bodyRy = H * 0.16;
   const headR = H * 0.255;
   const headCx = cx + dir * H * 0.22;
-  const headCy = footY - H * 0.39 - bob * 0.35;
+  const headCy = footY - H * 0.37 - bob * 0.35;
   const limbW = H * 0.052;
 
   groundShadow(ctx, cx, footY, bodyRx * 1.15);
@@ -1219,7 +1219,7 @@ function drawCrawlingBabyBack(ctx: CanvasRenderingContext2D, cx: number, footY: 
   const bodyRy = H * 0.17;
   const headR = H * 0.25;
   const headCx = cx;
-  const headCy = footY - H * 0.37 - bob * 0.35;
+  const headCy = footY - H * 0.35 - bob * 0.35;
   const limbW = H * 0.056;
   const handY = footY - H * 0.045;
   const kneeY = footY - H * 0.035;
