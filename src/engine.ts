@@ -9,6 +9,7 @@ import type {
   PersonKind,
   Stats,
   StatKey,
+  UpperSceneKind,
   VehicleTier,
 } from "./types";
 import {
@@ -251,6 +252,7 @@ export class Game {
   private input = { left: false, right: false, up: false, down: false };
   private actQueued = false;
   private lastTime = 0;
+  private renderTime = 0;
   private frameErrors = 0;
 
   constructor(mount: HTMLElement) {
@@ -268,6 +270,7 @@ export class Game {
     return {
       mode: this.mode,
       stage: STAGES[this.stageIndex]?.id,
+      upperScene: this.upperScene(),
       age: Math.round(this.age * 10) / 10,
       familyZoneShare: this.familyZoneShare(),
       zoneSplitY: this.zoneSplitY(),
@@ -632,6 +635,12 @@ export class Game {
   private zoneSplitY(): number {
     const playable = FAMILY_Y_MAX - SOCIAL_Y_MIN;
     return Math.round(FAMILY_Y_MAX - playable * this.familyZoneShare());
+  }
+
+  private upperScene(): UpperSceneKind {
+    const scenes = STAGES[this.stageIndex]?.upperScenes ?? ["park"];
+    if (scenes.length <= 1) return scenes[0] ?? "park";
+    return scenes[Math.floor(this.renderTime / 12) % scenes.length];
   }
 
   private zoneBounds(zone: StationZone): { min: number; max: number } {
@@ -1463,6 +1472,7 @@ export class Game {
   private frame = (t: number): void => {
     const dt = Math.min(0.05, (t - this.lastTime) / 1000 || 0);
     this.lastTime = t;
+    this.renderTime = t / 1000;
     // a single bad frame must never freeze the whole game
     try {
       this.update(dt);
@@ -1862,6 +1872,7 @@ export class Game {
       const doorActive = this.doorOpen();
       drawRoom(ctx, s.theme, W, H, FLOOR_Y, doorActive, t, {
         scene: s.scene,
+        upperScene: this.upperScene(),
         atHome: !!s.atHome,
         homeQuality: this.homeQuality,
         splitY: this.zoneSplitY(),

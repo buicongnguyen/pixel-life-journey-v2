@@ -1,4 +1,4 @@
-import type { Gender, PersonKind, RoomTheme, SceneKind } from "./types";
+import type { Gender, PersonKind, RoomTheme, SceneKind, UpperSceneKind } from "./types";
 
 // ---------------------------------------------------------------------------
 // All drawing. The canvas is supersampled (see ui.ts) and rendered smoothly, so
@@ -1466,6 +1466,7 @@ function drawNamePlate(ctx: CanvasRenderingContext2D, cx: number, y: number, tex
 
 export interface RoomDecor {
   scene: SceneKind;
+  upperScene: UpperSceneKind;
   atHome: boolean;
   homeQuality: number;
   splitY: number;
@@ -1474,7 +1475,7 @@ export interface RoomDecor {
 export function drawRoom(ctx: CanvasRenderingContext2D, theme: RoomTheme, W: number, H: number, floorY: number, doorActive: boolean, t: number, decor: RoomDecor): void {
   const splitY = Math.round(decor.splitY);
   drawTopSky(ctx, W, floorY, t);
-  drawSocialArea(ctx, W, floorY, splitY, t);
+  drawSocialArea(ctx, W, floorY, splitY, t, decor.upperScene);
   drawFamilyArea(ctx, decor.scene, theme, W, splitY, H, t);
   if (decor.atHome && decor.homeQuality > 0) drawHomeQuality(ctx, theme, W, splitY + 70, decor.homeQuality);
   drawZoneDivider(ctx, W, splitY);
@@ -1513,7 +1514,33 @@ function window2(ctx: CanvasRenderingContext2D, x: number, y: number, w: number,
   px(ctx, x, y + h / 2 - 1, w, 2, "#6a5a3a");
 }
 
-function drawSocialArea(ctx: CanvasRenderingContext2D, W: number, top: number, bottom: number, t: number): void {
+function drawSocialArea(ctx: CanvasRenderingContext2D, W: number, top: number, bottom: number, t: number, scene: UpperSceneKind): void {
+  switch (scene) {
+    case "schoolIndoor":
+      drawSchoolIndoorArea(ctx, W, top, bottom, false);
+      return;
+    case "schoolOutdoor":
+      drawSchoolOutdoorArea(ctx, W, top, bottom, t, false);
+      return;
+    case "campusIndoor":
+      drawSchoolIndoorArea(ctx, W, top, bottom, true);
+      return;
+    case "campusOutdoor":
+      drawSchoolOutdoorArea(ctx, W, top, bottom, t, true);
+      return;
+    case "officeIndoor":
+      drawOfficeIndoorArea(ctx, W, top, bottom);
+      return;
+    case "officeOutdoor":
+      drawOfficeOutdoorArea(ctx, W, top, bottom, t);
+      return;
+    case "park":
+    default:
+      drawOutdoorParkArea(ctx, W, top, bottom, t);
+  }
+}
+
+function drawOutdoorParkArea(ctx: CanvasRenderingContext2D, W: number, top: number, bottom: number, t: number): void {
   const horizon = Math.round(Math.min(top + 48, bottom - 122));
   const sky = ctx.createLinearGradient(0, top, 0, horizon);
   sky.addColorStop(0, "#8fd0ff");
@@ -1574,6 +1601,191 @@ function drawSocialArea(ctx: CanvasRenderingContext2D, W: number, top: number, b
   ctx.fillRect(0, pathTop, W, bottom - pathTop);
   px(ctx, 0, pathTop, W, 4, "#e7d69a");
   for (let x = -20; x < W; x += 54) px(ctx, x, pathTop + Math.max(16, (bottom - pathTop) * 0.52), 28, 4, "rgba(255,255,255,0.30)");
+}
+
+function drawSchoolIndoorArea(ctx: CanvasRenderingContext2D, W: number, top: number, bottom: number, campus: boolean): void {
+  const wallBottom = Math.round(top + Math.min(126, Math.max(88, (bottom - top) * 0.36)));
+  const wallTop = campus ? "#c7ecbd" : "#b9e8ff";
+  const wallBottomCol = campus ? "#91d584" : "#87cfff";
+  const floorTop = campus ? "#d7c487" : "#dba96c";
+  const floorBottom = campus ? "#9ec98b" : "#b98552";
+  const wall = ctx.createLinearGradient(0, top, 0, wallBottom);
+  wall.addColorStop(0, wallTop);
+  wall.addColorStop(1, wallBottomCol);
+  ctx.fillStyle = wall;
+  ctx.fillRect(0, top, W, wallBottom - top);
+  drawPixelTrim(ctx, 0, top + 14, W, 8, tint(wallTop, 16), shade(wallBottomCol, 8));
+  const floor = ctx.createLinearGradient(0, wallBottom, 0, bottom);
+  floor.addColorStop(0, floorTop);
+  floor.addColorStop(1, floorBottom);
+  ctx.fillStyle = floor;
+  ctx.fillRect(0, wallBottom, W, bottom - wallBottom);
+  for (let y = wallBottom + 24; y < bottom; y += 46) px(ctx, 0, y, W, 2, "rgba(255,255,255,0.22)");
+  for (let x = 24; x < W; x += 58) px(ctx, x, wallBottom, 2, bottom - wallBottom, "rgba(90,70,42,0.16)");
+
+  if (campus) {
+    px(ctx, 46, top + 18, 152, 62, "#6f4896");
+    px(ctx, 54, top + 26, 136, 46, "#f2e4ae");
+    ctx.fillStyle = "#6f4896";
+    ctx.font = "13px 'Trebuchet MS', sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText("LECTURE", 122, top + 46);
+    ctx.fillText("HALL", 122, top + 64);
+    for (let x = W - 210; x < W - 38; x += 24) {
+      px(ctx, x, wallBottom - 58, 16, 50, "#6a4b8a");
+      px(ctx, x + 3, wallBottom - 52, 10, 36, "#f6d66d");
+    }
+    for (let x = 80; x < W - 92; x += 126) {
+      px(ctx, x, bottom - 70, 76, 18, "#7d6547");
+      px(ctx, x + 12, bottom - 52, 6, 28, "#5a4734");
+      px(ctx, x + 58, bottom - 52, 6, 28, "#5a4734");
+    }
+    return;
+  }
+
+  px(ctx, 54, top + 18, 196, 64, "#284733");
+  px(ctx, 50, top + 14, 204, 6, "#74583d");
+  ctx.fillStyle = "rgba(244,244,225,0.92)";
+  ctx.font = "13px 'Trebuchet MS', monospace";
+  ctx.textAlign = "left";
+  ctx.fillText("SCIENCE  MATH", 74, top + 44);
+  ctx.fillText("TEAM PRACTICE", 74, top + 66);
+  for (let i = 0; i < 5; i++) {
+    const lx = W - 188 + i * 31;
+    px(ctx, lx, top + 24, 24, 78, i % 2 ? "#4d7eb2" : "#3f6fa5");
+    px(ctx, lx + 8, top + 58, 8, 3, "#dbe8ff");
+  }
+  for (let x = 74; x < W - 92; x += 116) {
+    px(ctx, x, bottom - 70, 68, 18, "#9a744c");
+    px(ctx, x + 9, bottom - 52, 6, 28, "#6a4b32");
+    px(ctx, x + 54, bottom - 52, 6, 28, "#6a4b32");
+  }
+}
+
+function drawSchoolOutdoorArea(ctx: CanvasRenderingContext2D, W: number, top: number, bottom: number, t: number, campus: boolean): void {
+  const horizon = Math.round(Math.min(top + 56, bottom - 128));
+  const sky = ctx.createLinearGradient(0, top, 0, horizon);
+  sky.addColorStop(0, "#87d5ff");
+  sky.addColorStop(1, "#d7f5ff");
+  ctx.fillStyle = sky;
+  ctx.fillRect(0, top, W, horizon - top);
+  ellipse(ctx, W - 64, top + 26, 17, 17, "#ffe27a");
+  const cloudShift = (t * 8) % 170;
+  for (const [x0, y, s] of [[72, top + 24, 0.7], [310, top + 30, 0.54]] as const) {
+    const x = ((x0 + cloudShift) % (W + 120)) - 60;
+    ellipse(ctx, x, y, 20 * s, 7 * s, "rgba(255,255,255,0.82)");
+    ellipse(ctx, x + 18 * s, y + 4 * s, 24 * s, 8 * s, "rgba(255,255,255,0.76)");
+  }
+
+  if (campus) {
+    px(ctx, 20, horizon - 30, 150, 30, "#8a65a8");
+    px(ctx, 48, horizon - 54, 94, 24, "#9b73bc");
+    for (let x = 38; x < 152; x += 28) px(ctx, x, horizon - 22, 16, 18, "#f7e3a8");
+  } else {
+    px(ctx, 24, horizon - 34, 164, 34, "#658bc0");
+    px(ctx, 44, horizon - 54, 124, 20, "#739bd0");
+    for (let x = 42; x < 174; x += 28) px(ctx, x, horizon - 25, 14, 16, "#dcecff");
+  }
+
+  const grass = ctx.createLinearGradient(0, horizon, 0, bottom);
+  grass.addColorStop(0, campus ? "#b4e38b" : "#9fdb76");
+  grass.addColorStop(1, campus ? "#65b66c" : "#59a95f");
+  ctx.fillStyle = grass;
+  ctx.fillRect(0, horizon, W, bottom - horizon);
+  px(ctx, 0, horizon - 3, W, 8, "#8ed17f");
+  const courtY = Math.round(horizon + (bottom - horizon) * 0.34);
+  const courtH = Math.max(74, Math.min(132, bottom - courtY - 48));
+  px(ctx, W - 258, courtY, 210, courtH, campus ? "#73b7cf" : "#da8f5f");
+  px(ctx, W - 248, courtY + 10, 190, courtH - 20, "rgba(255,255,255,0.16)");
+  px(ctx, W - 154, courtY, 3, courtH, "rgba(255,255,255,0.58)");
+  ctx.save();
+  ctx.strokeStyle = "rgba(255,255,255,0.58)";
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.ellipse(W - 152, courtY + courtH / 2, 38, 22, 0, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.restore();
+  px(ctx, W - 70, courtY + 20, 8, 42, "#4e5d69");
+  px(ctx, W - 86, courtY + 18, 32, 4, "#4e5d69");
+  px(ctx, 38, bottom - 62, 214, 34, campus ? "#d8c078" : "#c35f5f");
+  for (let x = 48; x < 244; x += 38) px(ctx, x, bottom - 52, 22, 4, "rgba(255,255,255,0.58)");
+}
+
+function drawOfficeIndoorArea(ctx: CanvasRenderingContext2D, W: number, top: number, bottom: number): void {
+  const wallBottom = Math.round(top + Math.min(136, Math.max(96, (bottom - top) * 0.34)));
+  const wall = ctx.createLinearGradient(0, top, 0, wallBottom);
+  wall.addColorStop(0, "#a5dfcf");
+  wall.addColorStop(1, "#69b896");
+  ctx.fillStyle = wall;
+  ctx.fillRect(0, top, W, wallBottom - top);
+  drawPixelTrim(ctx, 0, top + 16, W, 8, "#c4eee0", "#61ad91");
+  const floor = ctx.createLinearGradient(0, wallBottom, 0, bottom);
+  floor.addColorStop(0, "#9fc9d8");
+  floor.addColorStop(1, "#6da5bd");
+  ctx.fillStyle = floor;
+  ctx.fillRect(0, wallBottom, W, bottom - wallBottom);
+  for (let x = 0; x < W; x += 40) px(ctx, x, wallBottom, 2, bottom - wallBottom, "rgba(255,255,255,0.18)");
+
+  window2(ctx, 44, top + 20, 148, 68, "#9ed8ff");
+  for (let i = 0; i < 7; i++) px(ctx, 54 + i * 19, top + 75 - (i % 4) * 10, 13, 11 + (i % 4) * 10, "#46647c");
+  px(ctx, W - 164, top + 22, 88, 44, "#315b66");
+  ctx.fillStyle = "#dff6f2";
+  ctx.font = "12px 'Trebuchet MS', sans-serif";
+  ctx.textAlign = "center";
+  ctx.fillText("TEAM", W - 120, top + 42);
+  ctx.fillText("GOALS", W - 120, top + 58);
+
+  for (let i = 0; i < 3; i++) {
+    const deskX = 76 + i * 168;
+    px(ctx, deskX, bottom - 88, 112, 24, "#8b6a4a");
+    px(ctx, deskX + 30, bottom - 118, 46, 30, "#232635");
+    px(ctx, deskX + 35, bottom - 113, 36, 20, "#6cd7ff");
+    px(ctx, deskX + 16, bottom - 64, 8, 36, "#624a35");
+    px(ctx, deskX + 88, bottom - 64, 8, 36, "#624a35");
+  }
+}
+
+function drawOfficeOutdoorArea(ctx: CanvasRenderingContext2D, W: number, top: number, bottom: number, t: number): void {
+  const horizon = Math.round(Math.min(top + 62, bottom - 136));
+  const sky = ctx.createLinearGradient(0, top, 0, horizon);
+  sky.addColorStop(0, "#8ed7ff");
+  sky.addColorStop(1, "#dcf6ff");
+  ctx.fillStyle = sky;
+  ctx.fillRect(0, top, W, horizon - top);
+  const cloudShift = (t * 7) % 170;
+  for (const [x0, y, s] of [[116, top + 26, 0.62], [360, top + 20, 0.52]] as const) {
+    const x = ((x0 + cloudShift) % (W + 110)) - 60;
+    ellipse(ctx, x, y, 24 * s, 8 * s, "rgba(255,255,255,0.82)");
+    ellipse(ctx, x + 22 * s, y + 5 * s, 26 * s, 9 * s, "rgba(255,255,255,0.76)");
+  }
+  for (let i = 0; i < 6; i++) {
+    const bw = 46 + (i % 3) * 18;
+    const bh = 58 + (i % 4) * 22;
+    const bx = 22 + i * 94;
+    px(ctx, bx, horizon - bh, bw, bh, i % 2 ? "#486a8b" : "#385b7b");
+    for (let y = horizon - bh + 12; y < horizon - 8; y += 18) {
+      for (let x = bx + 8; x < bx + bw - 8; x += 16) px(ctx, x, y, 7, 8, "rgba(200,236,255,0.45)");
+    }
+  }
+  const plaza = ctx.createLinearGradient(0, horizon, 0, bottom);
+  plaza.addColorStop(0, "#b8d988");
+  plaza.addColorStop(0.42, "#85c77d");
+  plaza.addColorStop(0.43, "#d6c097");
+  plaza.addColorStop(1, "#b49168");
+  ctx.fillStyle = plaza;
+  ctx.fillRect(0, horizon, W, bottom - horizon);
+  px(ctx, 0, Math.round(horizon + (bottom - horizon) * 0.42), W, 5, "#e8d59b");
+  for (let x = 44; x < W; x += 116) {
+    px(ctx, x, horizon + 18, 8, 46, "#6b4a32");
+    ellipse(ctx, x + 4, horizon + 10, 24, 18, "#42b96f");
+  }
+  px(ctx, W - 178, bottom - 98, 116, 54, "#f6f0da");
+  px(ctx, W - 178, bottom - 108, 116, 12, "#37a5c7");
+  ctx.fillStyle = "#37515c";
+  ctx.font = "12px 'Trebuchet MS', sans-serif";
+  ctx.textAlign = "center";
+  ctx.fillText("COFFEE", W - 120, bottom - 76);
+  px(ctx, W - 74, bottom - 44, 28, 10, "#35323a");
 }
 
 function drawFamilyArea(ctx: CanvasRenderingContext2D, scene: SceneKind, theme: RoomTheme, W: number, top: number, H: number, t: number): void {

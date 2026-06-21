@@ -144,6 +144,7 @@ export const STAGES: Stage[] = [
     blurb: "Ages 11–14. Bigger ideas, big feelings, late nights.",
     theme: themes.teen,
     scene: "school",
+    upperScenes: ["schoolIndoor", "schoolOutdoor"],
     options: [
       { id: "study", label: "Study hard", icon: "📚", desc: "Hit the books. Builds real smarts for high school.", category: "smarts", effects: { smarts: 9, fun: -3 }, storyTag: "study" },
       { id: "sports", label: "Sports", icon: "🏀", desc: "Team sports — fit body, happy mind.", category: "health", effects: { health: 8, happiness: 3 }, storyTag: "sports" },
@@ -167,6 +168,7 @@ export const STAGES: Stage[] = [
     blurb: "Ages 14–18. Exams, parties, first love and big choices.",
     theme: themes.school,
     scene: "school",
+    upperScenes: ["schoolIndoor", "schoolOutdoor"],
     options: [
       { id: "exams", label: "Study exams", icon: "📝", desc: "Cram for exams. Smarts now decide your future — but it's draining.", category: "smarts", effects: { smarts: 10, fun: -3, happiness: -2 }, storyTag: "study" },
       { id: "party", label: "Party", icon: "🎉", desc: "Party with friends. Wild fun — but it costs sleep and cash (no money, no party).", category: "fun", effects: { fun: 9, happiness: 4, health: -4 }, cost: 1200, storyTag: "party" },
@@ -192,6 +194,7 @@ export const STAGES: Stage[] = [
     blurb: "Ages 18–22. Freedom, all-nighters, and who you'll become.",
     theme: themes.campus,
     scene: "campus",
+    upperScenes: ["campusIndoor", "campusOutdoor"],
     options: [
       { id: "lectures", label: "Study", icon: "🎓", desc: "Lectures and the library. A degree pays off for life.", category: "smarts", effects: { smarts: 10, fun: -2 }, storyTag: "study" },
       { id: "intern", label: "Internship", icon: "💼", desc: "Intern in your field — experience plus a pay cheque.", category: "wealth", effects: { smarts: 4, fun: -3 }, earn: 6000, scalesWithSmarts: true, storyTag: "internship" },
@@ -216,6 +219,7 @@ export const STAGES: Stage[] = [
     blurb: "Ages 22–30. Building a career. Mind the work–life balance!",
     theme: themes.office,
     scene: "office",
+    upperScenes: ["officeIndoor", "officeOutdoor"],
     isCareer: true,
     options: [
       { id: "overtime", label: "Overtime grind", icon: "⏰", desc: "Work 60-hour weeks. Big money — but it burns out your health, fun and joy.", category: "wealth", effects: { health: -7, fun: -6, happiness: -4 }, earn: 42000, scalesWithSmarts: true, storyTag: "overtime" },
@@ -244,6 +248,7 @@ export const STAGES: Stage[] = [
     blurb: "Ages 30–36. Settle down, build a family, and grow together.",
     theme: themes.home,
     scene: "home",
+    upperScenes: ["officeIndoor", "officeOutdoor"],
     isMarriage: true,
     atHome: true,
     options: [
@@ -267,6 +272,7 @@ export const STAGES: Stage[] = [
     blurb: "Ages 36–55. Career peak and family — but the body needs care now.",
     theme: themes.mid,
     scene: "home",
+    upperScenes: ["officeIndoor", "officeOutdoor"],
     atHome: true,
     options: [
       { id: "career", label: "Career peak", icon: "⏰", desc: "Climb to the top. Great money, hard on an aging body.", category: "wealth", effects: { health: -6, fun: -4 }, earn: 60000, scalesWithSmarts: true, storyTag: "overtime" },

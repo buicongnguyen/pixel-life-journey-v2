@@ -54,6 +54,16 @@ export type SceneKind =
   | "home"
   | "sunset";
 
+/** The upper/social playable area's scenery. */
+export type UpperSceneKind =
+  | "park"
+  | "schoolIndoor"
+  | "schoolOutdoor"
+  | "campusIndoor"
+  | "campusOutdoor"
+  | "officeIndoor"
+  | "officeOutdoor";
+
 /** A "try your luck" choice: spend a stake for a chance at a payout (all in $). */
 export interface GambleSpec {
   /** Dollars spent to play. Gated — you can't play if you can't afford the stake. */
@@ -150,6 +160,8 @@ export interface Stage {
   theme: RoomTheme;
   /** Scenery drawn behind this room (school, office, home…). */
   scene: SceneKind;
+  /** Optional rotating scenery for the upper/social playable area. */
+  upperScenes?: UpperSceneKind[];
   options: LifeOption[];
   /** Marriage stage shows a partner picker before the room loads. */
   isMarriage?: boolean;
