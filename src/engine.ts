@@ -86,6 +86,7 @@ const FOOD_USE_COOLDOWN = 5;
 const CAREER_INDEX = STAGES.findIndex((s) => s.id === "career");
 const BAD_FIT_TAGS = ["sedentary", "gaming", "screen", "toy_phone", "cigarette"];
 const BAD_FOCUS_TAGS = ["wine", "whisky"];
+const GOOD_PEER_TAGS = ["study", "sports", "exercise", "friends"];
 const FAMILY_MONEY_MIN = 10000;
 const FAMILY_MONEY_MAX = 2000000;
 const FAMILY_MONEY_SKEW = 3.25; // higher = richer births are rarer
@@ -650,6 +651,26 @@ export class Game {
     return !!opt.person && !!opt.storyTag && BAD_SOCIAL_TAGS.includes(opt.storyTag);
   }
 
+  private clearsBadPeerPressure(opt: LifeOption): boolean {
+    const stage = STAGES[this.stageIndex]?.id;
+    return (stage === "high" || stage === "university") &&
+      !this.isBadSocialOption(opt) &&
+      !!opt.storyTag &&
+      GOOD_PEER_TAGS.includes(opt.storyTag);
+  }
+
+  private clearBadPeerPressure(): void {
+    const removed = this.stations.filter((st) => st.opt.storyTag && BAD_SOCIAL_TAGS.includes(st.opt.storyTag));
+    if (removed.length === 0) return;
+    for (const st of removed) {
+      this.floats.push({ x: st.x, y: st.y - 42, text: "👋 bad crowd left", color: "#7fd0a0", life: 1.5 });
+    }
+    this.stations = this.stations.filter((st) => !st.opt.storyTag || !BAD_SOCIAL_TAGS.includes(st.opt.storyTag));
+    this.people = this.stations.filter((s) => s.kind === "person");
+    this.focusIndex = -1;
+    this.hint("Good friends pulled you away from the bad crowd.");
+  }
+
   private shouldSitWithNewborn(st: Station): boolean {
     const babyCenterX = this.px;
     const babyCenterY = this.py - 32;
@@ -827,8 +848,8 @@ export class Game {
   /** Which health pillar an option's health effect should feed. */
   private healthKindFor(opt: LifeOption): "muscle" | "nutrition" | "mental" | "split" {
     if (this.isBadSocialOption(opt)) return "split";
-    if (opt.person || opt.category === "social") return "mental";
     if (opt.category === "health") return "muscle";
+    if (opt.person || opt.category === "social") return "mental";
     if (opt.category === "food") return "nutrition";
     const t = opt.storyTag;
     if (BAD_FIT_TAGS.includes(t ?? "")) return "muscle";
@@ -986,6 +1007,7 @@ export class Game {
     if (opt.category === "food" && (opt.effects.health ?? 0) > 0) this.satiateBad("diet");
     if (!badSocial && (opt.category === "health" || opt.person || opt.category === "social")) this.satiateBad("fit");
     if (!badSocial && (opt.category === "smarts" || opt.storyTag === "study" || opt.storyTag === "friends" || opt.storyTag === "sports")) this.satiateBad("focus");
+    if (this.clearsBadPeerPressure(opt)) this.clearBadPeerPressure();
 
     // try-your-luck: roll the gamble and fold the dollar outcome in
     let gambleClause: string | null = null;
