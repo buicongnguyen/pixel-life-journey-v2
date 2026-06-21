@@ -75,6 +75,7 @@ const FAMILY_Y_MAX = PY_MAX - 24;
 // --- moving-items mechanic ---
 const GOOD_SPEED = 24; // good items drift AWAY (chase them + press to collect)
 const BAD_SPEED = 34; // bad items drift TOWARD you (auto-applied on contact)
+const BAD_EVENT_ALERT_R = 185; // bad-luck hazards wake up only when you get close
 const ITEM_R = 26; // contact / collect radius
 const BLOCK_R = 30; // an NPC standing in the path blocks a bad item
 const SATIATE_TIME = 9; // seconds a bad item stays frozen/faded after you do its good counterpart
@@ -1551,6 +1552,7 @@ export class Game {
       const dx = this.px - st.x;
       const dy = this.py - st.y;
       const d = Math.hypot(dx, dy) || 1;
+      if (badEvent && d > BAD_EVENT_ALERT_R) continue;
       const dir = st.kind === "bad" || badEvent ? 1 : -1; // bad → toward you, good → away
       const sp = badEvent ? BAD_SPEED * 0.7 : st.kind === "bad" ? BAD_SPEED : GOOD_SPEED;
       let nx = st.x + (dir * dx / d) * sp * dt;
