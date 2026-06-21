@@ -2718,23 +2718,50 @@ function drawPlant(ctx: CanvasRenderingContext2D, x: number, floorY: number): vo
 }
 
 function drawDoor(ctx: CanvasRenderingContext2D, theme: RoomTheme, W: number, H: number, gateY: number, doorActive: boolean, t: number): void {
-  const dw = 58;
-  const dh = 156;
-  const dx = W - dw - 10;
-  const dy = Math.round(Math.max(120, Math.min(H - dh - 14, gateY - dh / 2)));
-  px(ctx, dx - 6, dy - 8, dw + 12, dh + 16, "#1f1b2f");
-  px(ctx, dx - 2, dy - 4, dw + 4, dh + 8, doorActive ? tint(theme.accent, 18) : theme.wallShade);
-  px(ctx, dx, dy, dw, dh, doorActive ? theme.accent : "#2c2438");
-  px(ctx, dx + 8, dy + 10, dw - 16, dh - 20, doorActive ? tint(theme.accent, 18) : "#342a44");
+  const r = 29;
+  const cx = W - 42;
+  const cy = Math.round(Math.max(120 + r, Math.min(H - r - 14, gateY)));
+  ctx.save();
+  ctx.fillStyle = "rgba(0,0,0,0.28)";
+  ctx.beginPath();
+  ctx.ellipse(cx + 1, cy + r + 5, r * 0.9, 6, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = "#1f1b2f";
+  ctx.lineWidth = 8;
+  ctx.beginPath();
+  ctx.arc(cx, cy, r + 5, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.strokeStyle = doorActive ? tint(theme.accent, 18) : theme.wallShade;
+  ctx.lineWidth = 5;
+  ctx.beginPath();
+  ctx.arc(cx, cy, r + 1, 0, Math.PI * 2);
+  ctx.stroke();
+
+  const g = ctx.createRadialGradient(cx - 8, cy - 9, 4, cx, cy, r);
+  g.addColorStop(0, doorActive ? "#ffffff" : "#5d5268");
+  g.addColorStop(0.2, doorActive ? tint(theme.accent, 20) : "#43394f");
+  g.addColorStop(1, doorActive ? theme.accent : "#2c2438");
+  ctx.fillStyle = g;
+  ctx.beginPath();
+  ctx.arc(cx, cy, r - 2, 0, Math.PI * 2);
+  ctx.fill();
   if (doorActive) {
     const a = 0.35 + 0.25 * Math.sin(t * 4);
-    ctx.fillStyle = `rgba(255,255,255,${a})`;
-    ctx.fillRect(dx + 8, dy + 10, dw - 16, dh - 20);
-    px(ctx, dx + dw / 2 - 3, dy + dh / 2 - 18, 6, 36, "#27202e");
-    drawArrow(ctx, dx + dw / 2 + 11, dy + dh / 2, "#27202e");
+    ctx.strokeStyle = `rgba(255,255,255,${a})`;
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.arc(cx, cy, r - 7, 0, Math.PI * 2);
+    ctx.stroke();
+    drawArrow(ctx, cx + 5, cy, "#27202e");
   } else {
-    ellipse(ctx, dx + dw - 11, dy + dh / 2, 3.5, 4, theme.accent);
+    ellipse(ctx, cx + 8, cy, 3.5, 4, theme.accent);
   }
+  ctx.font = "bold 8px 'Trebuchet MS', system-ui, sans-serif";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillStyle = "#fff8df";
+  ctx.fillText("AGE", cx, cy + r + 14);
+  ctx.restore();
 }
 
 function drawArrow(ctx: CanvasRenderingContext2D, x: number, y: number, color: string): void {

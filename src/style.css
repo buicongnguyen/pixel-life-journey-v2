@@ -795,6 +795,210 @@ body {
   white-space: nowrap;
 }
 
+/* ---- family tree + assets overlays -------------------------------------- */
+.plj-family-card,
+.plj-assets-card {
+  max-width: 560px;
+  width: 94%;
+  text-align: left;
+}
+.plj-family-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.plj-family-head h2 {
+  margin: 0;
+}
+.plj-mini-pill {
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.22);
+  color: var(--ink);
+  padding: 7px 10px;
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+.plj-family-map {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 7px;
+  padding: 10px 6px;
+  margin: 8px 0 10px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: rgba(0, 0, 0, 0.18);
+  overflow-x: auto;
+}
+.plj-family-row {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  min-width: max-content;
+}
+.plj-family-link {
+  width: 2px;
+  height: 12px;
+  background: rgba(255, 255, 255, 0.25);
+}
+.plj-family-node,
+.plj-family-placeholder {
+  width: 76px;
+  min-height: 86px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: rgba(23, 15, 44, 0.92);
+  text-align: center;
+}
+.plj-family-node.you {
+  border-color: #5db8ff;
+  box-shadow: 0 0 0 2px rgba(93, 184, 255, 0.16);
+}
+.plj-family-node.partner {
+  border-color: var(--pink);
+}
+.plj-family-node.child {
+  border-color: #ffd23f;
+}
+.plj-family-name {
+  max-width: 68px;
+  font-size: 9px;
+  line-height: 1.1;
+  font-weight: 700;
+  color: #fff8df;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.plj-family-face {
+  font-size: 28px;
+  line-height: 1;
+}
+.plj-family-role,
+.plj-family-node small,
+.plj-family-placeholder {
+  color: var(--muted);
+  font-size: 9.5px;
+  line-height: 1.2;
+}
+.plj-family-placeholder {
+  padding: 8px;
+}
+.plj-family-houses {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 2px 0 6px;
+}
+.plj-house-chip {
+  flex: 0 0 136px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 8px 10px;
+  background: rgba(0, 0, 0, 0.2);
+}
+.plj-house-chip.is-live {
+  border-color: #7ed957;
+}
+.plj-house-chip b {
+  font-size: 12px;
+  color: var(--ink);
+}
+.plj-house-chip span,
+.plj-house-chip small {
+  color: var(--muted);
+  font-size: 10.5px;
+  line-height: 1.25;
+}
+.plj-networth {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 10px 0;
+  padding: 10px 12px;
+  border: 1px solid #7ed957;
+  border-radius: 10px;
+  background: rgba(126, 217, 87, 0.12);
+}
+.plj-networth span {
+  color: var(--muted);
+  font-size: 12px;
+}
+.plj-networth strong {
+  color: #7ed957;
+  font-size: 20px;
+}
+.plj-ledger-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+.plj-ledger-grid section {
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 8px;
+  background: rgba(0, 0, 0, 0.18);
+}
+.plj-ledger-grid h3 {
+  margin: 0 0 6px;
+  font-size: 12px;
+  color: var(--ink);
+}
+.plj-ledger-row,
+.plj-ledger-total {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 5px 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  font-size: 11px;
+}
+.plj-ledger-row:first-of-type {
+  border-top: 0;
+}
+.plj-ledger-row span {
+  min-width: 0;
+}
+.plj-ledger-row b {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.plj-ledger-row small {
+  display: block;
+  color: var(--muted);
+  font-size: 9.5px;
+  line-height: 1.2;
+}
+.plj-ledger-row strong {
+  flex: 0 0 auto;
+  color: #7ed957;
+}
+.plj-ledger-row strong.is-cost,
+.plj-ledger-total strong {
+  color: #ff9f6b;
+}
+.plj-ledger-total {
+  margin-top: 4px;
+  font-weight: 700;
+}
+
 /* ---- gender pick (setup) ------------------------------------------------ */
 .plj-genders {
   display: flex;
@@ -1161,6 +1365,16 @@ body {
   }
   .plj-card {
     padding: 16px 14px;
+  }
+  .plj-ledger-grid {
+    grid-template-columns: 1fr;
+  }
+  .plj-family-node,
+  .plj-family-placeholder {
+    width: 70px;
+  }
+  .plj-networth strong {
+    font-size: 17px;
   }
 }
 

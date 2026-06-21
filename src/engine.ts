@@ -65,7 +65,12 @@ const W = 640;
 const H = 800; // a tall room with only a thin sky strip above the playfield
 const FLOOR_Y = 72; // sky-only non-playable band; ground starts right below it
 const DOOR_X = W - 74;
-const GATE_HALF_H = 86;
+const STAGE_GATE_R = 31;
+const GATE_HALF_H = STAGE_GATE_R + 7;
+const UTILITY_GATE_X = 58;
+const FAMILY_TREE_GATE_R = 27;
+const ASSETS_GATE_R = 24;
+const UTILITY_GATE_GAP = 62;
 const SPEED = 205; // base move speed (scaled up by your IQ — smart = nimble)
 const PY_MIN = 142; // feet stay on ground while the sky remains scenic only
 const PY_MAX = 782;
@@ -102,6 +107,9 @@ const PARENT_SUPPORT_MIN = 800;
 const PARENT_SUPPORT_MAX = 160000;
 const PARENT_INCOME_SHIFT_MIN = 0.1;
 const PARENT_INCOME_SHIFT_MAX = 0.5;
+const HOUSE_APPRECIATION_MIN = 0.03;
+const HOUSE_APPRECIATION_MAX = 0.05;
+const VEHICLE_DEPRECIATION = 0.12;
 const LIFE_SPEED_MIN = 0.5;
 const LIFE_SPEED_MAX = 2;
 const LIFE_SPEED_STEP = 0.25;
@@ -127,6 +135,8 @@ type Mode =
   | "biolist"
   | "bioauthor"
   | "profile"
+  | "familytree"
+  | "assets"
   | "careermove"
   | "settings";
 
@@ -175,6 +185,7 @@ interface Snapshot {
   parentAnnualSupport: number;
   homeQuality: number;
   homeIds: string[];
+  homePurchaseAges: number[];
   hadChild: boolean;
   familyBond: number;
   spouseDeceased: boolean;
@@ -184,6 +195,7 @@ interface Snapshot {
   iqCeiling: number;
   geneBonus: number;
   owned: string[];
+  vehiclePurchaseAges: [string, number][];
   jobsTaken: string[];
   usedEvents: string[];
   inventory: InventorySlot[];
@@ -235,6 +247,7 @@ export class Game {
   private parentAnnualSupport = 0; // yearly support from Mommy & Daddy until adulthood
   private homeQuality = 0;
   private homes: HouseTier[] = []; // every property bought; you live in the best one
+  private homePurchaseAges: number[] = []; // parallel to homes; lets property appreciate over time
   private houseUpkeep = 0; // per-action dollar drain from your home (mortgage/upkeep)
   private rentalIncome = 0; // per-stage dollars from spare homes rented out
   private investments = 0; // dollars in the market — compounds over the stages
@@ -243,6 +256,7 @@ export class Game {
   private geneBonus = 0; // longevity genetics (-5..+5 yrs), rolled at birth
   private familyBond = 0; // time invested in family — unlocks grandkids later
   private owned = new Set<string>(); // one-off, owned-for-life purchases (vehicles, skills)
+  private vehiclePurchaseAges = new Map<string, number>(); // vehicle id -> age bought; cars depreciate with time
   private jobsTaken = new Set<string>(); // occupations whose one-off perks were already granted this life
   private bigFired = false; // a "big" windfall already happened (1/life)
   private jackpotFired = false; // a jackpot already happened (1/life total)
@@ -459,6 +473,7 @@ export class Game {
     this.commute = null;
     this.homeQuality = 0;
     this.homes = [];
+    this.homePurchaseAges = [];
     this.houseUpkeep = 0;
     this.rentalIncome = 0;
     this.investments = 0;
@@ -471,6 +486,7 @@ export class Game {
     this.lifetimeEarned = 0;
     this.connections = 0;
     this.owned = new Set();
+    this.vehiclePurchaseAges = new Map();
     this.jobsTaken = new Set();
     this.bigFired = false;
     this.jackpotFired = false;
@@ -562,6 +578,7 @@ export class Game {
       parentAnnualSupport: this.parentAnnualSupport,
       homeQuality: this.homeQuality,
       homeIds: this.homes.map((h) => h.id),
+      homePurchaseAges: [...this.homePurchaseAges],
       hadChild: this.hadChild,
       familyBond: this.familyBond,
       spouseDeceased: this.spouseDeceased,
@@ -571,6 +588,7 @@ export class Game {
       iqCeiling: this.iqCeiling,
       geneBonus: this.geneBonus,
       owned: [...this.owned],
+      vehiclePurchaseAges: [...this.vehiclePurchaseAges.entries()],
       jobsTaken: [...this.jobsTaken],
       inventory: this.inventory.map((slot) => ({ opt: slot.opt, count: slot.count })),
       selectedInventory: this.selectedInventory,
@@ -944,10 +962,35 @@ export class Game {
     return Math.round(Math.max(45, Math.min(120, le)));
   }
 
-  /** Net worth in dollars: cash + the investment pot + property values. */
+  private yearsHeld(purchaseAge: number | undefined): number {
+    return Math.max(0, this.age - (purchaseAge ?? Math.max(18, this.age)));
+  }
+
+  private houseAppreciationRate(h: HouseTier): number {
+    const step = (HOUSE_APPRECIATION_MAX - HOUSE_APPRECIATION_MIN) / 4;
+    return HOUSE_APPRECIATION_MIN + (Math.max(1, Math.min(5, h.quality)) - 1) * step;
+  }
+
+  private houseAssetValue(h: HouseTier, index: number): number {
+    const years = this.yearsHeld(this.homePurchaseAges[index]);
+    return Math.round(h.cost * Math.pow(1 + this.houseAppreciationRate(h), years));
+  }
+
+  private vehicleAssetValue(v: VehicleTier): number {
+    const years = this.yearsHeld(this.vehiclePurchaseAges.get(v.id));
+    const valueRatio = Math.max(0.18, Math.pow(1 - VEHICLE_DEPRECIATION, years));
+    return Math.round(v.cost * valueRatio);
+  }
+
+  private ownedVehicles(): VehicleTier[] {
+    return VEHICLES.filter((v) => this.owned.has("veh_" + v.id));
+  }
+
+  /** Net worth in dollars: cash + stocks + appreciated property + depreciated vehicles. */
   private netWorth(): number {
     let nw = this.money + this.investments;
-    for (const h of this.homes) nw += h.cost;
+    this.homes.forEach((h, i) => { nw += this.houseAssetValue(h, i); });
+    for (const v of this.ownedVehicles()) nw += this.vehicleAssetValue(v);
     return nw;
   }
 
@@ -1056,6 +1099,14 @@ export class Game {
 
     // near the open gate? walk through to advance (also handy on touch)
     if (this.focusIndex < 0) {
+      if (this.nearAssetsGate()) {
+        this.showAssets();
+        return;
+      }
+      if (this.nearFamilyTreeGate()) {
+        this.showFamilyTree();
+        return;
+      }
       if (this.doorOpen() && this.px > DOOR_X - 36 && this.nearGate()) this.advanceStage();
       return;
     }
@@ -1580,6 +1631,7 @@ export class Game {
     this.money -= h.cost;
     this.applyEff({ happiness: h.happiness });
     this.homes.push(h);
+    this.homePurchaseAges.push(this.age);
     this.recomputeHomes();
     this.age += this.stageStep();
     this.passiveTick();
@@ -1643,6 +1695,7 @@ export class Game {
       return;
     }
     this.owned.add(key);
+    this.vehiclePurchaseAges.set(v.id, this.age);
     this.money -= v.cost;
     this.applyEff(v.effects, "split");
     this.age += this.stageStep();
@@ -1704,6 +1757,9 @@ export class Game {
     this.familyFund = snap.familyFund;
     this.parentAnnualSupport = snap.parentAnnualSupport;
     this.homes = snap.homeIds.map((id) => HOUSE_TIERS.find((h) => h.id === id)).filter(Boolean) as HouseTier[];
+    this.homePurchaseAges = snap.homePurchaseAges?.length
+      ? [...snap.homePurchaseAges]
+      : this.homes.map(() => Math.max(18, snap.age));
     this.recomputeHomes();
     this.hadChild = snap.hadChild;
     this.familyBond = snap.familyBond;
@@ -1714,6 +1770,7 @@ export class Game {
     this.iqCeiling = snap.iqCeiling;
     this.geneBonus = snap.geneBonus;
     this.owned = new Set(snap.owned);
+    this.vehiclePurchaseAges = new Map(snap.vehiclePurchaseAges ?? []);
     this.jobsTaken = new Set(snap.jobsTaken);
     this.inventory = snap.inventory.map((slot) => ({ opt: slot.opt, count: slot.count }));
     this.selectedInventory = Math.max(0, Math.min(snap.selectedInventory, this.inventory.length - 1));
@@ -2126,6 +2183,99 @@ export class Game {
     }
   }
 
+  private familyTreeGateY(): number {
+    const social = this.zoneBounds("social");
+    return Math.round(Math.max(social.min + ASSETS_GATE_R + UTILITY_GATE_GAP + 8, social.max - 26));
+  }
+
+  private assetsGateY(): number {
+    return this.familyTreeGateY() - UTILITY_GATE_GAP;
+  }
+
+  private hitCircle(x: number, y: number, cx: number, cy: number, r: number): boolean {
+    return Math.hypot(x - cx, y - cy) <= r;
+  }
+
+  private nearFamilyTreeGate(): boolean {
+    return this.hitCircle(this.px, this.py - 8, UTILITY_GATE_X, this.familyTreeGateY(), FAMILY_TREE_GATE_R + 22);
+  }
+
+  private nearAssetsGate(): boolean {
+    return this.hitCircle(this.px, this.py - 8, UTILITY_GATE_X, this.assetsGateY(), ASSETS_GATE_R + 22);
+  }
+
+  private canvasPoint(e: PointerEvent): { x: number; y: number } {
+    const rect = this.ui.canvas.getBoundingClientRect();
+    return {
+      x: ((e.clientX - rect.left) / rect.width) * W,
+      y: ((e.clientY - rect.top) / rect.height) * H,
+    };
+  }
+
+  private drawUtilityGates(ctx: CanvasRenderingContext2D, t: number): void {
+    const familyY = this.familyTreeGateY();
+    const assetsY = this.assetsGateY();
+    this.drawUtilityGate(ctx, UTILITY_GATE_X, assetsY, ASSETS_GATE_R, "Assets", "💼", "#7ed957", t);
+    this.drawUtilityGate(ctx, UTILITY_GATE_X, familyY, FAMILY_TREE_GATE_R, "Family Tree", "🌳", "#ffd23f", t);
+  }
+
+  private drawUtilityGate(
+    ctx: CanvasRenderingContext2D,
+    x: number,
+    y: number,
+    r: number,
+    label: string,
+    icon: string,
+    color: string,
+    t: number
+  ): void {
+    const pulse = 0.55 + 0.18 * Math.sin(t * 3 + y * 0.03);
+    ctx.save();
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillStyle = "rgba(0,0,0,0.26)";
+    ctx.beginPath();
+    ctx.ellipse(x + 2, y + r + 5, r * 0.9, 6, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.globalAlpha = pulse;
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 5;
+    ctx.beginPath();
+    ctx.arc(x, y, r + 4, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.globalAlpha = 1;
+
+    const grad = ctx.createRadialGradient(x - 7, y - 8, 4, x, y, r);
+    grad.addColorStop(0, "#ffffff");
+    grad.addColorStop(0.18, color);
+    grad.addColorStop(1, "#222033");
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.arc(x, y, r, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = "#1b142b";
+    ctx.lineWidth = 3;
+    ctx.stroke();
+
+    ctx.font = "17px 'Trebuchet MS', system-ui, sans-serif";
+    ctx.fillStyle = "#1b142b";
+    ctx.fillText(icon, x, y - 1);
+
+    const labelW = label === "Family Tree" ? 78 : 58;
+    ctx.fillStyle = "rgba(18,12,30,0.9)";
+    roundRect(ctx, x - labelW / 2, y + r + 6, labelW, 16, 5);
+    ctx.fill();
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 1.5;
+    roundRect(ctx, x - labelW / 2, y + r + 6, labelW, 16, 5);
+    ctx.stroke();
+    ctx.font = "bold 8px 'Trebuchet MS', system-ui, sans-serif";
+    ctx.fillStyle = "#fff8df";
+    ctx.fillText(label, x, y + r + 14);
+    ctx.restore();
+  }
+
   // --- rendering ------------------------------------------------------------
 
   private render(): void {
@@ -2143,6 +2293,8 @@ export class Game {
       this.mode === "commute" ||
       this.mode === "timetravel" ||
       this.mode === "profile" ||
+      this.mode === "familytree" ||
+      this.mode === "assets" ||
       this.mode === "careermove" ||
       this.mode === "settings";
     if (inRoom && this.stageIndex < STAGES.length) {
@@ -2155,9 +2307,11 @@ export class Game {
         atHome: !!s.atHome,
         homeQuality: this.homeQuality,
         splitY: this.zoneSplitY(),
-        ownedVehicles: VEHICLES.filter((v) => this.owned.has("veh_" + v.id)),
+        ownedVehicles: this.ownedVehicles(),
         ownedHome: this.liveHome(),
       });
+
+      this.drawUtilityGates(ctx, t);
 
       // draw stations, people and the avatar together, sorted by depth (y)
       type Drawable = { y: number; station?: Station; pet?: boolean };
@@ -2429,6 +2583,216 @@ export class Game {
   private clearOverlay(): void {
     this.ui.overlay.classList.remove("show");
     this.ui.overlay.innerHTML = "";
+  }
+
+  private playerDisplayName(): string {
+    return this.playerName.trim() || (this.gender === "female" ? "Alex" : "Sam");
+  }
+
+  private familyNode(name: string, role: string, age: number, icon: string, tone = ""): string {
+    const ageLabel = age <= 0 ? "newborn" : `age ${Math.floor(age)}`;
+    return `
+      <div class="plj-family-node ${tone}">
+        <span class="plj-family-name">${esc(name)}</span>
+        <span class="plj-family-face">${icon}</span>
+        <span class="plj-family-role">${esc(role)}</span>
+        <small>${ageLabel}</small>
+      </div>`;
+  }
+
+  private birthHomeLabel(): string {
+    if (this.familyFund >= 1200000) return "wealthy villa";
+    if (this.familyFund >= 600000) return "large family house";
+    if (this.familyFund >= 250000) return "comfortable home";
+    if (this.familyFund >= 80000) return "small apartment";
+    return "simple rented room";
+  }
+
+  private showFamilyTree(): void {
+    if (this.mode !== "playing") return;
+    this.mode = "familytree";
+    const age = Math.floor(this.age);
+    const playerIcon = this.gender === "female" ? "👧" : "👦";
+    const partnerIcon = this.partner?.emoji ?? "💍";
+    const siblingAge = Math.max(0, age + 4);
+    const babySiblingAge = Math.max(0, age - 1);
+    const hasBabySibling = age >= 1 || this.history.some((h) => h.optionId === "babysib");
+    const childAge = Math.max(0, age - 30);
+    const grandkidAge = Math.max(0, age - 60);
+    const liveHome = this.liveHome();
+    const houseCards = [
+      `<div class="plj-house-chip"><b>Parents' home</b><span>${esc(this.birthHomeLabel())}</span><small>Family fund ${formatMoney(this.familyFund)}</small></div>`,
+      ...(liveHome ? [`<div class="plj-house-chip is-live"><b>${liveHome.emoji} Your house</b><span>${esc(liveHome.name)}</span><small>value ${formatMoney(this.houseAssetValue(liveHome, this.homes.indexOf(liveHome)))}</small></div>`] : []),
+      ...this.homes
+        .map((h, i) => ({ h, i }))
+        .filter(({ h }) => h !== liveHome)
+        .map(({ h, i }) => `<div class="plj-house-chip"><b>${h.emoji} Rental house</b><span>${esc(h.name)}</span><small>rent ${formatMoney(h.rentYield)}/yr</small></div>`),
+      `<div class="plj-house-chip"><b>Sibling house</b><span>other branch</span><small>browse the family map</small></div>`,
+    ].join("");
+    const childRow = this.hadChild
+      ? this.familyNode("Baby", "your child", childAge, childAge < 3 ? "👶" : "🧒", "child")
+      : `<div class="plj-family-placeholder">No child branch yet</div>`;
+    const grandkidRow = this.hadChild && this.familyBond >= 3 && age >= 60
+      ? this.familyNode("Little Star", "grandkid", grandkidAge, "👶", "child")
+      : `<div class="plj-family-placeholder">Grandkid branch unlocks with family time</div>`;
+
+    this.ui.overlay.innerHTML = `
+      <div class="plj-card plj-family-card">
+        <div class="plj-family-head">
+          <h2>🌳 Family Tree</h2>
+          <button class="plj-mini-pill" id="plj-tree-assets">💼 Assets</button>
+        </div>
+        <p class="plj-sub">Names sit above each head. Scroll the houses row to browse the family homes.</p>
+        <div class="plj-family-map">
+          <div class="plj-family-row">
+            ${this.familyNode("Grandpa", "grandparent", age + 66, "👴", "elder")}
+            ${this.familyNode("Grandma", "grandparent", age + 64, "👵", "elder")}
+          </div>
+          <div class="plj-family-link"></div>
+          <div class="plj-family-row">
+            ${this.familyNode("Daddy", "parent", age + 31, "👨", "parent")}
+            ${this.familyNode("Mommy", "parent", age + 29, "👩", "parent")}
+          </div>
+          <div class="plj-family-link"></div>
+          <div class="plj-family-row">
+            ${this.familyNode("Big sib", "sibling", siblingAge, "🧒", "sibling")}
+            ${hasBabySibling ? this.familyNode("Baby sib", "sibling", babySiblingAge, "👶", "sibling") : ""}
+            ${this.familyNode(this.playerDisplayName(), "you", age, playerIcon, "you")}
+            ${this.partner ? this.familyNode(this.partner.name, this.partner.title, Math.max(18, age - 1), partnerIcon, "partner") : ""}
+          </div>
+          <div class="plj-family-link"></div>
+          <div class="plj-family-row">${childRow}</div>
+          <div class="plj-family-row">${grandkidRow}</div>
+        </div>
+        <h3 class="plj-prof-h3">🏘️ Houses</h3>
+        <div class="plj-family-houses">${houseCards}</div>
+        <div class="plj-title-row">
+          <button class="plj-btn plj-btn-ghost" id="plj-tree-close">← Back</button>
+        </div>
+      </div>`;
+    this.ui.overlay.classList.add("show");
+    this.ui.overlay.querySelector<HTMLButtonElement>("#plj-tree-close")!.onclick = () => {
+      this.mode = "playing";
+      this.clearOverlay();
+    };
+    this.ui.overlay.querySelector<HTMLButtonElement>("#plj-tree-assets")!.onclick = () => {
+      this.mode = "playing";
+      this.clearOverlay();
+      this.showAssets();
+    };
+  }
+
+  private annualPlayerIncome(): number {
+    return this.occupation ? Math.round(28000 * this.incomeMul() * this.occupation.salaryMul) : 0;
+  }
+
+  private grandparentSupport(): number {
+    if (this.age >= PARENT_SUPPORT_END_AGE) return 0;
+    return Math.round(Math.min(24000, Math.max(500, this.familyFund * 0.012)) / 100) * 100;
+  }
+
+  private annualExpenseBreakdown(): { label: string; value: number; note: string }[] {
+    const discount = activityDiscount(this.stats);
+    const adult = this.age >= 18 || !!this.occupation;
+    const rent = adult && this.homes.length === 0
+      ? Math.round((this.age < 24 ? 9000 : this.age < 65 ? 18000 : 12000) * discount)
+      : 0;
+    const foodPlay = Math.round((this.age < 4 ? 1800 : this.age < 13 ? 3200 : this.age < 18 ? 5200 : this.age < 65 ? 9600 : 7600) * discount);
+    const vehicle = this.ownedVehicles().reduce((sum, v) => sum + Math.round(Math.max(80, v.cost * 0.055)), 0);
+    const spouse = this.partner && !this.spouseDeceased ? 4500 : 0;
+    const child = this.hadChild ? (this.age < 55 ? 7200 : 1800) : 0;
+    const pet = this.petKind ? 900 : 0;
+    return [
+      { label: "You", value: foodPlay + rent, note: rent > 0 ? "food, play, rent" : "food and play" },
+      { label: "House", value: this.houseUpkeep, note: this.homes.length ? "upkeep" : "no owned house" },
+      { label: "Vehicle", value: vehicle, note: this.ownedVehicles().length ? "running cost" : "no vehicle" },
+      { label: "Partner", value: spouse, note: this.partner && !this.spouseDeceased ? this.partner.name : "none" },
+      { label: "Child", value: child, note: this.hadChild ? "care and school" : "none" },
+      { label: "Pet", value: pet, note: this.petKind ?? "none" },
+    ];
+  }
+
+  private ledgerRows(rows: { label: string; value: number; note?: string; positive?: boolean }[]): string {
+    return rows.map((r) => `
+      <div class="plj-ledger-row">
+        <span><b>${esc(r.label)}</b>${r.note ? `<small>${esc(r.note)}</small>` : ""}</span>
+        <strong class="${r.positive === false ? "is-cost" : ""}">${formatMoney(r.value)}</strong>
+      </div>`).join("");
+  }
+
+  private showAssets(): void {
+    if (this.mode !== "playing") return;
+    this.mode = "assets";
+    const daddy = Math.round(this.parentAnnualSupport * 0.54);
+    const mommy = Math.round(this.parentAnnualSupport * 0.46);
+    const grandparent = this.grandparentSupport();
+    const playerIncome = this.annualPlayerIncome();
+    const expenseRows = this.annualExpenseBreakdown();
+    const expenseTotal = expenseRows.reduce((sum, r) => sum + r.value, 0);
+    const incomeRows = [
+      { label: "Daddy income", value: daddy, note: "support flow / yr" },
+      { label: "Mommy income", value: mommy, note: "support flow / yr" },
+      { label: "Grandparent help", value: grandparent, note: this.age < 18 ? "family help / yr" : "ended at adulthood" },
+      { label: "Player income", value: playerIncome, note: this.occupation?.name ?? "not working yet" },
+      { label: "Rental income", value: this.rentalIncome, note: this.rentalIncome ? "spare homes / yr" : "no spare rental" },
+    ];
+    const houseRows = this.homes.map((h, i) => ({
+      label: `${h.emoji} ${h.name}`,
+      value: this.houseAssetValue(h, i),
+      note: `+${Math.round(this.houseAppreciationRate(h) * 100)}%/yr est.`,
+    }));
+    const vehicleRows = this.ownedVehicles().map((v) => ({
+      label: `${v.emoji} ${v.name}`,
+      value: this.vehicleAssetValue(v),
+      note: `-${Math.round(VEHICLE_DEPRECIATION * 100)}%/yr est.`,
+    }));
+    const assetRows = [
+      { label: "Cash", value: this.money, note: "current money" },
+      { label: "Stocks", value: this.investments, note: "current market pot" },
+      ...houseRows,
+      ...vehicleRows,
+    ];
+
+    this.ui.overlay.innerHTML = `
+      <div class="plj-card plj-assets-card">
+        <div class="plj-family-head">
+          <h2>💼 Assets</h2>
+          <button class="plj-mini-pill" id="plj-assets-tree">🌳 Family Tree</button>
+        </div>
+        <div class="plj-networth">
+          <span>Net worth</span>
+          <strong>${formatMoney(this.netWorth())}</strong>
+        </div>
+        <div class="plj-ledger-grid">
+          <section>
+            <h3>Income / Year</h3>
+            ${this.ledgerRows(incomeRows)}
+          </section>
+          <section>
+            <h3>Assets</h3>
+            ${this.ledgerRows(assetRows)}
+          </section>
+          <section>
+            <h3>Expenses / Year</h3>
+            ${this.ledgerRows(expenseRows.map((r) => ({ ...r, positive: false })))}
+            <div class="plj-ledger-total"><span>Total expense</span><strong>${formatMoney(expenseTotal)}</strong></div>
+          </section>
+        </div>
+        <p class="plj-sub">Houses estimate 3-5% yearly growth by quality. Vehicles lose value over time. Rent appears when you own spare homes.</p>
+        <div class="plj-title-row">
+          <button class="plj-btn plj-btn-ghost" id="plj-assets-close">← Back</button>
+        </div>
+      </div>`;
+    this.ui.overlay.classList.add("show");
+    this.ui.overlay.querySelector<HTMLButtonElement>("#plj-assets-close")!.onclick = () => {
+      this.mode = "playing";
+      this.clearOverlay();
+    };
+    this.ui.overlay.querySelector<HTMLButtonElement>("#plj-assets-tree")!.onclick = () => {
+      this.mode = "playing";
+      this.clearOverlay();
+      this.showFamilyTree();
+    };
   }
 
   private showTitle(): void {
@@ -3155,6 +3519,19 @@ export class Game {
     };
     window.addEventListener("keydown", (e) => setDir(e, true));
     window.addEventListener("keyup", (e) => setDir(e, false));
+    this.ui.canvas.addEventListener("pointerdown", (e) => {
+      if (this.mode !== "playing") return;
+      const p = this.canvasPoint(e);
+      if (this.hitCircle(p.x, p.y, UTILITY_GATE_X, this.assetsGateY(), ASSETS_GATE_R + 8)) {
+        e.preventDefault();
+        this.showAssets();
+        return;
+      }
+      if (this.hitCircle(p.x, p.y, UTILITY_GATE_X, this.familyTreeGateY(), FAMILY_TREE_GATE_R + 8)) {
+        e.preventDefault();
+        this.showFamilyTree();
+      }
+    });
 
     const bindHold = (node: HTMLElement, key: "left" | "right" | "up" | "down"): void => {
       const on = (e: Event) => { e.preventDefault(); this.input[key] = true; };
@@ -3233,6 +3610,12 @@ function ellipseRing(ctx: CanvasRenderingContext2D, cx: number, cy: number, rx: 
   ctx.strokeStyle = ctx.fillStyle as string;
   ctx.lineWidth = 3;
   ctx.stroke();
+}
+
+function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number): void {
+  ctx.beginPath();
+  if (ctx.roundRect) ctx.roundRect(x, y, w, h, r);
+  else ctx.rect(x, y, w, h);
 }
 
 /** Escape user text for safe insertion into HTML (attributes + content). */
