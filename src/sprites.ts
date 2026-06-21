@@ -513,6 +513,7 @@ function drawSideStanding(ctx: CanvasRenderingContext2D, cx: number, footY: numb
   const neckTopY = torsoTopY - neckH + stoop * 0.5;
   const headCx = cx + dir * H * 0.055 + lean + stoop * 0.5;
   const headCy = neckTopY - headH / 2;
+  const torsoCx = cx + dir * H * 0.012;
   const shoulderY = torsoTopY + headH * 0.14;
   const handY = torsoTopY + torsoH * 0.94;
   const elbowY = torsoTopY + torsoH * 0.55;
@@ -537,9 +538,25 @@ function drawSideStanding(ctx: CanvasRenderingContext2D, cx: number, footY: numb
   } else {
     taper(ctx, cx, torsoTopY + torsoH * 0.66, sideWaistW, hipY + H * 0.01, sideHipW, hgrad(ctx, cx - sideHipW / 2, sideHipW, look.pants));
   }
-  taper(ctx, cx + dir * H * 0.005, torsoTopY, sideShoulderW, torsoTopY + torsoH * 0.66, sideWaistW, hgrad(ctx, cx - sideShoulderW / 2, sideShoulderW, look.shirt, 22, 22));
+  taper(ctx, torsoCx, torsoTopY, sideShoulderW, torsoTopY + torsoH * 0.66, sideWaistW, hgrad(ctx, torsoCx - sideShoulderW / 2, sideShoulderW, look.shirt, 22, 22));
+  ctx.strokeStyle = "rgba(255,255,255,0.38)";
+  ctx.lineWidth = Math.max(1, H * 0.012);
+  ctx.lineCap = "round";
+  ctx.beginPath();
+  ctx.moveTo(torsoCx + dir * sideShoulderW * 0.2, torsoTopY + torsoH * 0.13);
+  ctx.quadraticCurveTo(torsoCx + dir * sideWaistW * 0.34, torsoTopY + torsoH * 0.38, torsoCx + dir * sideWaistW * 0.18, torsoTopY + torsoH * 0.66);
+  ctx.stroke();
+  if (!look.child) {
+    ctx.fillStyle = look.elder ? "#f4f0e6" : "#fff7e0";
+    ctx.beginPath();
+    ctx.moveTo(torsoCx + dir * sideShoulderW * 0.22, torsoTopY + headH * 0.05);
+    ctx.lineTo(torsoCx + dir * sideShoulderW * 0.04, torsoTopY + torsoH * 0.22);
+    ctx.lineTo(torsoCx + dir * sideShoulderW * 0.16, torsoTopY + torsoH * 0.3);
+    ctx.closePath();
+    ctx.fill();
+  }
   ctx.fillStyle = shade(look.skin, 20);
-  ctx.fillRect(cx - neckH * 0.28, torsoTopY - neckH + 1, neckH * 0.56, neckH + headH * 0.08);
+  ctx.fillRect(cx + dir * H * 0.02 - neckH * 0.28, torsoTopY - neckH + 1, neckH * 0.56, neckH + headH * 0.08);
 
   limb(ctx, cx - dir * sideShoulderW * 0.08, shoulderY, cx - dir * sideShoulderW * 0.16 - dir * stride * 0.15, elbowY, armW * 0.88, shade(look.shirt, 12));
   limb(ctx, cx - dir * sideShoulderW * 0.16 - dir * stride * 0.15, elbowY, cx - dir * sideShoulderW * 0.05 - dir * stride * 0.25, handY, armW * 0.8, shade(look.shirt, 6));
@@ -621,42 +638,77 @@ function drawBackStanding(ctx: CanvasRenderingContext2D, cx: number, footY: numb
   ctx.fillStyle = shade(look.skin, 20);
   ctx.fillRect(cx - neckH * 0.36, torsoTopY - neckH + 1, neckH * 0.72, neckH + headH * 0.08);
 
-  if (look.hairStyle === "long") drawBackHair(ctx, headCx, headCy, headW, headH, look);
-
-  const headBack = ctx.createRadialGradient(headCx - headW * 0.1, headCy - headH * 0.2, headW * 0.12, headCx, headCy, headW * 0.7);
-  headBack.addColorStop(0, tint(look.skin, 8));
-  headBack.addColorStop(1, shade(look.skin, 8));
-  ellipse(ctx, headCx, headCy, headW * 0.48, headH * 0.5, headBack);
-  ctx.beginPath();
-  ctx.ellipse(headCx, headCy, headW * 0.48, headH * 0.5, 0, 0, Math.PI * 2);
-  ctx.strokeStyle = OUTLINE;
-  ctx.lineWidth = OUTLINE_W;
-  ctx.stroke();
-
-  ctx.fillStyle = look.hair;
-  ctx.beginPath();
-  ctx.moveTo(headCx - headW * 0.48, headCy + headH * 0.02);
-  ctx.quadraticCurveTo(headCx - headW * 0.48, headCy - headH * 0.55, headCx, headCy - headH * 0.55);
-  ctx.quadraticCurveTo(headCx + headW * 0.48, headCy - headH * 0.55, headCx + headW * 0.48, headCy + headH * 0.02);
-  ctx.quadraticCurveTo(headCx + headW * 0.22, headCy - headH * 0.08, headCx, headCy - headH * 0.06);
-  ctx.quadraticCurveTo(headCx - headW * 0.22, headCy - headH * 0.08, headCx - headW * 0.48, headCy + headH * 0.02);
-  ctx.closePath();
-  ctx.fill();
-  ctx.strokeStyle = OUTLINE;
-  ctx.lineWidth = OUTLINE_W;
-  ctx.stroke();
-
-  if (look.hairStyle === "bun") {
-    ellipse(ctx, headCx, headCy - headH * 0.55, headW * 0.27, headH * 0.22, look.hair);
-    ctx.beginPath();
-    ctx.ellipse(headCx, headCy - headH * 0.55, headW * 0.27, headH * 0.22, 0, 0, Math.PI * 2);
-    ctx.strokeStyle = OUTLINE;
-    ctx.lineWidth = OUTLINE_W;
-    ctx.stroke();
-  }
+  drawBackHead(ctx, headCx, headCy, headW, headH, look);
 
   if (look.elder) {
     limb(ctx, cx + shoulderW * 0.28 - stride * 0.45, handY, cx + shoulderW * 0.56, footY, legW * 0.45, "#7a5a36");
+  }
+}
+
+function drawBackHead(ctx: CanvasRenderingContext2D, hcx: number, hcy: number, hw: number, hh: number, look: AvatarLook): void {
+  const top = hcy - hh / 2;
+  const hair = look.hair;
+  const hairD = shade(hair, 22);
+  const hairL = tint(hair, 28);
+  const skin = look.skin;
+  const skinD = shade(skin, 18);
+  const stroke = (): void => {
+    ctx.strokeStyle = OUTLINE;
+    ctx.lineWidth = OUTLINE_W;
+    ctx.stroke();
+  };
+
+  if (look.hairStyle === "long") {
+    ctx.fillStyle = hairD;
+    ctx.beginPath();
+    ctx.moveTo(hcx - hw * 0.5, top + hh * 0.18);
+    ctx.quadraticCurveTo(hcx - hw * 0.72, hcy + hh * 0.32, hcx - hw * 0.58, hcy + hh * 0.98);
+    ctx.quadraticCurveTo(hcx - hw * 0.48, hcy + hh * 1.3, hcx, hcy + hh * 1.43);
+    ctx.quadraticCurveTo(hcx + hw * 0.48, hcy + hh * 1.3, hcx + hw * 0.58, hcy + hh * 0.98);
+    ctx.quadraticCurveTo(hcx + hw * 0.72, hcy + hh * 0.32, hcx + hw * 0.5, top + hh * 0.18);
+    ctx.closePath();
+    ctx.fill();
+    stroke();
+  }
+
+  // Small lower skin shape reads as nape/ears from the back, not a face.
+  ellipse(ctx, hcx - hw * 0.5, hcy + hh * 0.08, hw * 0.08, hh * 0.1, skinD);
+  ellipse(ctx, hcx + hw * 0.5, hcy + hh * 0.08, hw * 0.08, hh * 0.1, skinD);
+  ellipse(ctx, hcx, hcy + hh * 0.16, hw * 0.34, hh * 0.26, skinD);
+
+  ctx.fillStyle = hair;
+  ctx.beginPath();
+  ctx.moveTo(hcx - hw * 0.5, hcy + hh * 0.22);
+  ctx.quadraticCurveTo(hcx - hw * 0.56, top - hh * 0.1, hcx, top - hh * 0.17);
+  ctx.quadraticCurveTo(hcx + hw * 0.56, top - hh * 0.1, hcx + hw * 0.5, hcy + hh * 0.22);
+  ctx.quadraticCurveTo(hcx + hw * 0.31, hcy + hh * 0.44, hcx, hcy + hh * 0.37);
+  ctx.quadraticCurveTo(hcx - hw * 0.31, hcy + hh * 0.44, hcx - hw * 0.5, hcy + hh * 0.22);
+  ctx.closePath();
+  ctx.fill();
+  stroke();
+
+  ctx.strokeStyle = hairD;
+  ctx.lineWidth = Math.max(1, hw * 0.035);
+  ctx.lineCap = "round";
+  for (const x of [-0.22, 0, 0.22]) {
+    ctx.beginPath();
+    ctx.moveTo(hcx + hw * x, top + hh * 0.02);
+    ctx.quadraticCurveTo(hcx + hw * (x * 0.85), hcy + hh * 0.14, hcx + hw * (x * 0.72), hcy + hh * 0.31);
+    ctx.stroke();
+  }
+
+  if (!look.elder) {
+    ctx.save();
+    ctx.globalAlpha = 0.45;
+    ellipse(ctx, hcx - hw * 0.1, top + hh * 0.03, hw * 0.28, hh * 0.065, hairL);
+    ctx.restore();
+  }
+
+  if (look.hairStyle === "bun") {
+    ellipse(ctx, hcx, top - hh * 0.12, hw * 0.27, hh * 0.22, hair);
+    ctx.beginPath();
+    ctx.ellipse(hcx, top - hh * 0.12, hw * 0.27, hh * 0.22, 0, 0, Math.PI * 2);
+    stroke();
   }
 }
 
@@ -690,22 +742,31 @@ function drawSideHead(ctx: CanvasRenderingContext2D, hcx: number, hcy: number, h
   hg.addColorStop(0.7, skin);
   hg.addColorStop(1, shade(skin, 8));
 
-  ellipse(ctx, hcx, hcy, headRx, headRy, hg);
+  ellipse(ctx, hcx - dir * hw * 0.45, hcy + hh * 0.04, hw * 0.09, hh * 0.12, skinD);
+
+  ctx.fillStyle = hg;
   ctx.beginPath();
-  ctx.ellipse(hcx, hcy, headRx, headRy, 0, 0, Math.PI * 2);
+  ctx.moveTo(hcx - dir * headRx * 0.62, hcy + headRy * 0.1);
+  ctx.quadraticCurveTo(hcx - dir * headRx * 0.6, hcy - headRy * 0.82, hcx + dir * headRx * 0.04, hcy - headRy * 0.98);
+  ctx.quadraticCurveTo(hcx + dir * headRx * 0.62, hcy - headRy * 0.9, hcx + dir * headRx * 0.72, hcy - headRy * 0.24);
+  ctx.quadraticCurveTo(hcx + dir * headRx * 0.96, hcy - headRy * 0.08, hcx + dir * headRx * 0.77, hcy + headRy * 0.1);
+  ctx.quadraticCurveTo(hcx + dir * headRx * 0.84, hcy + headRy * 0.27, hcx + dir * headRx * 0.58, hcy + headRy * 0.35);
+  ctx.quadraticCurveTo(hcx + dir * headRx * 0.4, hcy + headRy * 0.62, hcx + dir * headRx * 0.02, hcy + headRy * 0.78);
+  ctx.quadraticCurveTo(hcx - dir * headRx * 0.48, hcy + headRy * 0.68, hcx - dir * headRx * 0.62, hcy + headRy * 0.1);
+  ctx.closePath();
+  ctx.fill();
   ctx.strokeStyle = OUTLINE;
   ctx.lineWidth = OUTLINE_W;
   ctx.stroke();
 
-  ellipse(ctx, hcx - dir * hw * 0.45, hcy + hh * 0.04, hw * 0.09, hh * 0.12, skinD);
-
-  // Compact cap and bangs: enough to show direction without hiding the body.
+  // Compact cap and bangs: enough to show direction without hiding the face.
   ctx.fillStyle = hair;
   ctx.beginPath();
-  ctx.moveTo(hcx - dir * headRx * 0.95, hcy - headRy * 0.12);
-  ctx.quadraticCurveTo(hcx - dir * headRx * 0.78, top - hh * 0.08, hcx + dir * headRx * 0.06, top - hh * 0.08);
-  ctx.quadraticCurveTo(hcx + dir * headRx * 0.9, top - hh * 0.03, hcx + dir * headRx * 0.82, hcy - headRy * 0.02);
-  ctx.quadraticCurveTo(hcx + dir * headRx * 0.2, hcy - headRy * 0.35, hcx - dir * headRx * 0.95, hcy - headRy * 0.12);
+  ctx.moveTo(hcx - dir * headRx * 0.92, hcy - headRy * 0.05);
+  ctx.quadraticCurveTo(hcx - dir * headRx * 0.74, top - hh * 0.09, hcx + dir * headRx * 0.06, top - hh * 0.09);
+  ctx.quadraticCurveTo(hcx + dir * headRx * 0.82, top - hh * 0.05, hcx + dir * headRx * 0.66, hcy - headRy * 0.18);
+  ctx.quadraticCurveTo(hcx + dir * headRx * 0.34, hcy - headRy * 0.42, hcx - dir * headRx * 0.12, hcy - headRy * 0.3);
+  ctx.quadraticCurveTo(hcx - dir * headRx * 0.55, hcy - headRy * 0.18, hcx - dir * headRx * 0.92, hcy - headRy * 0.05);
   ctx.closePath();
   ctx.fill();
   ctx.strokeStyle = OUTLINE;
@@ -715,7 +776,7 @@ function drawSideHead(ctx: CanvasRenderingContext2D, hcx: number, hcy: number, h
   const locks = look.elder ? 2 : look.hairStyle === "long" ? 3 : 2;
   ctx.fillStyle = hair;
   for (let i = 0; i < locks; i++) {
-    const x = hcx - dir * hw * (0.18 - i * 0.18);
+    const x = hcx + dir * hw * (0.28 - i * 0.16);
     const len = top + hh * (look.hairStyle === "long" ? 0.3 : 0.22) + (i % 2) * hh * 0.035;
     ctx.beginPath();
     ctx.moveTo(x - dir * hw * 0.12, top + hh * 0.04);
@@ -1176,8 +1237,24 @@ function drawCrawlingBabyBack(ctx: CanvasRenderingContext2D, cx: number, footY: 
 
   ctx.fillStyle = look.hair;
   ctx.beginPath();
-  ctx.ellipse(headCx, headCy - headR * 0.72, headR * 0.48, headR * 0.2, 0, Math.PI, 0);
+  ctx.moveTo(headCx - headR * 0.78, headCy - headR * 0.08);
+  ctx.quadraticCurveTo(headCx - headR * 0.72, headCy - headR * 0.86, headCx, headCy - headR * 0.9);
+  ctx.quadraticCurveTo(headCx + headR * 0.72, headCy - headR * 0.86, headCx + headR * 0.78, headCy - headR * 0.08);
+  ctx.quadraticCurveTo(headCx + headR * 0.42, headCy + headR * 0.18, headCx, headCy + headR * 0.12);
+  ctx.quadraticCurveTo(headCx - headR * 0.42, headCy + headR * 0.18, headCx - headR * 0.78, headCy - headR * 0.08);
+  ctx.closePath();
   ctx.fill();
+  ctx.strokeStyle = OUTLINE;
+  ctx.lineWidth = OUTLINE_W;
+  ctx.stroke();
+  ctx.strokeStyle = shade(look.hair, 20);
+  ctx.lineWidth = Math.max(1, headR * 0.06);
+  ctx.beginPath();
+  ctx.moveTo(headCx - headR * 0.22, headCy - headR * 0.74);
+  ctx.quadraticCurveTo(headCx - headR * 0.14, headCy - headR * 0.26, headCx - headR * 0.26, headCy + headR * 0.08);
+  ctx.moveTo(headCx + headR * 0.18, headCy - headR * 0.74);
+  ctx.quadraticCurveTo(headCx + headR * 0.1, headCy - headR * 0.24, headCx + headR * 0.24, headCy + headR * 0.08);
+  ctx.stroke();
   ellipse(ctx, headCx, headCy - headR * 0.86, headR * 0.16, headR * 0.13, look.hair);
 }
 
