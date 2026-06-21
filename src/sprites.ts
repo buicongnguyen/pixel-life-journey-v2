@@ -469,7 +469,7 @@ function drawStanding(ctx: CanvasRenderingContext2D, cx: number, footY: number, 
   const neckH = headH * (look.child ? 0.22 : 0.3);
   const torsoH = (H - headH - neckH) * (look.child ? 0.42 : 0.38);
   const legH = Math.max(H * 0.22, H - headH - neckH - torsoH);
-  const shoulderW = headW * (female ? 1.2 : 1.3) + look.chub * headW * 0.08;
+  const shoulderW = headW * (female ? 1.17 : 1.26) + look.chub * headW * 0.06;
   const waistW = shoulderW * (female ? 0.68 : 0.74);
   const hipW = shoulderW * (female ? 1.0 : 0.82);
   const legW = H * (0.052 + look.chub * 0.016);
@@ -479,7 +479,7 @@ function drawStanding(ctx: CanvasRenderingContext2D, cx: number, footY: number, 
   const torsoTopY = hipY - torsoH + stoop;
   const neckTopY = torsoTopY - neckH + stoop * 0.5;
   const headCx = cx + stoop * 0.5;
-  const headCy = neckTopY - headH / 2 + headH * 0.075;
+  const headCy = neckTopY - headH / 2 + headH * 0.09;
 
   const skin = look.skin;
   const skinD = shade(skin, 20);
@@ -576,7 +576,7 @@ function drawSeated(ctx: CanvasRenderingContext2D, cx: number, footY: number, lo
   const headW = headH * (look.child ? 0.82 : 0.76) * (1 + look.chub * 0.05);
   const neckH = headH * (look.child ? 0.2 : 0.25);
   const torsoH = H * (look.child ? 0.27 : 0.29);
-  const shoulderW = headW * (female ? 1.16 : 1.26) + look.chub * headW * 0.08;
+  const shoulderW = headW * (female ? 1.13 : 1.22) + look.chub * headW * 0.06;
   const waistW = shoulderW * (female ? 0.7 : 0.76);
   const hipW = shoulderW * (female ? 1.05 : 0.9);
   const legW = H * (0.052 + look.chub * 0.016);
@@ -589,7 +589,7 @@ function drawSeated(ctx: CanvasRenderingContext2D, cx: number, footY: number, lo
   const torsoTopY = seatY - torsoH;
   const neckTopY = torsoTopY - neckH + H * 0.012;
   const headCx = cx;
-  const headCy = neckTopY - headH / 2 + headH * 0.075;
+  const headCy = neckTopY - headH / 2 + headH * 0.09;
 
   groundShadow(ctx, cx, footY, shoulderW * 0.62);
   ellipse(ctx, cx, baseY - H * 0.035, hipW * 0.78, H * 0.045, "rgba(48,34,42,0.18)");
@@ -724,7 +724,7 @@ function drawSideStanding(ctx: CanvasRenderingContext2D, cx: number, footY: numb
   const neckH = headH * (look.child ? 0.22 : 0.3);
   const torsoH = (H - headH - neckH) * (look.child ? 0.42 : 0.38);
   const legH = Math.max(H * 0.22, H - headH - neckH - torsoH);
-  const shoulderW = headW * (female ? 1.2 : 1.3) + look.chub * headW * 0.08;
+  const shoulderW = headW * (female ? 1.17 : 1.26) + look.chub * headW * 0.06;
   const waistW = shoulderW * (female ? 0.68 : 0.74);
   const hipW = shoulderW * (female ? 1.0 : 0.82);
   const sideShoulderW = shoulderW * 0.54;
@@ -736,7 +736,7 @@ function drawSideStanding(ctx: CanvasRenderingContext2D, cx: number, footY: numb
   const torsoTopY = hipY - torsoH + stoop;
   const neckTopY = torsoTopY - neckH + stoop * 0.5;
   const headCx = cx + dir * H * 0.075 + lean * 0.55 + stoop * 0.5;
-  const headCy = neckTopY - headH / 2 + headH * 0.075;
+  const headCy = neckTopY - headH / 2 + headH * 0.105;
   const torsoCx = cx + dir * H * 0.02 + lean * 0.18;
   const shoulderY = torsoTopY + headH * 0.14;
   const handY = torsoTopY + torsoH * 0.94;
@@ -840,7 +840,7 @@ function drawBackStanding(ctx: CanvasRenderingContext2D, cx: number, footY: numb
   const neckH = headH * (look.child ? 0.22 : 0.3);
   const torsoH = (H - headH - neckH) * (look.child ? 0.42 : 0.38);
   const legH = Math.max(H * 0.22, H - headH - neckH - torsoH);
-  const shoulderW = headW * (female ? 1.18 : 1.28) + look.chub * headW * 0.08;
+  const shoulderW = headW * (female ? 1.15 : 1.24) + look.chub * headW * 0.06;
   const waistW = shoulderW * (female ? 0.68 : 0.74);
   const hipW = shoulderW * (female ? 0.98 : 0.82);
   const legW = H * (0.052 + look.chub * 0.016);
@@ -849,7 +849,7 @@ function drawBackStanding(ctx: CanvasRenderingContext2D, cx: number, footY: numb
   const torsoTopY = hipY - torsoH + stoop;
   const neckTopY = torsoTopY - neckH + stoop * 0.5;
   const headCx = cx;
-  const headCy = neckTopY - headH / 2 + headH * 0.075;
+  const headCy = neckTopY - headH / 2 + headH * 0.09;
   const stride = swing * H * 0.048;
   const lift = Math.abs(swing) * H * 0.024;
   const shoeY = baseY - H * 0.03;
