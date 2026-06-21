@@ -124,6 +124,23 @@ function limb(ctx: CanvasRenderingContext2D, x1: number, y1: number, x2: number,
   ctx.stroke();
 }
 
+function sideShoe(ctx: CanvasRenderingContext2D, x: number, y: number, dir: number, length: number, height: number, fill: string | CanvasGradient): void {
+  const heelX = x - dir * length * 0.42;
+  const toeX = x + dir * length * 0.58;
+  ctx.fillStyle = fill;
+  ctx.beginPath();
+  ctx.moveTo(heelX, y - height * 0.18);
+  ctx.quadraticCurveTo(x - dir * length * 0.1, y - height * 0.62, x + dir * length * 0.36, y - height * 0.5);
+  ctx.quadraticCurveTo(toeX, y - height * 0.34, toeX, y + height * 0.02);
+  ctx.quadraticCurveTo(toeX - dir * length * 0.1, y + height * 0.42, x - dir * length * 0.12, y + height * 0.42);
+  ctx.quadraticCurveTo(heelX - dir * length * 0.04, y + height * 0.32, heelX, y - height * 0.18);
+  ctx.closePath();
+  ctx.fill();
+  ctx.strokeStyle = OUTLINE;
+  ctx.lineWidth = OUTLINE_W;
+  ctx.stroke();
+}
+
 // ===========================================================================
 // Look + age profile
 // ===========================================================================
@@ -503,35 +520,35 @@ function drawSideStanding(ctx: CanvasRenderingContext2D, cx: number, footY: numb
   const shoulderW = headW * (female ? 1.2 : 1.3) + look.chub * headW * 0.08;
   const waistW = shoulderW * (female ? 0.68 : 0.74);
   const hipW = shoulderW * (female ? 1.0 : 0.82);
-  const sideShoulderW = shoulderW * 0.76;
-  const sideWaistW = waistW * 0.78;
-  const sideHipW = hipW * 0.74;
+  const sideShoulderW = shoulderW * 0.54;
+  const sideWaistW = waistW * 0.58;
+  const sideHipW = hipW * 0.58;
   const legW = H * (0.052 + look.chub * 0.016);
   const armW = H * (0.039 + look.chub * 0.01);
   const hipY = baseY - legH;
   const torsoTopY = hipY - torsoH + stoop;
   const neckTopY = torsoTopY - neckH + stoop * 0.5;
-  const headCx = cx + dir * H * 0.055 + lean + stoop * 0.5;
+  const headCx = cx + dir * H * 0.09 + lean + stoop * 0.5;
   const headCy = neckTopY - headH / 2;
-  const torsoCx = cx + dir * H * 0.012;
+  const torsoCx = cx + dir * H * 0.024;
   const shoulderY = torsoTopY + headH * 0.14;
   const handY = torsoTopY + torsoH * 0.94;
   const elbowY = torsoTopY + torsoH * 0.55;
-  const stride = swing * H * 0.066;
+  const stride = swing * H * 0.082;
   const lift = Math.abs(swing) * H * 0.026;
   const footBaseY = baseY - H * 0.03;
 
   groundShadow(ctx, cx, footY, shoulderW * 0.42);
   drawSideBackHair(ctx, headCx, headCy, headW, headH, look, dir);
 
-  const farFootX = cx - dir * (sideHipW * 0.18 + stride * 0.5);
-  const nearFootX = cx + dir * (sideHipW * 0.18 + stride);
+  const farFootX = cx - dir * (sideHipW * 0.2 + stride * 0.58);
+  const nearFootX = cx + dir * (sideHipW * 0.2 + stride);
   const farLift = swing * dir > 0 ? lift : 0;
   const nearLift = swing * dir < 0 ? lift : 0;
   const kneeY = hipY + legH * 0.5;
   limb(ctx, cx - dir * sideHipW * 0.08, hipY, cx - dir * sideHipW * 0.13 - dir * stride * 0.2, kneeY - farLift * 0.25, legW * 0.92, shade(look.pants, 10));
   limb(ctx, cx - dir * sideHipW * 0.13 - dir * stride * 0.2, kneeY - farLift * 0.25, farFootX, footBaseY - farLift, legW * 0.86, shade(look.pants, 4));
-  ellipse(ctx, farFootX + dir * legW * 0.2, footBaseY - farLift + H * 0.015, legW * 1.05, H * 0.029, hgrad(ctx, farFootX - legW, legW * 2, shade(look.shoes, 8)));
+  sideShoe(ctx, farFootX + dir * legW * 0.14, footBaseY - farLift + H * 0.017, dir, legW * 2.05, H * 0.044, hgrad(ctx, farFootX - legW, legW * 2, shade(look.shoes, 8)));
 
   if (look.skirt) {
     taper(ctx, cx, torsoTopY + torsoH * 0.64, sideWaistW * 1.1, hipY + H * 0.07, sideHipW * 1.42, hgrad(ctx, cx - sideHipW * 0.7, sideHipW * 1.4, look.pants));
@@ -563,7 +580,7 @@ function drawSideStanding(ctx: CanvasRenderingContext2D, cx: number, footY: numb
 
   limb(ctx, cx + dir * sideHipW * 0.07, hipY, cx + dir * sideHipW * 0.16 + dir * stride * 0.28, kneeY - nearLift * 0.28, legW, look.pants);
   limb(ctx, cx + dir * sideHipW * 0.16 + dir * stride * 0.28, kneeY - nearLift * 0.28, nearFootX, footBaseY - nearLift, legW * 0.92, look.pants);
-  ellipse(ctx, nearFootX + dir * legW * 0.32, footBaseY - nearLift + H * 0.015, legW * 1.2, H * 0.031, hgrad(ctx, nearFootX - legW, legW * 2, look.shoes));
+  sideShoe(ctx, nearFootX + dir * legW * 0.24, footBaseY - nearLift + H * 0.017, dir, legW * 2.32, H * 0.047, hgrad(ctx, nearFootX - legW, legW * 2, look.shoes));
 
   const nearElbowX = cx + dir * sideShoulderW * 0.18 + dir * stride * 0.22;
   const nearHandX = cx + dir * sideShoulderW * 0.09 + dir * stride * 0.38;
@@ -735,7 +752,7 @@ function drawSideHead(ctx: CanvasRenderingContext2D, hcx: number, hcy: number, h
   const top = hcy - hh / 2;
   const hair = look.hair;
   const hairL = tint(hair, 28);
-  const headRx = hw * 0.54;
+  const headRx = hw * 0.48;
   const headRy = hh * 0.5;
   const hg = ctx.createRadialGradient(hcx - dir * hw * 0.12, hcy - hh * 0.2, hw * 0.12, hcx, hcy, hw * 0.68);
   hg.addColorStop(0, tint(skin, 10));
@@ -748,9 +765,9 @@ function drawSideHead(ctx: CanvasRenderingContext2D, hcx: number, hcy: number, h
   ctx.beginPath();
   ctx.moveTo(hcx - dir * headRx * 0.62, hcy + headRy * 0.1);
   ctx.quadraticCurveTo(hcx - dir * headRx * 0.6, hcy - headRy * 0.82, hcx + dir * headRx * 0.04, hcy - headRy * 0.98);
-  ctx.quadraticCurveTo(hcx + dir * headRx * 0.62, hcy - headRy * 0.9, hcx + dir * headRx * 0.72, hcy - headRy * 0.24);
-  ctx.quadraticCurveTo(hcx + dir * headRx * 0.96, hcy - headRy * 0.08, hcx + dir * headRx * 0.77, hcy + headRy * 0.1);
-  ctx.quadraticCurveTo(hcx + dir * headRx * 0.84, hcy + headRy * 0.27, hcx + dir * headRx * 0.58, hcy + headRy * 0.35);
+  ctx.quadraticCurveTo(hcx + dir * headRx * 0.66, hcy - headRy * 0.9, hcx + dir * headRx * 0.78, hcy - headRy * 0.23);
+  ctx.quadraticCurveTo(hcx + dir * headRx * 1.12, hcy - headRy * 0.08, hcx + dir * headRx * 0.82, hcy + headRy * 0.12);
+  ctx.quadraticCurveTo(hcx + dir * headRx * 0.9, hcy + headRy * 0.31, hcx + dir * headRx * 0.58, hcy + headRy * 0.36);
   ctx.quadraticCurveTo(hcx + dir * headRx * 0.4, hcy + headRy * 0.62, hcx + dir * headRx * 0.02, hcy + headRy * 0.78);
   ctx.quadraticCurveTo(hcx - dir * headRx * 0.48, hcy + headRy * 0.68, hcx - dir * headRx * 0.62, hcy + headRy * 0.1);
   ctx.closePath();
@@ -805,7 +822,7 @@ function drawSideHead(ctx: CanvasRenderingContext2D, hcx: number, hcy: number, h
   }
 
   const eyeR = hw * (look.child ? 0.12 : 0.095);
-  const eyeX = hcx + dir * hw * 0.21;
+  const eyeX = hcx + dir * hw * 0.3;
   const eyeY = hcy + hh * (look.child ? 0.05 : 0.02);
   ellipse(ctx, eyeX, eyeY, eyeR * 0.95, eyeR * 1.2, "#ffffff");
   ellipse(ctx, eyeX + dir * eyeR * 0.08, eyeY + eyeR * 0.16, eyeR * 0.62, eyeR * 0.85, "#4a3526");
@@ -822,20 +839,21 @@ function drawSideHead(ctx: CanvasRenderingContext2D, hcx: number, hcy: number, h
   ctx.strokeStyle = skinD;
   ctx.lineWidth = hw * 0.034;
   ctx.beginPath();
-  ctx.moveTo(hcx + dir * hw * 0.42, eyeY + eyeR * 0.55);
-  ctx.lineTo(hcx + dir * hw * 0.52, eyeY + hh * 0.15);
+  ctx.moveTo(hcx + dir * hw * 0.48, eyeY + eyeR * 0.48);
+  ctx.lineTo(hcx + dir * hw * 0.6, eyeY + hh * 0.13);
+  ctx.lineTo(hcx + dir * hw * 0.48, eyeY + hh * 0.17);
   ctx.stroke();
 
   ctx.strokeStyle = look.gender === "female" ? "#d9707f" : "#bb6a62";
   ctx.lineWidth = hw * (look.child ? 0.06 : 0.048);
   ctx.beginPath();
-  ctx.moveTo(hcx + dir * hw * 0.18, eyeY + hh * 0.13);
-  ctx.quadraticCurveTo(hcx + dir * hw * 0.31, eyeY + hh * 0.18, hcx + dir * hw * 0.45, eyeY + hh * 0.12);
+  ctx.moveTo(hcx + dir * hw * 0.28, eyeY + hh * 0.14);
+  ctx.quadraticCurveTo(hcx + dir * hw * 0.4, eyeY + hh * 0.18, hcx + dir * hw * 0.54, eyeY + hh * 0.12);
   ctx.stroke();
 
   ctx.fillStyle = "rgba(255,140,160,0.28)";
   ctx.beginPath();
-  ctx.ellipse(hcx + dir * hw * 0.28, eyeY + hh * 0.13, hw * 0.11, hh * 0.06, 0, 0, Math.PI * 2);
+  ctx.ellipse(hcx + dir * hw * 0.34, eyeY + hh * 0.13, hw * 0.1, hh * 0.055, 0, 0, Math.PI * 2);
   ctx.fill();
 
   if (look.elder) {
