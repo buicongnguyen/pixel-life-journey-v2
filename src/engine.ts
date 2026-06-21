@@ -2885,8 +2885,8 @@ export class Game {
         </div>
         <p class="plj-sub">Is it a boy or a girl?</p>
         <div class="plj-genders">
-          <button class="plj-gender" data-g="male"><span class="plj-gender-face">👦</span><span>Boy</span></button>
-          <button class="plj-gender" data-g="female"><span class="plj-gender-face">👧</span><span>Girl</span></button>
+          ${this.setupGenderButton("male", this.heritage)}
+          ${this.setupGenderButton("female", this.heritage)}
         </div>
         <p class="plj-foot">Default speed keeps the current pace.</p>
       </div>`;
@@ -2902,6 +2902,8 @@ export class Game {
       btn.onclick = () => {
         this.ui.overlay.querySelectorAll<HTMLButtonElement>(".plj-heritage").forEach((b) => b.classList.remove("is-selected"));
         btn.classList.add("is-selected");
+        this.heritage = this.normalizeHeritage(btn.dataset.heritage);
+        this.refreshSetupGenderPreviews(this.heritage);
       };
     });
     this.ui.overlay.querySelectorAll<HTMLButtonElement>(".plj-gender").forEach((btn) => {
@@ -2913,6 +2915,34 @@ export class Game {
         this.setLifeSpeed(Number(speedInput.value));
         this.newGame(false, startIndex);
       };
+    });
+  }
+
+  private setupGenderButton(gender: Gender, heritage: HeritageStyle): string {
+    return `<button class="plj-gender" data-g="${gender}">${this.setupGenderAvatar(gender, heritage)}<span>${gender === "female" ? "Girl" : "Boy"}</span></button>`;
+  }
+
+  private setupGenderAvatar(gender: Gender, heritage: HeritageStyle): string {
+    const look = avatarLook(0, gender, heritage);
+    const kind = gender === "female" ? "female" : "male";
+    return `
+      <span class="plj-gender-face plj-setup-avatar is-${kind} is-${look.hairTexture}" aria-hidden="true" style="--plj-setup-skin:${look.skin};--plj-setup-hair:${look.hair};--plj-setup-shirt:${look.shirt}">
+        <span class="plj-setup-body"></span>
+        <span class="plj-setup-hair"></span>
+        <span class="plj-setup-head">
+          <span class="plj-setup-eye is-left"></span>
+          <span class="plj-setup-eye is-right"></span>
+          <span class="plj-setup-mouth"></span>
+        </span>
+        <span class="plj-setup-fringe"></span>
+      </span>`;
+  }
+
+  private refreshSetupGenderPreviews(heritage: HeritageStyle): void {
+    this.ui.overlay.querySelectorAll<HTMLButtonElement>(".plj-gender").forEach((btn) => {
+      const gender: Gender = btn.dataset.g === "female" ? "female" : "male";
+      const avatar = btn.querySelector<HTMLElement>(".plj-setup-avatar");
+      if (avatar) avatar.outerHTML = this.setupGenderAvatar(gender, heritage);
     });
   }
 

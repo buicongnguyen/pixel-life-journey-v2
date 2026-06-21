@@ -1099,6 +1099,125 @@ body {
 .plj-gender-face {
   font-size: 40px;
 }
+.plj-gender-face.plj-setup-avatar {
+  --plj-setup-skin: #ffd0a8;
+  --plj-setup-hair: #3a2a1e;
+  --plj-setup-shirt: #4aa3ff;
+  position: relative;
+  display: block;
+  width: 58px;
+  height: 62px;
+  font-size: 0;
+  margin-bottom: 2px;
+}
+.plj-setup-body {
+  position: absolute;
+  left: 16px;
+  bottom: 3px;
+  width: 26px;
+  height: 18px;
+  border: 2px solid rgba(32, 22, 28, 0.85);
+  border-radius: 13px 13px 7px 7px;
+  background: linear-gradient(180deg, var(--plj-setup-shirt), #243d68);
+  box-sizing: border-box;
+  z-index: 0;
+}
+.plj-setup-head {
+  position: absolute;
+  left: 14px;
+  top: 15px;
+  width: 30px;
+  height: 34px;
+  border: 2px solid rgba(32, 22, 28, 0.85);
+  border-radius: 48% 48% 45% 45%;
+  background:
+    radial-gradient(circle at 35% 24%, rgba(255, 255, 255, 0.24), rgba(255, 255, 255, 0) 36%),
+    var(--plj-setup-skin);
+  box-shadow: inset -5px -5px rgba(86, 46, 34, 0.18);
+  box-sizing: border-box;
+  z-index: 3;
+}
+.plj-setup-hair {
+  position: absolute;
+  left: 11px;
+  top: 8px;
+  width: 36px;
+  height: 27px;
+  border: 2px solid rgba(32, 22, 28, 0.85);
+  border-radius: 50% 50% 38% 38%;
+  background: var(--plj-setup-hair);
+  box-shadow: inset -4px -4px rgba(0, 0, 0, 0.18);
+  box-sizing: border-box;
+  z-index: 2;
+}
+.plj-setup-fringe {
+  position: absolute;
+  left: 15px;
+  top: 13px;
+  width: 28px;
+  height: 13px;
+  border-radius: 56% 56% 35% 35%;
+  background: var(--plj-setup-hair);
+  transform: rotate(-4deg);
+  z-index: 4;
+}
+.plj-setup-avatar.is-female .plj-setup-hair {
+  left: 8px;
+  top: 6px;
+  width: 42px;
+  height: 44px;
+  border-radius: 48% 48% 38% 38%;
+}
+.plj-setup-avatar.is-female .plj-setup-fringe {
+  left: 13px;
+  top: 12px;
+  width: 32px;
+  height: 14px;
+}
+.plj-setup-avatar.is-straight .plj-setup-fringe {
+  border-radius: 45% 55% 28% 35%;
+}
+.plj-setup-avatar.is-wavy .plj-setup-fringe {
+  transform: rotate(-8deg) skewX(-8deg);
+}
+.plj-setup-avatar.is-coily .plj-setup-hair {
+  border-radius: 50%;
+  box-shadow:
+    -7px 3px 0 -2px var(--plj-setup-hair),
+    7px 3px 0 -2px var(--plj-setup-hair),
+    0 -4px 0 -2px var(--plj-setup-hair),
+    inset -4px -4px rgba(0, 0, 0, 0.18);
+}
+.plj-setup-avatar.is-coily .plj-setup-fringe {
+  width: 30px;
+  border-radius: 50%;
+  box-shadow:
+    -6px 1px 0 -3px var(--plj-setup-hair),
+    6px 1px 0 -3px var(--plj-setup-hair);
+}
+.plj-setup-eye {
+  position: absolute;
+  top: 15px;
+  width: 4px;
+  height: 5px;
+  border-radius: 50%;
+  background: #1d2330;
+}
+.plj-setup-eye.is-left {
+  left: 8px;
+}
+.plj-setup-eye.is-right {
+  right: 8px;
+}
+.plj-setup-mouth {
+  position: absolute;
+  left: 11px;
+  top: 23px;
+  width: 8px;
+  height: 4px;
+  border-bottom: 2px solid rgba(92, 36, 42, 0.75);
+  border-radius: 50%;
+}
 
 /* ---- locked picker cards + ghost button --------------------------------- */
 .plj-partner.locked {
