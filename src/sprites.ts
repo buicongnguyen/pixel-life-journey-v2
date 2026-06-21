@@ -148,17 +148,17 @@ interface BodyProfile {
 // newborn is a special tiny baby. Proportions mature gradually with age.
 const STAGE_PROFILES: BodyProfile[] = [
   { heightPx: 78, headRatio: 0.46, chub: 1.0, baby: true, child: true, elder: false }, // newborn
-  { heightPx: 96, headRatio: 0.37, chub: 0.5, baby: false, child: true, elder: false }, // toddler
-  { heightPx: 112, headRatio: 0.34, chub: 0.42, baby: false, child: true, elder: false }, // early
-  { heightPx: 128, headRatio: 0.31, chub: 0.32, baby: false, child: true, elder: false }, // elementary
-  { heightPx: 142, headRatio: 0.285, chub: 0.24, baby: false, child: false, elder: false }, // middle
-  { heightPx: 154, headRatio: 0.265, chub: 0.18, baby: false, child: false, elder: false }, // high
-  { heightPx: 164, headRatio: 0.252, chub: 0.15, baby: false, child: false, elder: false }, // university
-  { heightPx: 170, headRatio: 0.246, chub: 0.15, baby: false, child: false, elder: false }, // career
-  { heightPx: 170, headRatio: 0.246, chub: 0.18, baby: false, child: false, elder: false }, // marriage
-  { heightPx: 166, headRatio: 0.25, chub: 0.24, baby: false, child: false, elder: false }, // midlife
-  { heightPx: 158, headRatio: 0.262, chub: 0.3, baby: false, child: false, elder: true }, // senior
-  { heightPx: 150, headRatio: 0.27, chub: 0.32, baby: false, child: false, elder: true }, // retirement
+  { heightPx: 96, headRatio: 0.35, chub: 0.5, baby: false, child: true, elder: false }, // toddler
+  { heightPx: 112, headRatio: 0.32, chub: 0.42, baby: false, child: true, elder: false }, // early
+  { heightPx: 128, headRatio: 0.295, chub: 0.32, baby: false, child: true, elder: false }, // elementary
+  { heightPx: 142, headRatio: 0.27, chub: 0.24, baby: false, child: false, elder: false }, // middle
+  { heightPx: 154, headRatio: 0.252, chub: 0.18, baby: false, child: false, elder: false }, // high
+  { heightPx: 164, headRatio: 0.24, chub: 0.15, baby: false, child: false, elder: false }, // university
+  { heightPx: 170, headRatio: 0.232, chub: 0.15, baby: false, child: false, elder: false }, // career
+  { heightPx: 170, headRatio: 0.232, chub: 0.18, baby: false, child: false, elder: false }, // marriage
+  { heightPx: 166, headRatio: 0.238, chub: 0.24, baby: false, child: false, elder: false }, // midlife
+  { heightPx: 158, headRatio: 0.25, chub: 0.3, baby: false, child: false, elder: true }, // senior
+  { heightPx: 150, headRatio: 0.258, chub: 0.32, baby: false, child: false, elder: true }, // retirement
 ];
 
 const SKIN = "#ffd0a8";
@@ -169,7 +169,7 @@ export function avatarLook(stageIndex: number, gender: Gender = "male"): AvatarL
   const i = Math.max(0, Math.min(STAGE_PROFILES.length - 1, stageIndex));
   const p = STAGE_PROFILES[i];
   const female = gender === "female";
-  const hair = p.elder ? "#e4e4ec" : i >= 9 ? "#c2c2cc" : p.child ? "#824d22" : female ? "#5e3a1e" : "#3a2a1e";
+  const hair = p.elder ? "#e4e4ec" : p.child ? "#824d22" : female ? "#5e3a1e" : "#3a2a1e";
   const shirts = female ? SHIRTS_F : SHIRTS_M;
   return {
     ...p,
@@ -191,7 +191,7 @@ const PERSON_PROFILE: Record<"child" | "teen" | "adult" | "elder", number> = {
   elder: 11,
 };
 
-export function personLook(kind: PersonKind, playerGender: Gender): AvatarLook {
+export function personLook(kind: PersonKind, playerGender: Gender, stageIndex?: number): AvatarLook {
   const opp: Gender = playerGender === "female" ? "male" : "female";
   type Spec = { g: Gender; age: keyof typeof PERSON_PROFILE; hair: string; shirt: string };
   const map: Record<PersonKind, Spec> = {
@@ -215,12 +215,23 @@ export function personLook(kind: PersonKind, playerGender: Gender): AvatarLook {
   };
   const s = map[kind];
   const female = s.g === "female";
-  const p = STAGE_PROFILES[PERSON_PROFILE[s.age]];
+  let profileIndex = PERSON_PROFILE[s.age];
+  if (stageIndex !== undefined) {
+    if (kind === "spouse") profileIndex = stageIndex >= 10 ? 10 : 7;
+    if (kind === "child") profileIndex = stageIndex >= 9 ? 3 : 2;
+    if (kind === "grandkid") profileIndex = stageIndex >= 11 ? 2 : 1;
+  }
+  const p = STAGE_PROFILES[profileIndex];
+  const ageAwareHair = kind === "spouse" && p.elder
+    ? "#e4e4ec"
+    : kind === "child" || kind === "grandkid"
+      ? "#824d22"
+      : s.hair;
   return {
     ...p,
     skin: SKIN,
-    hair: s.hair,
-    hairStyle: female ? (s.age === "elder" ? "bun" : "long") : "short",
+    hair: ageAwareHair,
+    hairStyle: female ? (p.elder ? "bun" : "long") : "short",
     shirt: s.shirt,
     pants: female ? "#9a6ac4" : "#33405a",
     shoes: female ? "#c25b8e" : "#33293f",
@@ -255,17 +266,17 @@ function drawStanding(ctx: CanvasRenderingContext2D, cx: number, footY: number, 
   const stoop = look.elder ? H * 0.045 : 0;
   const baseY = footY - bob;
 
-  // realistic build: oval head, real neck, normal torso, long legs (~half height)
+  // Realistic pixel-body build: smaller head, real neck, shaped torso, long legs.
   const headH = H * look.headRatio;
-  const headW = headH * 0.84 * (1 + look.chub * 0.06);
-  const neckH = headH * (look.child ? 0.24 : 0.32);
-  const torsoH = (H - headH - neckH) * (look.child ? 0.46 : 0.42);
+  const headW = headH * (look.child ? 0.82 : 0.76) * (1 + look.chub * 0.05);
+  const neckH = headH * (look.child ? 0.22 : 0.3);
+  const torsoH = (H - headH - neckH) * (look.child ? 0.42 : 0.38);
   const legH = Math.max(H * 0.22, H - headH - neckH - torsoH);
-  const shoulderW = headW * (female ? 1.45 : 1.66) + look.chub * headW * 0.18;
-  const waistW = shoulderW * (female ? 0.66 : 0.72);
-  const hipW = shoulderW * (female ? 1.08 : 0.9);
-  const legW = H * (0.064 + look.chub * 0.022);
-  const armW = H * (0.048 + look.chub * 0.014);
+  const shoulderW = headW * (female ? 1.4 : 1.56) + look.chub * headW * 0.16;
+  const waistW = shoulderW * (female ? 0.64 : 0.7);
+  const hipW = shoulderW * (female ? 1.08 : 0.88);
+  const legW = H * (0.056 + look.chub * 0.018);
+  const armW = H * (0.041 + look.chub * 0.012);
 
   const hipY = baseY - legH;
   const torsoTopY = hipY - torsoH + stoop;
@@ -284,28 +295,48 @@ function drawStanding(ctx: CanvasRenderingContext2D, cx: number, footY: number, 
   drawBackHair(ctx, headCx, headCy, headW, headH, look);
 
   // --- legs ----------------------------------------------------------------
-  const stride = swing * H * 0.065;
-  const lift = Math.abs(swing) * H * 0.026;
+  const stride = swing * H * 0.074;
+  const lift = Math.abs(swing) * H * 0.03;
   const drawLegPair = (): void => {
     const shoeH = H * 0.03;
     const ly = baseY - shoeH;
-    // left
-    limb(ctx, cx - hipW * 0.2, hipY, cx - hipW * 0.23 - stride, ly - (swing > 0 ? lift : 0), legW, look.pants);
-    ellipse(ctx, cx - hipW * 0.23 - stride - legW * 0.15, ly - (swing > 0 ? lift : 0) + shoeH * 0.45, legW * 1.25, shoeH * 1.2, hgrad(ctx, cx - hipW * 0.4, legW * 2.0, look.shoes));
-    // right
-    limb(ctx, cx + hipW * 0.2, hipY, cx + hipW * 0.23 + stride, ly - (swing < 0 ? lift : 0), legW, look.pants);
-    ellipse(ctx, cx + hipW * 0.23 + stride - legW * 0.15, ly - (swing < 0 ? lift : 0) + shoeH * 0.45, legW * 1.25, shoeH * 1.2, hgrad(ctx, cx + hipW * 0.05, legW * 2.0, look.shoes));
+    const kneeY = hipY + legH * 0.48;
+    const leftLift = swing > 0 ? lift : 0;
+    const rightLift = swing < 0 ? lift : 0;
+    const leftHipX = cx - hipW * 0.2;
+    const rightHipX = cx + hipW * 0.2;
+    const leftKneeX = cx - hipW * 0.18 - stride * 0.42;
+    const rightKneeX = cx + hipW * 0.18 + stride * 0.42;
+    const leftFootX = cx - hipW * 0.23 - stride;
+    const rightFootX = cx + hipW * 0.23 + stride;
+
+    limb(ctx, leftHipX, hipY, leftKneeX, kneeY - leftLift * 0.38, legW, shade(look.pants, 4));
+    limb(ctx, leftKneeX, kneeY - leftLift * 0.38, leftFootX, ly - leftLift, legW * 0.94, look.pants);
+    ellipse(ctx, leftFootX - legW * 0.15, ly - leftLift + shoeH * 0.45, legW * 1.28, shoeH * 1.14, hgrad(ctx, leftFootX - legW, legW * 2.0, look.shoes));
+
+    limb(ctx, rightHipX, hipY, rightKneeX, kneeY - rightLift * 0.38, legW, shade(look.pants, 4));
+    limb(ctx, rightKneeX, kneeY - rightLift * 0.38, rightFootX, ly - rightLift, legW * 0.94, look.pants);
+    ellipse(ctx, rightFootX - legW * 0.15, ly - rightLift + shoeH * 0.45, legW * 1.28, shoeH * 1.14, hgrad(ctx, rightFootX - legW, legW * 2.0, look.shoes));
   };
   drawLegPair();
 
-  // --- arms (behind torso so hands rest at the sides) ----------------------
-  const aSwing = -swing * H * 0.05;
+  // --- arms: bent elbows instead of straight doll arms ---------------------
+  const aSwing = -swing * H * 0.058;
   const shoulderY = torsoTopY + headH * 0.14;
   const handY = torsoTopY + torsoH * 0.96;
-  limb(ctx, cx - shoulderW * 0.43, shoulderY, cx - shoulderW * 0.39 + aSwing, handY, armW, look.shirt);
-  limb(ctx, cx + shoulderW * 0.43, shoulderY, cx + shoulderW * 0.39 - aSwing, handY, armW, look.shirt);
-  ellipse(ctx, cx - shoulderW * 0.39 + aSwing, handY, armW * 0.62, armW * 0.58, skin); // hand
-  ellipse(ctx, cx + shoulderW * 0.39 - aSwing, handY, armW * 0.62, armW * 0.58, skin);
+  const elbowY = torsoTopY + torsoH * 0.55;
+  const leftShoulderX = cx - shoulderW * 0.42;
+  const rightShoulderX = cx + shoulderW * 0.42;
+  const leftElbowX = cx - shoulderW * 0.5 + aSwing * 0.54;
+  const rightElbowX = cx + shoulderW * 0.5 - aSwing * 0.54;
+  const leftHandX = cx - shoulderW * 0.34 + aSwing;
+  const rightHandX = cx + shoulderW * 0.34 - aSwing;
+  limb(ctx, leftShoulderX, shoulderY, leftElbowX, elbowY, armW, shade(look.shirt, 6));
+  limb(ctx, leftElbowX, elbowY, leftHandX, handY, armW * 0.92, look.shirt);
+  limb(ctx, rightShoulderX, shoulderY, rightElbowX, elbowY, armW, shade(look.shirt, 6));
+  limb(ctx, rightElbowX, elbowY, rightHandX, handY, armW * 0.92, look.shirt);
+  ellipse(ctx, leftHandX, handY, armW * 0.62, armW * 0.56, skin);
+  ellipse(ctx, rightHandX, handY, armW * 0.62, armW * 0.56, skin);
 
   // --- skirt or lower body -------------------------------------------------
   if (look.skirt) {
@@ -351,7 +382,7 @@ function drawStanding(ctx: CanvasRenderingContext2D, cx: number, footY: number, 
 
   if (look.elder) {
     // cane
-    limb(ctx, cx + shoulderW * 0.39 - aSwing, handY, cx + shoulderW * 0.64, footY, legW * 0.5, "#7a5a36");
+    limb(ctx, rightHandX, handY, cx + shoulderW * 0.64, footY, legW * 0.5, "#7a5a36");
   }
 }
 
@@ -433,16 +464,11 @@ function drawSideStanding(ctx: CanvasRenderingContext2D, cx: number, footY: numb
   // A three-quarter side walk keeps the richer face/body details visible at the
   // game's small scale while still showing clear left/right direction.
   ctx.save();
-  ctx.translate(cx, 0);
+  ctx.translate(cx, footY);
   ctx.transform(0.82, 0, dir * -0.07, 1, 0, 0);
-  ctx.translate(-cx + dir * H * 0.025 + lean, 0);
+  ctx.translate(-cx + dir * H * 0.025 + lean, -footY);
   drawStanding(ctx, cx, footY, look, walkPhase, { ...motion, facing: "front" });
   ctx.restore();
-
-  const step = motion.moving ? Math.sin(walkPhase) : 0;
-  const footSweep = dir * step * H * 0.055;
-  const shoeY = footY - H * 0.012;
-  ellipse(ctx, cx + footSweep, shoeY, H * 0.055, H * 0.018, hgrad(ctx, cx - H * 0.05, H * 0.1, look.shoes));
 }
 
 function drawSideBackHair(ctx: CanvasRenderingContext2D, hcx: number, hcy: number, hw: number, hh: number, look: AvatarLook, dir: number): void {
@@ -581,16 +607,16 @@ function drawBackHair(ctx: CanvasRenderingContext2D, hcx: number, hcy: number, h
   const top = hcy - hh / 2;
   ctx.fillStyle = shade(look.hair, 22);
   ctx.beginPath();
-  ctx.moveTo(hcx - hw * 0.48, top + hh * 0.16);
+  ctx.moveTo(hcx - hw * 0.42, top + hh * 0.16);
   // left: poof out past the cheek (only the narrow neck is in front here, so this
   // is the clearly-visible part) then fall as a long curtain down behind the body
-  ctx.quadraticCurveTo(hcx - hw * 0.86, hcy + hh * 0.5, hcx - hw * 0.82, hcy + hh * 1.05);
-  ctx.quadraticCurveTo(hcx - hw * 0.78, hcy + hh * 1.55, hcx - hw * 0.52, hcy + hh * 1.7);
+  ctx.quadraticCurveTo(hcx - hw * 0.7, hcy + hh * 0.45, hcx - hw * 0.66, hcy + hh * 0.92);
+  ctx.quadraticCurveTo(hcx - hw * 0.62, hcy + hh * 1.28, hcx - hw * 0.42, hcy + hh * 1.42);
   // inner hem scoops up under the chin (this stretch sits behind the torso)
-  ctx.quadraticCurveTo(hcx, hcy + hh * 1.4, hcx + hw * 0.52, hcy + hh * 1.7);
+  ctx.quadraticCurveTo(hcx, hcy + hh * 1.22, hcx + hw * 0.42, hcy + hh * 1.42);
   // right curtain back up to the crown
-  ctx.quadraticCurveTo(hcx + hw * 0.78, hcy + hh * 1.55, hcx + hw * 0.82, hcy + hh * 1.05);
-  ctx.quadraticCurveTo(hcx + hw * 0.86, hcy + hh * 0.5, hcx + hw * 0.48, top + hh * 0.16);
+  ctx.quadraticCurveTo(hcx + hw * 0.62, hcy + hh * 1.28, hcx + hw * 0.66, hcy + hh * 0.92);
+  ctx.quadraticCurveTo(hcx + hw * 0.7, hcy + hh * 0.45, hcx + hw * 0.42, top + hh * 0.16);
   ctx.closePath();
   ctx.fill();
   ctx.strokeStyle = OUTLINE;
@@ -611,23 +637,23 @@ function drawHair(ctx: CanvasRenderingContext2D, hcx: number, hcy: number, hw: n
   // main hair cap with volume above the crown
   ctx.fillStyle = hair;
   ctx.beginPath();
-  ctx.moveTo(hcx - hw * 0.56, top + hh * 0.46);
-  ctx.quadraticCurveTo(hcx - hw * 0.64, top - hh * 0.24, hcx, top - hh * 0.26);
-  ctx.quadraticCurveTo(hcx + hw * 0.64, top - hh * 0.24, hcx + hw * 0.56, top + hh * 0.46);
-  ctx.quadraticCurveTo(hcx + hw * 0.3, top + hh * 0.12, hcx, top + hh * 0.18);
-  ctx.quadraticCurveTo(hcx - hw * 0.3, top + hh * 0.12, hcx - hw * 0.56, top + hh * 0.46);
+  ctx.moveTo(hcx - hw * 0.52, top + hh * 0.42);
+  ctx.quadraticCurveTo(hcx - hw * 0.56, top - hh * 0.18, hcx, top - hh * 0.2);
+  ctx.quadraticCurveTo(hcx + hw * 0.56, top - hh * 0.18, hcx + hw * 0.52, top + hh * 0.42);
+  ctx.quadraticCurveTo(hcx + hw * 0.24, top + hh * 0.12, hcx, top + hh * 0.16);
+  ctx.quadraticCurveTo(hcx - hw * 0.24, top + hh * 0.12, hcx - hw * 0.52, top + hh * 0.42);
   ctx.closePath();
   ctx.fill();
   stroke();
 
   // fringe over the forehead — short & neat for men, longer bangs for women
   const locks = look.elder ? 2 : longHair ? 4 : 3;
-  const fringeLen = longHair ? 0.36 : 0.21; // men get a higher hairline (more forehead)
+  const fringeLen = longHair ? 0.31 : 0.17; // men get a higher hairline (more forehead)
   ctx.fillStyle = hair;
   for (let i = 0; i < locks; i++) {
     const t0 = (i + 0.5) / locks;
     const lx = hcx - hw * 0.4 + hw * 0.8 * t0;
-    const len = top + hh * (fringeLen + (i % 2 ? 0.06 : 0.0));
+    const len = top + hh * (fringeLen + (i % 2 ? 0.045 : 0.0));
     ctx.beginPath();
     ctx.moveTo(lx - hw * 0.2, top + hh * 0.08);
     ctx.quadraticCurveTo(lx - hw * 0.04, len + hh * 0.03, lx + hw * 0.04, len);
@@ -674,34 +700,33 @@ function drawHair(ctx: CanvasRenderingContext2D, hcx: number, hcy: number, hw: n
 
 function drawFace(ctx: CanvasRenderingContext2D, hcx: number, hcy: number, hw: number, hh: number, look: AvatarLook): void {
   const big = look.child;
-  const iris = look.elder ? "#6b6b74" : "#3c7ec8";
+  const iris = look.elder ? "#6b6b74" : "#3b6f9d";
   const lip = look.gender === "female" ? "#d9707f" : "#8c5c52";
   const skinD = shade(look.skin, 26);
-  const eyeR = hw * (big ? 0.155 : 0.12);
+  const eyeR = hw * (big ? 0.13 : 0.095);
   const eyeY = hcy + hh * (big ? 0.055 : 0.025);
-  const eyeDX = hw * (big ? 0.25 : 0.225);
+  const eyeDX = hw * (big ? 0.24 : 0.21);
   const hairD = shade(look.hair, 10);
 
   for (const s of [-1, 1]) {
     const ex = hcx + s * eyeDX;
-    ellipse(ctx, ex, eyeY, eyeR * 1.05, eyeR * 1.3, "#ffffff");
+    ellipse(ctx, ex, eyeY, eyeR * 1.0, eyeR * 1.22, "#fff8ee");
     ctx.beginPath();
-    ctx.ellipse(ex, eyeY, eyeR * 1.05, eyeR * 1.3, 0, 0, Math.PI * 2);
+    ctx.ellipse(ex, eyeY, eyeR * 1.0, eyeR * 1.22, 0, 0, Math.PI * 2);
     ctx.strokeStyle = "rgba(44,28,30,0.65)";
-    ctx.lineWidth = Math.max(1, eyeR * 0.23);
+    ctx.lineWidth = Math.max(0.8, eyeR * 0.18);
     ctx.stroke();
-    ellipse(ctx, ex, eyeY + eyeR * 0.18, eyeR * 0.72, eyeR * 0.92, iris);
-    ellipse(ctx, ex + s * eyeR * 0.16, eyeY + eyeR * 0.18, eyeR * 0.35, eyeR * 0.68, shade(iris, 38));
-    ellipse(ctx, ex, eyeY + eyeR * 0.24, eyeR * 0.4, eyeR * 0.5, "#1b1622");
-    ellipse(ctx, ex - eyeR * 0.32, eyeY - eyeR * 0.33, eyeR * 0.28, eyeR * 0.28, "#ffffff");
-    ellipse(ctx, ex + eyeR * 0.2, eyeY + eyeR * 0.42, eyeR * 0.13, eyeR * 0.13, "#d9f2ff");
+    ellipse(ctx, ex, eyeY + eyeR * 0.18, eyeR * 0.66, eyeR * 0.84, iris);
+    ellipse(ctx, ex + s * eyeR * 0.12, eyeY + eyeR * 0.18, eyeR * 0.32, eyeR * 0.58, shade(iris, 38));
+    ellipse(ctx, ex, eyeY + eyeR * 0.22, eyeR * 0.34, eyeR * 0.43, "#1b1622");
+    ellipse(ctx, ex - eyeR * 0.3, eyeY - eyeR * 0.3, eyeR * 0.22, eyeR * 0.22, "#ffffff");
     // brow
     ctx.strokeStyle = hairD;
-    ctx.lineWidth = hw * 0.045;
+    ctx.lineWidth = hw * 0.036;
     ctx.lineCap = "round";
     ctx.beginPath();
-    ctx.moveTo(ex - eyeR * 1.2, eyeY - eyeR * 1.55);
-    ctx.quadraticCurveTo(ex, eyeY - eyeR * (look.elder ? 1.5 : 2), ex + eyeR * 1.2, eyeY - eyeR * 1.6);
+    ctx.moveTo(ex - eyeR * 1.15, eyeY - eyeR * 1.48);
+    ctx.quadraticCurveTo(ex, eyeY - eyeR * (look.elder ? 1.44 : 1.82), ex + eyeR * 1.15, eyeY - eyeR * 1.5);
     ctx.stroke();
     if (look.gender === "female" && !look.elder) {
       ctx.strokeStyle = "rgba(44,28,30,0.7)";
@@ -716,7 +741,7 @@ function drawFace(ctx: CanvasRenderingContext2D, hcx: number, hcy: number, hw: n
   }
   // nose
   ctx.strokeStyle = skinD;
-  ctx.lineWidth = hw * 0.04;
+  ctx.lineWidth = hw * 0.032;
   ctx.lineCap = "round";
   ctx.beginPath();
   ctx.moveTo(hcx + hw * 0.01, eyeY + eyeR * 0.55);
@@ -725,17 +750,19 @@ function drawFace(ctx: CanvasRenderingContext2D, hcx: number, hcy: number, hw: n
   ctx.stroke();
   // mouth (gentle smile)
   ctx.strokeStyle = lip;
-  ctx.lineWidth = hw * (big ? 0.075 : 0.058);
+  ctx.lineWidth = hw * (big ? 0.06 : 0.046);
   ctx.lineCap = "round";
   ctx.beginPath();
   ctx.arc(hcx, eyeY + hh * (big ? 0.22 : 0.25), hw * 0.2, 0.18 * Math.PI, 0.82 * Math.PI);
   ctx.stroke();
-  ctx.strokeStyle = "rgba(255,255,255,0.65)";
-  ctx.lineWidth = Math.max(1, hw * 0.018);
-  ctx.beginPath();
-  ctx.moveTo(hcx - hw * 0.08, eyeY + hh * (big ? 0.255 : 0.285));
-  ctx.lineTo(hcx + hw * 0.08, eyeY + hh * (big ? 0.255 : 0.285));
-  ctx.stroke();
+  if (look.gender === "female" || big) {
+    ctx.strokeStyle = "rgba(255,255,255,0.45)";
+    ctx.lineWidth = Math.max(0.8, hw * 0.014);
+    ctx.beginPath();
+    ctx.moveTo(hcx - hw * 0.06, eyeY + hh * (big ? 0.25 : 0.28));
+    ctx.lineTo(hcx + hw * 0.06, eyeY + hh * (big ? 0.25 : 0.28));
+    ctx.stroke();
+  }
   // blush
   if (look.gender === "female" || look.child) {
     ctx.fillStyle = `rgba(255,115,145,${look.gender === "female" ? 0.34 : 0.16})`;
@@ -947,8 +974,8 @@ const PERSON_LABEL: Record<PersonKind, string> = {
   gymBuddy: "Gym buddy", spouse: "Spouse", child: "Your child", grandkid: "Grandkid", oldFriend: "Old friend",
 };
 
-export function drawPerson(ctx: CanvasRenderingContext2D, cx: number, footY: number, kind: PersonKind, playerGender: Gender, label: string, focused: boolean, used: boolean, t: number): void {
-  const look = personLook(kind, playerGender);
+export function drawPerson(ctx: CanvasRenderingContext2D, cx: number, footY: number, kind: PersonKind, playerGender: Gender, label: string, focused: boolean, used: boolean, t: number, stageIndex?: number): void {
+  const look = personLook(kind, playerGender, stageIndex);
   ctx.save();
   if (used) ctx.globalAlpha = 0.5;
   drawCharacter(ctx, cx, footY - (focused ? 1 : 0), look, t * 1.4, focused);

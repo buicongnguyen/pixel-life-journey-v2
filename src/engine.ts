@@ -1496,7 +1496,7 @@ export class Game {
         }
         if (satiated) ctx.globalAlpha = 0.18;
         if (st.opt.person) {
-          drawPerson(ctx, st.x, st.y, st.opt.person, this.gender, st.opt.label, focused, used, t);
+          drawPerson(ctx, st.x, st.y, st.opt.person, this.gender, st.opt.label, focused, used, t, this.stageIndex);
         } else {
           drawStation(ctx, st.x, st.y, st.opt.icon, st.opt.label, st.opt.category, focused, used, t);
         }
