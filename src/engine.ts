@@ -84,6 +84,8 @@ const BABY_FAMILY_SIT_R = 92; // newborn family sits only when the baby crawls r
 const PET_FOLLOW_SPEED = 124;
 const PET_HAPPY_R = 34;
 const PET_HAPPY_COOLDOWN = 6;
+const CAT_PURR_HAPPY = 0.2;
+const CAT_PURR_INTERVAL = 5;
 const BAD_SOCIAL_TAGS = ["smoker_friend", "gangster_friend", "playboy_friend"];
 const INVENTORY_MAX_SLOTS = 8;
 const INVENTORY_MAX_COUNT = 9;
@@ -801,6 +803,11 @@ export class Game {
       this.petWalkPhase += dt * 1.2;
       this.petX = Math.max(78, Math.min(W - 112, this.petX));
       this.petY = Math.max(bounds.min + 24, Math.min(bounds.max - 4, this.petY));
+      if (this.petHappyCd <= 0) {
+        this.petHappyCd = CAT_PURR_INTERVAL;
+        this.applyEff({ happiness: CAT_PURR_HAPPY }, "mental");
+        this.floats.push({ x: this.petX, y: this.petY - 58, text: "🐱 purr", color: "#ffd23f", life: 1.1 });
+      }
       return;
     }
 
