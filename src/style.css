@@ -797,7 +797,8 @@ body {
 
 /* ---- family tree + assets overlays -------------------------------------- */
 .plj-family-card,
-.plj-assets-card {
+.plj-assets-card,
+.plj-training-card {
   max-width: 560px;
   width: 94%;
   text-align: left;
@@ -810,6 +811,13 @@ body {
 }
 .plj-family-head h2 {
   margin: 0;
+}
+.plj-mini-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 6px;
 }
 .plj-mini-pill {
   border: 1px solid var(--line);
@@ -997,6 +1005,80 @@ body {
 .plj-ledger-total {
   margin-top: 4px;
   font-weight: 700;
+}
+.plj-training-result {
+  margin: 8px 0;
+  padding: 8px 10px;
+  border: 1px solid #5db8ff;
+  border-radius: 10px;
+  background: rgba(93, 184, 255, 0.13);
+  color: #dff2ff;
+  font-size: 12px;
+  line-height: 1.35;
+}
+.plj-training-puzzle {
+  margin: 10px 0;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.18);
+}
+.plj-training-puzzle h3 {
+  margin: 0 0 6px;
+  font-size: 13px;
+}
+.plj-training-puzzle p {
+  margin: 0 0 9px;
+  color: var(--ink);
+  font-size: 13px;
+  line-height: 1.35;
+}
+.plj-training-answers,
+.plj-training-grid {
+  display: grid;
+  gap: 8px;
+}
+.plj-training-answers {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+.plj-training-answer,
+.plj-training-action {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.06);
+  color: #fff8df;
+  font: inherit;
+  cursor: pointer;
+  transition: border-color 0.1s, background 0.1s, transform 0.1s;
+}
+.plj-training-answer {
+  min-height: 38px;
+  padding: 8px 10px;
+  font-size: 12px;
+  font-weight: 700;
+}
+.plj-training-action {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 3px;
+  padding: 10px 12px;
+  text-align: left;
+}
+.plj-training-action span {
+  font-size: 13px;
+  font-weight: 800;
+}
+.plj-training-action small {
+  color: var(--muted);
+  font-size: 10.5px;
+  line-height: 1.25;
+}
+.plj-training-answer:hover,
+.plj-training-action:hover {
+  border-color: #5db8ff;
+  background: rgba(93, 184, 255, 0.14);
+  transform: translateY(-1px);
 }
 
 /* ---- gender pick (setup) ------------------------------------------------ */
@@ -1486,6 +1568,9 @@ body {
     padding: 16px 14px;
   }
   .plj-ledger-grid {
+    grid-template-columns: 1fr;
+  }
+  .plj-training-answers {
     grid-template-columns: 1fr;
   }
   .plj-family-node,

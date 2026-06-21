@@ -70,6 +70,7 @@ const GATE_HALF_H = STAGE_GATE_R + 7;
 const UTILITY_GATE_X = 58;
 const FAMILY_TREE_GATE_R = 27;
 const ASSETS_GATE_R = 24;
+const TRAINING_GATE_R = 24;
 const UTILITY_GATE_GAP = 62;
 const SPEED = 205; // base move speed (scaled up by your IQ — smart = nimble)
 const PY_MIN = 142; // feet stay on ground while the sky remains scenic only
@@ -123,6 +124,32 @@ const HERITAGE_OPTIONS: { id: HeritageStyle; label: string; icon: string }[] = [
   { id: "middleEastern", label: "Middle Eastern", icon: "🕌" },
   { id: "black", label: "Black / African diaspora", icon: "🌍" },
 ];
+const TRAINING_LINKS = {
+  iq: "https://www.youtube.com/results?search_query=how+to+be+smarter+increase+iq",
+  money: "https://www.youtube.com/results?search_query=financial+education+how+to+earn+more+money",
+  family: "https://www.youtube.com/results?search_query=how+to+treat+family+members+well+mental+health",
+} as const;
+type TrainingKind = keyof typeof TRAINING_LINKS;
+const TRAINING_PUZZLES = [
+  {
+    q: "A clock shows 3:15. What is the angle between the hour and minute hands?",
+    answers: ["7.5 degrees", "15 degrees", "22.5 degrees"],
+    correct: 0,
+    win: "Tiny geometry win. +2 IQ.",
+  },
+  {
+    q: "Which number comes next: 2, 6, 12, 20, 30, ?",
+    answers: ["36", "40", "42"],
+    correct: 2,
+    win: "You spotted the growing gap pattern. +2 IQ.",
+  },
+  {
+    q: "All bloops are razzies. Some razzies are lups. Are all bloops definitely lups?",
+    answers: ["Yes", "No", "Only at night"],
+    correct: 1,
+    win: "Careful logic beats fast guessing. +2 IQ.",
+  },
+] as const;
 
 type Mode =
   | "title"
@@ -141,6 +168,7 @@ type Mode =
   | "profile"
   | "familytree"
   | "assets"
+  | "training"
   | "careermove"
   | "settings";
 
@@ -273,6 +301,7 @@ export class Game {
   private petHappyCd = 0;
   private spouseDeceased = false;
   private habitCount = 0;
+  private trainingPuzzleIndex = 0;
   private eventCooldown = 2;
   private usedEvents = new Set<string>();
   private eventsLog: string[] = [];
@@ -342,6 +371,7 @@ export class Game {
       gates: {
         familyTree: this.canShowFamilyTreeGate(),
         assets: this.canShowAssetsGate(),
+        training: this.canShowTrainingGate(),
       },
       lifeExp: this.lifeExp(),
       stats: { ...this.stats },
@@ -1134,6 +1164,10 @@ export class Game {
 
     // near the open gate? walk through to advance (also handy on touch)
     if (this.focusIndex < 0) {
+      if (this.canShowTrainingGate() && this.nearTrainingGate()) {
+        this.showTraining();
+        return;
+      }
       if (this.canShowAssetsGate() && this.nearAssetsGate()) {
         this.showAssets();
         return;
@@ -2220,11 +2254,15 @@ export class Game {
 
   private familyTreeGateY(): number {
     const social = this.zoneBounds("social");
-    return Math.round(Math.max(social.min + ASSETS_GATE_R + UTILITY_GATE_GAP + 8, social.max - 26));
+    return Math.round(Math.max(social.min + TRAINING_GATE_R + UTILITY_GATE_GAP * 2 + 8, social.max - 26));
   }
 
   private assetsGateY(): number {
     return this.familyTreeGateY() - UTILITY_GATE_GAP;
+  }
+
+  private trainingGateY(): number {
+    return this.assetsGateY() - UTILITY_GATE_GAP;
   }
 
   private canShowFamilyTreeGate(): boolean {
@@ -2234,6 +2272,10 @@ export class Game {
   private canShowAssetsGate(): boolean {
     return this.stageIndex >= MIDDLE_INDEX ||
       (this.stageIndex >= ELEMENTARY_INDEX && this.money > ELEMENTARY_ASSETS_MONEY);
+  }
+
+  private canShowTrainingGate(): boolean {
+    return this.stageIndex >= ELEMENTARY_INDEX;
   }
 
   private hitCircle(x: number, y: number, cx: number, cy: number, r: number): boolean {
@@ -2248,6 +2290,10 @@ export class Game {
     return this.hitCircle(this.px, this.py - 8, UTILITY_GATE_X, this.assetsGateY(), ASSETS_GATE_R + 22);
   }
 
+  private nearTrainingGate(): boolean {
+    return this.hitCircle(this.px, this.py - 8, UTILITY_GATE_X, this.trainingGateY(), TRAINING_GATE_R + 22);
+  }
+
   private canvasPoint(e: PointerEvent): { x: number; y: number } {
     const rect = this.ui.canvas.getBoundingClientRect();
     return {
@@ -2259,9 +2305,12 @@ export class Game {
   private drawUtilityGates(ctx: CanvasRenderingContext2D, t: number): void {
     const canFamilyTree = this.canShowFamilyTreeGate();
     const canAssets = this.canShowAssetsGate();
-    if (!canFamilyTree && !canAssets) return;
+    const canTraining = this.canShowTrainingGate();
+    if (!canFamilyTree && !canAssets && !canTraining) return;
     const familyY = this.familyTreeGateY();
     const assetsY = this.assetsGateY();
+    const trainingY = this.trainingGateY();
+    if (canTraining) this.drawUtilityGate(ctx, UTILITY_GATE_X, trainingY, TRAINING_GATE_R, "Training", "🎓", "#5db8ff", t);
     if (canAssets) this.drawUtilityGate(ctx, UTILITY_GATE_X, assetsY, ASSETS_GATE_R, "Assets", "💼", "#7ed957", t);
     if (canFamilyTree) this.drawUtilityGate(ctx, UTILITY_GATE_X, familyY, FAMILY_TREE_GATE_R, "Family Tree", "🌳", "#ffd23f", t);
   }
@@ -2309,7 +2358,7 @@ export class Game {
     ctx.fillStyle = "#1b142b";
     ctx.fillText(icon, x, y - 1);
 
-    const labelW = label === "Family Tree" ? 78 : 58;
+    const labelW = label === "Family Tree" ? 78 : label === "Training" ? 68 : 58;
     ctx.fillStyle = "rgba(18,12,30,0.9)";
     roundRect(ctx, x - labelW / 2, y + r + 6, labelW, 16, 5);
     ctx.fill();
@@ -2342,6 +2391,7 @@ export class Game {
       this.mode === "profile" ||
       this.mode === "familytree" ||
       this.mode === "assets" ||
+      this.mode === "training" ||
       this.mode === "careermove" ||
       this.mode === "settings";
     if (inRoom && this.stageIndex < STAGES.length) {
@@ -2687,14 +2737,16 @@ export class Game {
       ? this.familyNode("Little Star", "grandkid", grandkidAge, "👶", "child")
       : `<div class="plj-family-placeholder">Grandkid branch unlocks with family time</div>`;
 
-    const assetsButton = this.canShowAssetsGate()
-      ? `<button class="plj-mini-pill" id="plj-tree-assets">💼 Assets</button>`
-      : "";
+    const utilityButtons = `
+      <div class="plj-mini-actions">
+        <button class="plj-mini-pill" id="plj-tree-training">🎓 Training</button>
+        ${this.canShowAssetsGate() ? `<button class="plj-mini-pill" id="plj-tree-assets">💼 Assets</button>` : ""}
+      </div>`;
     this.ui.overlay.innerHTML = `
       <div class="plj-card plj-family-card">
         <div class="plj-family-head">
           <h2>🌳 Family Tree</h2>
-          ${assetsButton}
+          ${utilityButtons}
         </div>
         <p class="plj-sub">Names sit above each head. Scroll the houses row to browse the family homes.</p>
         <div class="plj-family-map">
@@ -2735,6 +2787,11 @@ export class Game {
       this.clearOverlay();
       this.showAssets();
     };
+    this.ui.overlay.querySelector<HTMLButtonElement>("#plj-tree-training")!.onclick = () => {
+      this.mode = "playing";
+      this.clearOverlay();
+      this.showTraining();
+    };
   }
 
   private annualPlayerIncome(): number {
@@ -2773,6 +2830,127 @@ export class Game {
         <span><b>${esc(r.label)}</b>${r.note ? `<small>${esc(r.note)}</small>` : ""}</span>
         <strong class="${r.positive === false ? "is-cost" : ""}">${formatMoney(r.value)}</strong>
       </div>`).join("");
+  }
+
+  private spendTrainingMoment(): void {
+    this.age += Math.max(0.01, this.stageStep() * 0.16);
+    this.passiveTick();
+    this.renderHud();
+  }
+
+  private solveTrainingPuzzle(answer: number): void {
+    const puzzle = TRAINING_PUZZLES[this.trainingPuzzleIndex % TRAINING_PUZZLES.length];
+    if (answer === puzzle.correct) {
+      this.applyEff({ smarts: 2, fun: 1 }, "mental");
+      this.trainingPuzzleIndex = (this.trainingPuzzleIndex + 1) % TRAINING_PUZZLES.length;
+      this.spendTrainingMoment();
+      this.hint("🧠 Brain teaser solved. +2 IQ.");
+      this.showTraining(puzzle.win);
+      return;
+    }
+    this.applyEff({ fun: 1 }, "mental");
+    this.spendTrainingMoment();
+    this.hint("Close. Try another angle.");
+    this.showTraining("Not quite. The practice still warmed up your brain. +1 Fun.");
+  }
+
+  private useTrainingVideo(kind: TrainingKind): void {
+    window.open(TRAINING_LINKS[kind], "_blank", "noopener,noreferrer");
+    if (kind === "iq") {
+      this.applyEff({ smarts: 1.5, happiness: 1 }, "mental");
+      this.spendTrainingMoment();
+      this.hint("🎓 Learning habits watched. +IQ.");
+      this.showTraining("You looked up smarter learning habits. +1.5 IQ, +1 Happy.");
+      return;
+    }
+    if (kind === "money") {
+      const bonus = Math.round(this.age < 18 ? 200 + this.stats.smarts * 8 : 800 + this.stats.smarts * 18);
+      this.moneyWise = true;
+      this.money += bonus;
+      this.lifetimeEarned += bonus;
+      this.applyEff({ smarts: 0.8 }, "mental");
+      this.spendTrainingMoment();
+      this.hint(`💸 Money lesson. +${formatMoney(bonus)}.`);
+      this.showTraining(`Financial education helped you earn ${formatMoney(bonus)} and unlocked wiser money habits.`);
+      return;
+    }
+    this.familyBond += 1;
+    this.applyEff({ health: 5, happiness: 3 }, "mental");
+    this.spendTrainingMoment();
+    this.hint("💛 Family care learning. +Mental health.");
+    this.showTraining("You studied how to treat family well. +Mental health, +Happy, +Family bond.");
+  }
+
+  private showTraining(message = ""): void {
+    if (this.mode !== "playing" && this.mode !== "training") return;
+    if (!this.canShowTrainingGate()) {
+      this.hint("Training opens from elementary school.");
+      return;
+    }
+    this.mode = "training";
+    const puzzle = TRAINING_PUZZLES[this.trainingPuzzleIndex % TRAINING_PUZZLES.length];
+    const answers = puzzle.answers.map((answer, i) =>
+      `<button class="plj-training-answer" data-answer="${i}">${esc(answer)}</button>`
+    ).join("");
+    this.ui.overlay.innerHTML = `
+      <div class="plj-card plj-training-card">
+        <div class="plj-family-head">
+          <h2>🎓 Training</h2>
+          <div class="plj-mini-actions">
+            ${this.canShowAssetsGate() ? `<button class="plj-mini-pill" id="plj-training-assets">💼 Assets</button>` : ""}
+            <button class="plj-mini-pill" id="plj-training-tree">🌳 Family Tree</button>
+          </div>
+        </div>
+        <p class="plj-sub">Practice thinking, money, and family care. Each session takes a tiny slice of life time.</p>
+        ${message ? `<p class="plj-training-result">${esc(message)}</p>` : ""}
+        <section class="plj-training-puzzle">
+          <h3>🧩 Tricky IQ game</h3>
+          <p>${esc(puzzle.q)}</p>
+          <div class="plj-training-answers">${answers}</div>
+        </section>
+        <div class="plj-training-grid">
+          <button class="plj-training-action" data-train="iq">
+            <span>🧠 Smarter habits</span>
+            <small>Open YouTube search: how to be smarter. Reward: +IQ.</small>
+          </button>
+          <button class="plj-training-action" data-train="money">
+            <span>💸 Money education</span>
+            <small>Open YouTube search: earn more money. Reward: cash + moneyWise.</small>
+          </button>
+          <button class="plj-training-action" data-train="family">
+            <span>💛 Treat family well</span>
+            <small>Open YouTube search: family care and mental health. Reward: mental health.</small>
+          </button>
+        </div>
+        <div class="plj-title-row">
+          <button class="plj-btn plj-btn-ghost" id="plj-training-close">← Back</button>
+        </div>
+      </div>`;
+    this.ui.overlay.classList.add("show");
+    this.ui.overlay.querySelectorAll<HTMLButtonElement>("[data-answer]").forEach((btn) => {
+      btn.onclick = () => this.solveTrainingPuzzle(Number(btn.dataset.answer));
+    });
+    this.ui.overlay.querySelectorAll<HTMLButtonElement>("[data-train]").forEach((btn) => {
+      btn.onclick = () => {
+        const kind = btn.dataset.train;
+        if (kind === "iq" || kind === "money" || kind === "family") this.useTrainingVideo(kind);
+      };
+    });
+    const assetsBtn = this.ui.overlay.querySelector<HTMLButtonElement>("#plj-training-assets");
+    if (assetsBtn) assetsBtn.onclick = () => {
+      this.mode = "playing";
+      this.clearOverlay();
+      this.showAssets();
+    };
+    this.ui.overlay.querySelector<HTMLButtonElement>("#plj-training-tree")!.onclick = () => {
+      this.mode = "playing";
+      this.clearOverlay();
+      this.showFamilyTree();
+    };
+    this.ui.overlay.querySelector<HTMLButtonElement>("#plj-training-close")!.onclick = () => {
+      this.mode = "playing";
+      this.clearOverlay();
+    };
   }
 
   private showAssets(): void {
@@ -2816,7 +2994,10 @@ export class Game {
       <div class="plj-card plj-assets-card">
         <div class="plj-family-head">
           <h2>💼 Assets</h2>
-          <button class="plj-mini-pill" id="plj-assets-tree">🌳 Family Tree</button>
+          <div class="plj-mini-actions">
+            <button class="plj-mini-pill" id="plj-assets-training">🎓 Training</button>
+            <button class="plj-mini-pill" id="plj-assets-tree">🌳 Family Tree</button>
+          </div>
         </div>
         <div class="plj-networth">
           <span>Net worth</span>
@@ -2851,6 +3032,11 @@ export class Game {
       this.mode = "playing";
       this.clearOverlay();
       this.showFamilyTree();
+    };
+    this.ui.overlay.querySelector<HTMLButtonElement>("#plj-assets-training")!.onclick = () => {
+      this.mode = "playing";
+      this.clearOverlay();
+      this.showTraining();
     };
   }
 
@@ -3611,6 +3797,11 @@ export class Game {
     this.ui.canvas.addEventListener("pointerdown", (e) => {
       if (this.mode !== "playing") return;
       const p = this.canvasPoint(e);
+      if (this.canShowTrainingGate() && this.hitCircle(p.x, p.y, UTILITY_GATE_X, this.trainingGateY(), TRAINING_GATE_R + 8)) {
+        e.preventDefault();
+        this.showTraining();
+        return;
+      }
       if (this.canShowAssetsGate() && this.hitCircle(p.x, p.y, UTILITY_GATE_X, this.assetsGateY(), ASSETS_GATE_R + 8)) {
         e.preventDefault();
         this.showAssets();
