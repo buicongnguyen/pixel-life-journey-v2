@@ -68,10 +68,10 @@ const DOOR_X = W - 74;
 const STAGE_GATE_R = 31;
 const GATE_HALF_H = STAGE_GATE_R + 7;
 const UTILITY_GATE_X = 58;
-const FAMILY_TREE_GATE_R = 27;
-const ASSETS_GATE_R = 24;
-const TRAINING_GATE_R = 24;
-const UTILITY_GATE_GAP = 62;
+const FAMILY_TREE_GATE_R = 23;
+const ASSETS_GATE_R = 21;
+const TRAINING_GATE_R = 21;
+const UTILITY_GATE_GAP = 54;
 const SPEED = 205; // base move speed (scaled up by your IQ — smart = nimble)
 const PY_MIN = 142; // feet stay on ground while the sky remains scenic only
 const PY_MAX = 782;
@@ -2338,18 +2338,18 @@ export class Game {
     ctx.textBaseline = "middle";
     ctx.fillStyle = "rgba(0,0,0,0.26)";
     ctx.beginPath();
-    ctx.ellipse(x + 2, y + r + 5, r * 0.9, 6, 0, 0, Math.PI * 2);
+    ctx.ellipse(x + 2, y + r + 4, r * 0.82, 5, 0, 0, Math.PI * 2);
     ctx.fill();
 
     ctx.globalAlpha = pulse;
     ctx.strokeStyle = color;
-    ctx.lineWidth = 5;
+    ctx.lineWidth = 4;
     ctx.beginPath();
-    ctx.arc(x, y, r + 4, 0, Math.PI * 2);
+    ctx.arc(x, y, r + 3, 0, Math.PI * 2);
     ctx.stroke();
     ctx.globalAlpha = 1;
 
-    const grad = ctx.createRadialGradient(x - 7, y - 8, 4, x, y, r);
+    const grad = ctx.createRadialGradient(x - 6, y - 7, 3.5, x, y, r);
     grad.addColorStop(0, "#ffffff");
     grad.addColorStop(0.18, color);
     grad.addColorStop(1, "#222033");
@@ -2358,24 +2358,26 @@ export class Game {
     ctx.arc(x, y, r, 0, Math.PI * 2);
     ctx.fill();
     ctx.strokeStyle = "#1b142b";
-    ctx.lineWidth = 3;
+    ctx.lineWidth = 2.5;
     ctx.stroke();
 
-    ctx.font = "17px 'Trebuchet MS', system-ui, sans-serif";
+    ctx.font = "15px 'Trebuchet MS', system-ui, sans-serif";
     ctx.fillStyle = "#1b142b";
     ctx.fillText(icon, x, y - 1);
 
-    const labelW = label === "Family Tree" ? 78 : label === "Training" ? 68 : 58;
+    const labelW = label === "Family Tree" ? 68 : label === "Training" ? 60 : 52;
+    const labelH = 14;
+    const labelY = y + r + 5;
     ctx.fillStyle = "rgba(18,12,30,0.9)";
-    roundRect(ctx, x - labelW / 2, y + r + 6, labelW, 16, 5);
+    roundRect(ctx, x - labelW / 2, labelY, labelW, labelH, 5);
     ctx.fill();
     ctx.strokeStyle = color;
-    ctx.lineWidth = 1.5;
-    roundRect(ctx, x - labelW / 2, y + r + 6, labelW, 16, 5);
+    ctx.lineWidth = 1.25;
+    roundRect(ctx, x - labelW / 2, labelY, labelW, labelH, 5);
     ctx.stroke();
-    ctx.font = "bold 8px 'Trebuchet MS', system-ui, sans-serif";
+    ctx.font = "bold 7.5px 'Trebuchet MS', system-ui, sans-serif";
     ctx.fillStyle = "#fff8df";
-    ctx.fillText(label, x, y + r + 14);
+    ctx.fillText(label, x, labelY + labelH / 2);
     ctx.restore();
   }
 
