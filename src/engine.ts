@@ -84,6 +84,8 @@ const INVENTORY_MAX_SLOTS = 8;
 const INVENTORY_MAX_COUNT = 9;
 const FOOD_USE_COOLDOWN = 5;
 const CAREER_INDEX = STAGES.findIndex((s) => s.id === "career");
+const BAD_FIT_TAGS = ["sedentary", "gaming", "screen", "toy_phone", "cigarette"];
+const BAD_FOCUS_TAGS = ["wine", "whisky"];
 
 type Mode =
   | "title"
@@ -557,7 +559,8 @@ export class Game {
       return { kind: "neutral" };
     const t = opt.storyTag;
     if (t === "junkfood") return { kind: "bad", guard: "diet" }; // avoid by eating well
-    if (t === "sedentary" || t === "gaming" || t === "screen" || t === "toy_phone") return { kind: "bad", guard: "fit" }; // avoid by staying fit
+    if (BAD_FIT_TAGS.includes(t ?? "")) return { kind: "bad", guard: "fit" }; // avoid by staying fit
+    if (BAD_FOCUS_TAGS.includes(t ?? "")) return { kind: "bad", guard: "focus" }; // avoid by staying grounded
     return { kind: "good" };
   }
 
@@ -608,6 +611,10 @@ export class Game {
       "volunteer",
       "date",
       "gamble",
+      "cigarette",
+      "beer",
+      "wine",
+      "whisky",
     ];
     if (opt.category === "social" || socialTags.includes(tag)) return "social";
     return "family";
@@ -774,7 +781,7 @@ export class Game {
     if (opt.category === "health") return "muscle";
     if (opt.category === "food") return "nutrition";
     const t = opt.storyTag;
-    if (t === "sedentary" || t === "gaming" || t === "screen" || t === "toy_phone") return "muscle";
+    if (BAD_FIT_TAGS.includes(t ?? "")) return "muscle";
     if (t === "sleep" || t === "rest" || t === "sleep_baby") return "mental";
     return "split";
   }
@@ -1128,7 +1135,7 @@ export class Game {
     if (opt.category === "food") return (opt.effects.health ?? 0) < 0 ? 3 : -1;
     if (opt.category === "health") return -3; // exercise & sports burn it off
     const t = opt.storyTag;
-    if (t === "sedentary" || t === "gaming" || t === "screen" || t === "toy_phone") return 1.5;
+    if (BAD_FIT_TAGS.includes(t ?? "")) return 1.5;
     return 0;
   }
 

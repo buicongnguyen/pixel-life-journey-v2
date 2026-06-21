@@ -46,6 +46,10 @@ const LOTTERY: LifeOption = { id: "lotto", label: "Lottery", icon: "🎰", desc:
 const CASINO: LifeOption = { id: "casino", label: "Casino night", icon: "🃏", desc: "A night at the casino ($8k stake) — bigger stakes, bigger swings.", category: "fun", effects: { fun: 3 }, gamble: { stake: 8000, jackpotChance: 0.06, jackpot: 280000, prizeChance: 0.32, prize: 20000, jackpotStory: "had a legendary night at the casino", prizeStory: "walked out of the casino a winner", bustStory: "left the casino lighter than they walked in" }, storyTag: "gamble" };
 const BINGO: LifeOption = { id: "bingo", label: "Bingo hall", icon: "🎱", desc: "An afternoon at the bingo hall ($1k in) — a flutter and a good laugh with friends.", category: "fun", effects: { happiness: 3, fun: 2 }, gamble: { stake: 1000, jackpotChance: 0.05, jackpot: 30000, prizeChance: 0.34, prize: 3000, jackpotStory: "shouted 'BINGO!' for the full-house jackpot", prizeStory: "won a line at bingo", bustStory: "had a happy (if losing) day at the bingo hall" }, storyTag: "gamble" };
 const CHORES: LifeOption = { id: "chores", label: "Do chores", icon: "🧹", desc: "Help around the house and street for pocket money.", category: "wealth", effects: { happiness: -1 }, earn: 600, storyTag: "chores" };
+const CIGARETTE: LifeOption = { id: "cigarette", label: "Cigarette", icon: "🚬", desc: "Tobacco looks cool for a minute, but it hurts your lungs, stamina and focus.", category: "fun", effects: { fun: 3, health: -7, smarts: -3 }, storyTag: "cigarette" };
+const BEER: LifeOption = { id: "beer", label: "Beer", icon: "🍺", desc: "A beer with friends. A little fun, but still not great for sleep or health.", category: "fun", effects: { fun: 4, happiness: 1, health: -1, smarts: -1 }, weight: 1, storyTag: "beer" };
+const WINE: LifeOption = { id: "wine", label: "Wine", icon: "🍷", desc: "Wine can feel classy, but too much pulls down your health and focus.", category: "fun", effects: { fun: 5, happiness: 1, health: -5, smarts: -3 }, weight: 2, storyTag: "wine" };
+const WHISKY: LifeOption = { id: "whisky", label: "Whisky", icon: "🥃", desc: "Strong drink, strong consequences. Big short fun, bad for health and decisions.", category: "fun", effects: { fun: 7, happiness: -2, health: -8, smarts: -5 }, weight: 2, storyTag: "whisky" };
 
 export const STAGES: Stage[] = [
   {
@@ -179,6 +183,8 @@ export const STAGES: Stage[] = [
       { id: "crush", label: "First love", icon: "💞", person: "crush", desc: "Fall head over heels. Dizzy, wonderful, a little distracting.", category: "social", effects: { happiness: 9, smarts: -2 }, storyTag: "love" },
       { id: "bestFriend", label: "Best friends", icon: "🧑‍🤝‍🧑", person: "bestFriend", desc: "The friends you'll remember forever.", category: "social", effects: { happiness: 8, health: 2 }, storyTag: "friends" },
       { id: "smokerFriend", label: "Smoker friend", icon: "🚬", person: "smokerFriend", desc: "A friend sneaks smokes after school. It feels grown-up and exciting, but your health and focus take the hit.", category: "social", effects: { fun: 6, health: -8, smarts: -4 }, storyTag: "smoker_friend" },
+      CIGARETTE,
+      BEER,
       { id: "gangster", label: "Gangster", icon: "🕶️", person: "gangster", desc: "A dangerous crowd pulls you into trouble. Thrilling for a moment, rough on your future.", category: "social", effects: { fun: 7, happiness: -2, health: -5, smarts: -7 }, storyTag: "gangster_friend" },
       { id: "playboy", label: "Playboy", icon: "💋", person: "playboy", desc: "Flashy romance and drama look fun, but school and sleep suffer.", category: "social", effects: { fun: 8, happiness: 2, health: -3, smarts: -6 }, storyTag: "playboy_friend" },
       VEHICLE_STATION,
@@ -208,6 +214,10 @@ export const STAGES: Stage[] = [
       { id: "roommate", label: "Roommate", icon: "🧑", person: "roommate", desc: "Late-night talks and instant ramen with your roommate.", category: "social", effects: { happiness: 6, fun: 4 }, storyTag: "friends" },
       { id: "crush", label: "Romance", icon: "💞", person: "crush", desc: "A serious campus romance. Heady and warm.", category: "social", effects: { happiness: 9, fun: 3 }, storyTag: "love" },
       { id: "smokerFriend", label: "Smoker friend", icon: "🚬", person: "smokerFriend", desc: "A smoking friend offers an easy break from stress. Fun now, costly later.", category: "social", effects: { fun: 5, health: -8, smarts: -3 }, storyTag: "smoker_friend" },
+      CIGARETTE,
+      BEER,
+      WINE,
+      WHISKY,
       { id: "gangster", label: "Gangster", icon: "🕶️", person: "gangster", desc: "A risky crowd brings trouble around campus. It adds excitement, but drains health and focus.", category: "social", effects: { fun: 7, happiness: -3, health: -5, smarts: -7 }, storyTag: "gangster_friend" },
       { id: "playboy", label: "Playboy", icon: "💋", person: "playboy", desc: "Flirting, drama and late nights are fun, but the lectures don't study themselves.", category: "social", effects: { fun: 8, happiness: 2, health: -3, smarts: -6 }, storyTag: "playboy_friend" },
       VEHICLE_STATION,
