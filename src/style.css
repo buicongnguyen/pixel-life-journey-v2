@@ -1139,6 +1139,9 @@ body {
   color: var(--muted);
   font-size: 12px;
 }
+.plj-setup-field-wide {
+  grid-column: 1 / -1;
+}
 .plj-setup-field span {
   display: flex;
   align-items: center;
@@ -1156,6 +1159,28 @@ body {
   padding: 8px 9px;
   width: 100%;
   box-sizing: border-box;
+}
+.plj-money-edit-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+}
+.plj-money-edit-row input {
+  min-width: 0;
+  min-height: 36px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #160f2c;
+  color: var(--ink);
+  font: inherit;
+  font-size: 12px;
+  padding: 7px 9px;
+}
+.plj-money-edit-row small {
+  color: var(--muted);
+  font-size: 10.5px;
+  white-space: nowrap;
 }
 .plj-gender {
   display: flex;

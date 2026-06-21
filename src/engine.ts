@@ -276,6 +276,7 @@ export class Game {
   private lifetimeEarned = 0; // total dollars earned from work over the whole life
   private connections = 0; // professional network — grown by coworkers & networking
   private familyFund = START_MONEY; // family resources rolled at birth
+  private setupFamilyFund = FAMILY_MONEY_MIN; // editable setup roll before a new life starts
   private parentAnnualSupport = 0; // yearly support from Mommy & Daddy until adulthood
   private homeQuality = 0;
   private homes: HouseTier[] = []; // every property bought; you live in the best one
@@ -494,13 +495,13 @@ export class Game {
 
   // --- lifecycle ------------------------------------------------------------
 
-  private newGame(keepBiography = false, startStageIndex = 0): void {
+  private newGame(keepBiography = false, startStageIndex = 0, familyFundOverride?: number): void {
     if (!keepBiography) this.biography = null; // normal play is never a replay
     const startIndex = keepBiography ? 0 : this.normalizeStageIndex(startStageIndex);
     this.stats = { ...START_STATS };
     this.age = 0;
     this.weight = START_WEIGHT;
-    this.familyFund = this.rollFamilyMoney();
+    this.familyFund = keepBiography ? this.rollFamilyMoney() : this.normalizeFamilyMoney(familyFundOverride ?? this.setupFamilyFund);
     this.parentAnnualSupport = this.rollParentSupport(this.familyFund);
     this.money = this.familyFund;
     this.muscle = START_MUSCLE;
@@ -979,6 +980,12 @@ export class Game {
     const skewed = Math.pow(Math.random(), FAMILY_MONEY_SKEW);
     const raw = FAMILY_MONEY_MIN + (FAMILY_MONEY_MAX - FAMILY_MONEY_MIN) * skewed;
     return Math.round(raw / 1000) * 1000;
+  }
+
+  private normalizeFamilyMoney(value: number): number {
+    const raw = Number.isFinite(value) ? value : FAMILY_MONEY_MIN;
+    const clamped = Math.max(FAMILY_MONEY_MIN, Math.min(FAMILY_MONEY_MAX, raw));
+    return Math.round(clamped / 1000) * 1000;
   }
 
   private rollParentSupport(familyFund: number): number {
@@ -3072,6 +3079,7 @@ export class Game {
   private showSetup(): void {
     this.mode = "setup";
     this.biography = null;
+    this.setupFamilyFund = this.normalizeFamilyMoney(this.rollFamilyMoney());
     const stageOptions = STAGES.map((s, i) =>
       `<option value="${i}">${s.emoji} ${esc(s.name)} · age ${s.ageStart}-${s.ageEnd}</option>`
     ).join("");
@@ -3096,6 +3104,14 @@ export class Game {
             <span>Life speed <b id="plj-life-speed-readout">${this.lifeSpeedLabel()}</b></span>
             <input id="plj-life-speed" type="range" ${this.lifeSpeedInputAttrs()}>
           </label>
+          <label class="plj-setup-field plj-setup-field-wide">
+            <span>Initial family money <b id="plj-family-money-readout">${formatMoney(this.setupFamilyFund)}</b></span>
+            <input id="plj-family-money" type="range" min="${FAMILY_MONEY_MIN}" max="${FAMILY_MONEY_MAX}" step="1000" value="${this.setupFamilyFund}">
+            <div class="plj-money-edit-row">
+              <input id="plj-family-money-number" type="number" min="${FAMILY_MONEY_MIN}" max="${FAMILY_MONEY_MAX}" step="1000" value="${this.setupFamilyFund}" inputmode="numeric">
+              <small>${formatMoney(FAMILY_MONEY_MIN)} – ${formatMoney(FAMILY_MONEY_MAX)}</small>
+            </div>
+          </label>
         </div>
         <p class="plj-sub">Is it a boy or a girl?</p>
         <div class="plj-genders">
@@ -3107,11 +3123,22 @@ export class Game {
     this.ui.overlay.classList.add("show");
     const speedInput = this.ui.overlay.querySelector<HTMLInputElement>("#plj-life-speed")!;
     const speedReadout = this.ui.overlay.querySelector<HTMLElement>("#plj-life-speed-readout")!;
+    const moneyInput = this.ui.overlay.querySelector<HTMLInputElement>("#plj-family-money")!;
+    const moneyNumber = this.ui.overlay.querySelector<HTMLInputElement>("#plj-family-money-number")!;
+    const moneyReadout = this.ui.overlay.querySelector<HTMLElement>("#plj-family-money-readout")!;
     speedInput.oninput = () => {
       this.setLifeSpeedIndex(Number(speedInput.value));
       speedInput.value = String(this.lifeSpeedIndex());
       speedReadout.textContent = this.lifeSpeedLabel();
     };
+    const syncFamilyMoney = (value: number): void => {
+      this.setupFamilyFund = this.normalizeFamilyMoney(value);
+      moneyInput.value = String(this.setupFamilyFund);
+      moneyNumber.value = String(this.setupFamilyFund);
+      moneyReadout.textContent = formatMoney(this.setupFamilyFund);
+    };
+    moneyInput.oninput = () => syncFamilyMoney(Number(moneyInput.value));
+    moneyNumber.onchange = () => syncFamilyMoney(Number(moneyNumber.value));
     this.ui.overlay.querySelectorAll<HTMLButtonElement>(".plj-heritage").forEach((btn) => {
       btn.onclick = () => {
         this.ui.overlay.querySelectorAll<HTMLButtonElement>(".plj-heritage").forEach((b) => b.classList.remove("is-selected"));
@@ -3127,7 +3154,8 @@ export class Game {
         this.heritage = this.normalizeHeritage(this.ui.overlay.querySelector<HTMLButtonElement>(".plj-heritage.is-selected")?.dataset.heritage);
         const startIndex = this.normalizeStageIndex(Number(this.ui.overlay.querySelector<HTMLSelectElement>("#plj-start-stage")?.value ?? 0));
         this.setLifeSpeedIndex(Number(speedInput.value));
-        this.newGame(false, startIndex);
+        syncFamilyMoney(Number(moneyNumber.value));
+        this.newGame(false, startIndex, this.setupFamilyFund);
       };
     });
   }
