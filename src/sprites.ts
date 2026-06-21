@@ -127,6 +127,7 @@ function limb(ctx: CanvasRenderingContext2D, x1: number, y1: number, x2: number,
 function sideShoe(ctx: CanvasRenderingContext2D, x: number, y: number, dir: number, length: number, height: number, fill: string | CanvasGradient): void {
   const heelX = x - dir * length * 0.42;
   const toeX = x + dir * length * 0.58;
+  const soleY = y + height * 0.42;
   ctx.fillStyle = fill;
   ctx.beginPath();
   ctx.moveTo(heelX, y - height * 0.18);
@@ -139,6 +140,64 @@ function sideShoe(ctx: CanvasRenderingContext2D, x: number, y: number, dir: numb
   ctx.strokeStyle = OUTLINE;
   ctx.lineWidth = OUTLINE_W;
   ctx.stroke();
+  ctx.strokeStyle = "rgba(255,255,255,0.34)";
+  ctx.lineWidth = Math.max(0.75, height * 0.16);
+  ctx.lineCap = "round";
+  ctx.beginPath();
+  ctx.moveTo(heelX + dir * length * 0.12, y - height * 0.16);
+  ctx.quadraticCurveTo(x + dir * length * 0.08, y - height * 0.38, toeX - dir * length * 0.16, y - height * 0.18);
+  ctx.stroke();
+  ctx.strokeStyle = "rgba(18,14,18,0.5)";
+  ctx.lineWidth = Math.max(0.8, height * 0.18);
+  ctx.beginPath();
+  ctx.moveTo(heelX + dir * length * 0.04, soleY);
+  ctx.lineTo(toeX - dir * length * 0.08, soleY);
+  ctx.stroke();
+  ctx.strokeStyle = "rgba(255,255,255,0.24)";
+  ctx.lineWidth = Math.max(0.7, height * 0.11);
+  ctx.beginPath();
+  ctx.moveTo(toeX - dir * length * 0.2, y - height * 0.18);
+  ctx.lineTo(toeX - dir * length * 0.03, y + height * 0.12);
+  ctx.stroke();
+}
+
+function frontShoe(ctx: CanvasRenderingContext2D, x: number, y: number, dir: number, width: number, height: number, fill: string | CanvasGradient): void {
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.rotate(dir * 0.08);
+  ctx.fillStyle = fill;
+  ctx.beginPath();
+  ctx.moveTo(-width * 0.42, -height * 0.3);
+  ctx.quadraticCurveTo(-width * 0.16, -height * 0.62, width * 0.22, -height * 0.5);
+  ctx.quadraticCurveTo(width * 0.58, -height * 0.34, width * 0.62, height * 0.08);
+  ctx.quadraticCurveTo(width * 0.5, height * 0.52, -width * 0.08, height * 0.56);
+  ctx.quadraticCurveTo(-width * 0.54, height * 0.5, -width * 0.48, height * 0.06);
+  ctx.quadraticCurveTo(-width * 0.52, -height * 0.18, -width * 0.42, -height * 0.3);
+  ctx.closePath();
+  ctx.fill();
+  ctx.strokeStyle = OUTLINE;
+  ctx.lineWidth = OUTLINE_W;
+  ctx.stroke();
+  ctx.strokeStyle = "rgba(18,14,18,0.54)";
+  ctx.lineCap = "round";
+  ctx.lineWidth = Math.max(0.8, height * 0.18);
+  ctx.beginPath();
+  ctx.moveTo(-width * 0.34, height * 0.48);
+  ctx.lineTo(width * 0.42, height * 0.44);
+  ctx.stroke();
+  ctx.strokeStyle = "rgba(255,255,255,0.3)";
+  ctx.lineWidth = Math.max(0.7, height * 0.12);
+  ctx.beginPath();
+  ctx.moveTo(-width * 0.16, -height * 0.32);
+  ctx.quadraticCurveTo(width * 0.1, -height * 0.44, width * 0.34, -height * 0.18);
+  ctx.stroke();
+  ctx.strokeStyle = "rgba(255,255,255,0.22)";
+  ctx.lineWidth = Math.max(0.65, height * 0.1);
+  ctx.beginPath();
+  ctx.moveTo(width * 0.26, -height * 0.18);
+  ctx.lineTo(width * 0.5, height * 0.08);
+  ctx.stroke();
+  ctx.restore();
 }
 
 function drawHand(ctx: CanvasRenderingContext2D, x: number, y: number, rx: number, ry: number, skin: string, dir = 1, angle = 0): void {
@@ -150,31 +209,47 @@ function drawHand(ctx: CanvasRenderingContext2D, x: number, y: number, rx: numbe
   ctx.scale(dir, 1);
   ctx.fillStyle = skin;
   ctx.beginPath();
-  ctx.moveTo(-rx * 0.48, -ry * 0.24);
-  ctx.quadraticCurveTo(-rx * 0.75, -ry * 0.02, -rx * 0.48, ry * 0.28);
-  ctx.quadraticCurveTo(-rx * 0.14, ry * 0.56, rx * 0.3, ry * 0.42);
-  ctx.quadraticCurveTo(rx * 0.64, ry * 0.22, rx * 0.52, -ry * 0.13);
-  ctx.quadraticCurveTo(rx * 0.2, -ry * 0.42, -rx * 0.48, -ry * 0.24);
+  ctx.moveTo(-rx * 0.42, -ry * 0.18);
+  ctx.quadraticCurveTo(-rx * 0.7, ry * 0.02, -rx * 0.48, ry * 0.28);
+  ctx.quadraticCurveTo(-rx * 0.24, ry * 0.62, rx * 0.2, ry * 0.56);
+  ctx.quadraticCurveTo(rx * 0.62, ry * 0.52, rx * 0.66, ry * 0.1);
+  ctx.quadraticCurveTo(rx * 0.64, -ry * 0.25, rx * 0.34, -ry * 0.38);
+  ctx.quadraticCurveTo(-rx * 0.08, -ry * 0.48, -rx * 0.42, -ry * 0.18);
   ctx.closePath();
   ctx.fill();
   ctx.strokeStyle = OUTLINE;
   ctx.lineWidth = Math.max(0.8, OUTLINE_W * 0.72);
   ctx.stroke();
 
-  ellipse(ctx, -rx * 0.58, ry * 0.06, rx * 0.22, ry * 0.17, skinD);
+  // Thumb: drawn as its own lobe so the hand no longer reads as a plain oval.
+  ctx.fillStyle = skinD;
+  ctx.beginPath();
+  ctx.ellipse(-rx * 0.54, ry * 0.12, rx * 0.24, ry * 0.2, -0.45, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = OUTLINE;
+  ctx.lineWidth = Math.max(0.65, OUTLINE_W * 0.48);
+  ctx.stroke();
+
+  // Four short finger separations, visible even when the character is tiny.
   ctx.strokeStyle = skinD;
-  ctx.lineWidth = Math.max(0.65, rx * 0.1);
+  ctx.lineWidth = Math.max(0.65, rx * 0.075);
   ctx.lineCap = "round";
-  for (const fx of [-0.16, 0.07, 0.29]) {
+  for (const fx of [-0.14, 0.06, 0.25, 0.43]) {
     ctx.beginPath();
-    ctx.moveTo(rx * fx, ry * 0.2);
-    ctx.lineTo(rx * (fx - 0.03), ry * 0.48);
+    ctx.moveTo(rx * fx, ry * 0.08);
+    ctx.lineTo(rx * (fx - 0.04), ry * 0.48);
     ctx.stroke();
   }
   ctx.fillStyle = skinL;
   ctx.beginPath();
-  ctx.ellipse(rx * 0.14, -ry * 0.1, rx * 0.26, ry * 0.11, -0.25, 0, Math.PI * 2);
+  ctx.ellipse(rx * 0.16, -ry * 0.12, rx * 0.26, ry * 0.11, -0.2, 0, Math.PI * 2);
   ctx.fill();
+  ctx.strokeStyle = "rgba(95,54,45,0.22)";
+  ctx.lineWidth = Math.max(0.55, rx * 0.055);
+  ctx.beginPath();
+  ctx.moveTo(-rx * 0.2, ry * 0.18);
+  ctx.quadraticCurveTo(rx * 0.08, ry * 0.33, rx * 0.34, ry * 0.18);
+  ctx.stroke();
   ctx.restore();
 }
 
@@ -594,8 +669,8 @@ function drawStanding(ctx: CanvasRenderingContext2D, cx: number, footY: number, 
   drawBackHair(ctx, headCx, headCy, headW, headH, look);
 
   // --- legs ----------------------------------------------------------------
-  const stride = swing * H * 0.064;
-  const lift = Math.abs(swing) * H * 0.027;
+  const stride = swing * H * 0.082;
+  const lift = Math.abs(swing) * H * 0.034;
   const drawLegPair = (): void => {
     const shoeH = H * 0.03;
     const ly = baseY - shoeH;
@@ -611,16 +686,16 @@ function drawStanding(ctx: CanvasRenderingContext2D, cx: number, footY: number, 
 
     limb(ctx, leftHipX, hipY, leftKneeX, kneeY - leftLift * 0.38, legW, shade(look.pants, 4));
     limb(ctx, leftKneeX, kneeY - leftLift * 0.38, leftFootX, ly - leftLift, legW * 0.94, look.pants);
-    ellipse(ctx, leftFootX - legW * 0.15, ly - leftLift + shoeH * 0.45, legW * 1.28, shoeH * 1.14, hgrad(ctx, leftFootX - legW, legW * 2.0, look.shoes));
+    frontShoe(ctx, leftFootX - legW * 0.22, ly - leftLift + shoeH * 0.5, -1, legW * 2.0, shoeH * 1.85, hgrad(ctx, leftFootX - legW, legW * 2.0, look.shoes));
 
     limb(ctx, rightHipX, hipY, rightKneeX, kneeY - rightLift * 0.38, legW, shade(look.pants, 4));
     limb(ctx, rightKneeX, kneeY - rightLift * 0.38, rightFootX, ly - rightLift, legW * 0.94, look.pants);
-    ellipse(ctx, rightFootX - legW * 0.15, ly - rightLift + shoeH * 0.45, legW * 1.28, shoeH * 1.14, hgrad(ctx, rightFootX - legW, legW * 2.0, look.shoes));
+    frontShoe(ctx, rightFootX + legW * 0.22, ly - rightLift + shoeH * 0.5, 1, legW * 2.0, shoeH * 1.85, hgrad(ctx, rightFootX - legW, legW * 2.0, look.shoes));
   };
   drawLegPair();
 
   // --- arms: bent elbows instead of straight doll arms ---------------------
-  const aSwing = -swing * H * 0.058;
+  const aSwing = -swing * H * 0.078;
   const shoulderY = torsoTopY + headH * 0.14;
   const handY = torsoTopY + torsoH * 0.96;
   const elbowY = torsoTopY + torsoH * 0.55;
@@ -705,7 +780,7 @@ function drawSeated(ctx: CanvasRenderingContext2D, cx: number, footY: number, lo
     const footX = cx + side * hipW * 0.54;
     limb(ctx, hipX, seatY + H * 0.025, kneeX, kneeY, legW, shade(look.pants, side < 0 ? 8 : 2));
     limb(ctx, kneeX, kneeY, footX, footBaseY, legW * 0.92, look.pants);
-    ellipse(ctx, footX + side * legW * 0.18, footBaseY + H * 0.014, legW * 1.55, H * 0.033, hgrad(ctx, footX - legW, legW * 2, look.shoes));
+    frontShoe(ctx, footX + side * legW * 0.18, footBaseY + H * 0.014, side, legW * 2.25, H * 0.064, hgrad(ctx, footX - legW, legW * 2, look.shoes));
   }
 
   if (look.skirt) {
@@ -956,8 +1031,8 @@ function drawSideStanding(ctx: CanvasRenderingContext2D, cx: number, footY: numb
   const shoulderY = torsoTopY + headH * 0.14;
   const handY = torsoTopY + torsoH * 0.94;
   const elbowY = torsoTopY + torsoH * 0.55;
-  const stride = swing * H * 0.082;
-  const lift = Math.abs(swing) * H * 0.026;
+  const stride = swing * H * 0.108;
+  const lift = Math.abs(swing) * H * 0.034;
   const footBaseY = baseY - H * 0.03;
 
   groundShadow(ctx, cx, footY, shoulderW * 0.42);
@@ -1024,15 +1099,18 @@ function drawSideStanding(ctx: CanvasRenderingContext2D, cx: number, footY: numb
   ctx.stroke();
   ellipse(ctx, neckTopX, neckTopY + neckH * 0.15, neckH * 0.4, neckH * 0.3, look.skin);
 
-  limb(ctx, cx - dir * sideShoulderW * 0.08, shoulderY, cx - dir * sideShoulderW * 0.16 - dir * stride * 0.15, elbowY, armW * 0.88, shade(look.shirt, 12));
-  limb(ctx, cx - dir * sideShoulderW * 0.16 - dir * stride * 0.15, elbowY, cx - dir * sideShoulderW * 0.05 - dir * stride * 0.25, handY, armW * 0.8, shade(look.shirt, 6));
+  const farElbowX = cx - dir * sideShoulderW * 0.16 - dir * stride * 0.2;
+  const farHandX = cx - dir * sideShoulderW * 0.05 - dir * stride * 0.34;
+  limb(ctx, cx - dir * sideShoulderW * 0.08, shoulderY, farElbowX, elbowY, armW * 0.88, shade(look.shirt, 12));
+  limb(ctx, farElbowX, elbowY, farHandX, handY, armW * 0.8, shade(look.shirt, 6));
+  drawHand(ctx, farHandX, handY, armW * 0.6, armW * 0.52, shade(look.skin, 16), -dir, -dir * 0.08);
 
   limb(ctx, cx + dir * sideHipW * 0.07, hipY, cx + dir * sideHipW * 0.16 + dir * stride * 0.28, kneeY - nearLift * 0.28, legW, look.pants);
   limb(ctx, cx + dir * sideHipW * 0.16 + dir * stride * 0.28, kneeY - nearLift * 0.28, nearFootX, footBaseY - nearLift, legW * 0.92, look.pants);
   sideShoe(ctx, nearFootX + dir * legW * 0.24, footBaseY - nearLift + H * 0.017, dir, legW * 2.32, H * 0.047, hgrad(ctx, nearFootX - legW, legW * 2, look.shoes));
 
-  const nearElbowX = cx + dir * sideShoulderW * 0.18 + dir * stride * 0.22;
-  const nearHandX = cx + dir * sideShoulderW * 0.09 + dir * stride * 0.38;
+  const nearElbowX = cx + dir * sideShoulderW * 0.18 + dir * stride * 0.3;
+  const nearHandX = cx + dir * sideShoulderW * 0.09 + dir * stride * 0.5;
   limb(ctx, cx + dir * sideShoulderW * 0.2, shoulderY, nearElbowX, elbowY, armW, look.shirt);
   limb(ctx, nearElbowX, elbowY, nearHandX, handY, armW * 0.9, look.shirt);
   drawHand(ctx, nearHandX, handY, armW * 0.76, armW * 0.66, look.skin, dir, dir * 0.12);
@@ -1107,8 +1185,8 @@ function drawBackStanding(ctx: CanvasRenderingContext2D, cx: number, footY: numb
   const neckTopY = torsoTopY - neckH + stoop * 0.5;
   const headCx = cx;
   const headCy = neckTopY - headH / 2 + headH * 0.09;
-  const stride = swing * H * 0.048;
-  const lift = Math.abs(swing) * H * 0.024;
+  const stride = swing * H * 0.068;
+  const lift = Math.abs(swing) * H * 0.032;
   const shoeY = baseY - H * 0.03;
   const kneeY = hipY + legH * 0.5;
 
@@ -1124,8 +1202,8 @@ function drawBackStanding(ctx: CanvasRenderingContext2D, cx: number, footY: numb
   limb(ctx, leftKneeX, kneeY - (swing > 0 ? lift * 0.3 : 0), leftFootX, shoeY - (swing > 0 ? lift : 0), legW * 0.92, look.pants);
   limb(ctx, rightHipX, hipY, rightKneeX, kneeY - (swing < 0 ? lift * 0.3 : 0), legW, shade(look.pants, 5));
   limb(ctx, rightKneeX, kneeY - (swing < 0 ? lift * 0.3 : 0), rightFootX, shoeY - (swing < 0 ? lift : 0), legW * 0.92, look.pants);
-  ellipse(ctx, leftFootX, shoeY + H * 0.016 - (swing > 0 ? lift : 0), legW * 1.05, H * 0.028, hgrad(ctx, leftFootX - legW, legW * 2, look.shoes));
-  ellipse(ctx, rightFootX, shoeY + H * 0.016 - (swing < 0 ? lift : 0), legW * 1.05, H * 0.028, hgrad(ctx, rightFootX - legW, legW * 2, look.shoes));
+  frontShoe(ctx, leftFootX - legW * 0.12, shoeY + H * 0.016 - (swing > 0 ? lift : 0), -1, legW * 1.82, H * 0.058, hgrad(ctx, leftFootX - legW, legW * 2, look.shoes));
+  frontShoe(ctx, rightFootX + legW * 0.12, shoeY + H * 0.016 - (swing < 0 ? lift : 0), 1, legW * 1.82, H * 0.058, hgrad(ctx, rightFootX - legW, legW * 2, look.shoes));
 
   if (look.skirt) {
     const skirtHemY = hipY + H * (look.child ? 0.035 : look.elder ? 0.095 : (look.pants === "#ffffff" || look.pants === "#f7f2ff") ? 0.085 : 0.065);
