@@ -294,6 +294,7 @@ export interface AvatarLook {
   shoes: string;
   gender: Gender;
   skirt: boolean;
+  mature: boolean;
 }
 
 export type AvatarFacing = "front" | "left" | "right" | "back";
@@ -359,6 +360,7 @@ export function avatarLook(stageIndex: number, gender: Gender = "male"): AvatarL
     shoes: female ? "#f04d8e" : "#3a2a35",
     gender,
     skirt: female && i >= 3 && !p.baby,
+    mature: female && i >= 6,
   };
 }
 
@@ -429,6 +431,7 @@ export function personLook(kind: PersonKind, playerGender: Gender, stageIndex?: 
     shoes: female ? "#c25b8e" : "#33293f",
     gender: s.g,
     skirt: female && !p.baby,
+    mature: female && profileIndex >= 6,
   };
 }
 
@@ -694,6 +697,27 @@ function drawOutfitDetails(
     ellipse(ctx, cx, chestY + torsoH * 0.18, shoulderW * 0.09, shoulderW * 0.09, "#ffe867");
   }
 
+  if (look.gender === "female" && look.mature) {
+    const bustY = torsoTopY + torsoH * (look.elder ? 0.36 : 0.32);
+    const bustRx = shoulderW * (look.elder ? 0.105 : 0.13);
+    const bustRy = torsoH * (look.elder ? 0.075 : 0.095);
+    const bustGap = shoulderW * 0.13;
+    ctx.save();
+    ctx.globalAlpha = 0.72;
+    ellipse(ctx, cx - bustGap, bustY, bustRx, bustRy, tint(look.shirt, look.elder ? 12 : 20));
+    ellipse(ctx, cx + bustGap, bustY, bustRx, bustRy, tint(look.shirt, look.elder ? 12 : 20));
+    ctx.restore();
+    ctx.strokeStyle = shade(look.shirt, look.elder ? 22 : 34);
+    ctx.lineWidth = Math.max(1, shoulderW * 0.022);
+    ctx.lineCap = "round";
+    ctx.beginPath();
+    ctx.moveTo(cx - bustGap - bustRx * 0.65, bustY + bustRy * 0.46);
+    ctx.quadraticCurveTo(cx - bustGap, bustY + bustRy * 0.95, cx - bustGap + bustRx * 0.78, bustY + bustRy * 0.4);
+    ctx.moveTo(cx + bustGap - bustRx * 0.78, bustY + bustRy * 0.4);
+    ctx.quadraticCurveTo(cx + bustGap, bustY + bustRy * 0.95, cx + bustGap + bustRx * 0.65, bustY + bustRy * 0.46);
+    ctx.stroke();
+  }
+
   ctx.strokeStyle = "rgba(255,255,255,0.35)";
   ctx.lineWidth = Math.max(1, shoulderW * 0.025);
   ctx.beginPath();
@@ -764,16 +788,16 @@ function drawSideStanding(ctx: CanvasRenderingContext2D, cx: number, footY: numb
     taper(ctx, cx, torsoTopY + torsoH * 0.66, sideWaistW, hipY + H * 0.01, sideHipW, hgrad(ctx, cx - sideHipW / 2, sideHipW, look.pants));
   }
   taper(ctx, torsoCx, torsoTopY, sideShoulderW, torsoTopY + torsoH * 0.66, sideWaistW, hgrad(ctx, torsoCx - sideShoulderW / 2, sideShoulderW, look.shirt, 22, 22));
-  if (female && !look.child) {
+  if (female && look.mature) {
     const bustY = torsoTopY + torsoH * 0.32;
-    const bustX = torsoCx + dir * sideShoulderW * 0.18;
-    const bustScale = look.elder ? 0.12 : 0.18;
-    ellipse(ctx, bustX, bustY, sideShoulderW * bustScale, torsoH * (look.elder ? 0.09 : 0.12), tint(look.shirt, 18));
+    const bustX = torsoCx + dir * sideShoulderW * 0.22;
+    const bustScale = look.elder ? 0.14 : 0.23;
+    ellipse(ctx, bustX, bustY, sideShoulderW * bustScale, torsoH * (look.elder ? 0.1 : 0.145), tint(look.shirt, look.elder ? 12 : 22));
     ctx.strokeStyle = shade(look.shirt, 34);
     ctx.lineWidth = Math.max(1, H * 0.007);
     ctx.beginPath();
-    ctx.moveTo(bustX - dir * sideShoulderW * 0.12, bustY + torsoH * 0.07);
-    ctx.quadraticCurveTo(bustX + dir * sideShoulderW * 0.08, bustY + torsoH * 0.14, bustX + dir * sideShoulderW * 0.22, bustY + torsoH * 0.05);
+    ctx.moveTo(bustX - dir * sideShoulderW * 0.16, bustY + torsoH * 0.07);
+    ctx.quadraticCurveTo(bustX + dir * sideShoulderW * 0.05, bustY + torsoH * 0.17, bustX + dir * sideShoulderW * 0.24, bustY + torsoH * 0.04);
     ctx.stroke();
   }
   ctx.strokeStyle = "rgba(255,255,255,0.38)";
