@@ -2013,8 +2013,10 @@ export class Game {
         const st = d.station;
         const focused = this.stations[this.focusIndex] === st && this.mode === "playing";
         const used = !!st.opt.once && this.usedOnce.has(st.opt.id);
-        // a satiated bad thing has backed off — draw it ghostly and ring-less
+        // A satiated bad item has backed off. Keep bad-friend people full color so
+        // they still read as humans instead of shadow silhouettes.
         const satiated = st.kind === "bad" && st.satiated > 0;
+        const fadedSatiated = satiated && !st.opt.person;
         // a ground-ring marks moving items: red = a BAD thing chasing you,
         // green = a common GOOD thing you collect by touch.
         if (!satiated && (st.kind === "bad" || st.kind === "good" || st.kind === "event")) {
@@ -2027,7 +2029,7 @@ export class Game {
           ellipseRing(ctx, st.x, st.y + 16, 22, 7);
           ctx.restore();
         }
-        if (satiated) ctx.globalAlpha = 0.18;
+        if (fadedSatiated) ctx.globalAlpha = 0.18;
         if (st.kind === "event" && st.event) {
           drawEventItem(ctx, st.x, st.y, st.event.id, st.event.emoji, st.event.title, st.event.good !== false, focused, t);
         } else if (st.opt.person) {
@@ -2037,7 +2039,7 @@ export class Game {
         } else {
           drawStation(ctx, st.x, st.y, st.opt.icon, st.opt.label, st.opt.category, focused, used, t);
         }
-        if (satiated) ctx.globalAlpha = 1;
+        if (fadedSatiated) ctx.globalAlpha = 1;
       }
     }
 
