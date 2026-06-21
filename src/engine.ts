@@ -62,16 +62,14 @@ const W = 640;
 const H = 800; // a tall room with only a thin wall strip — almost all play floor
 const FLOOR_Y = 112; // smaller backdrop, taller playable split-zone room
 const DOOR_X = W - 74;
-const GATE_Y = 456;
 const GATE_HALF_H = 86;
-const SPLIT_Y = GATE_Y;
 const SPEED = 205; // base move speed (scaled up by your IQ — smart = nimble)
 const PY_MIN = 150;
 const PY_MAX = 782;
 const SOCIAL_Y_MIN = PY_MIN + 58;
-const SOCIAL_Y_MAX = SPLIT_Y - 50;
-const FAMILY_Y_MIN = SPLIT_Y + 58;
 const FAMILY_Y_MAX = PY_MAX - 24;
+const ZONE_GATE_GAP = 48;
+const MIN_ZONE_HEIGHT = 118;
 // --- moving-items mechanic ---
 const GOOD_SPEED = 24; // common good items drift AWAY; touch them to collect
 const BAD_SPEED = 34; // bad items drift TOWARD you (auto-applied on contact)
@@ -269,6 +267,8 @@ export class Game {
       mode: this.mode,
       stage: STAGES[this.stageIndex]?.id,
       age: Math.round(this.age * 10) / 10,
+      familyZoneShare: this.familyZoneShare(),
+      zoneSplitY: this.zoneSplitY(),
       lifeExp: this.lifeExp(),
       stats: { ...this.stats },
       px: Math.round(this.px),
@@ -615,10 +615,27 @@ export class Game {
     return [bounds.min, (bounds.min + bounds.max) / 2, bounds.max];
   }
 
+  private familyZoneShare(): number {
+    const id = STAGES[this.stageIndex]?.id;
+    if (id === "newborn" || id === "toddler" || id === "early") return 0.64;
+    if (id === "elementary" || id === "middle" || id === "high") return 0.54;
+    if (id === "university" || id === "career") return 0.34;
+    if (id === "marriage" || id === "midlife") return 0.42;
+    if (id === "senior" || id === "retirement") return 0.5;
+    return 0.5;
+  }
+
+  private zoneSplitY(): number {
+    const playable = FAMILY_Y_MAX - SOCIAL_Y_MIN;
+    return Math.round(FAMILY_Y_MAX - playable * this.familyZoneShare());
+  }
+
   private zoneBounds(zone: StationZone): { min: number; max: number } {
-    return zone === "social"
-      ? { min: SOCIAL_Y_MIN, max: SOCIAL_Y_MAX }
-      : { min: FAMILY_Y_MIN, max: FAMILY_Y_MAX };
+    const splitY = this.zoneSplitY();
+    if (zone === "social") {
+      return { min: SOCIAL_Y_MIN, max: Math.max(SOCIAL_Y_MIN + MIN_ZONE_HEIGHT, splitY - ZONE_GATE_GAP) };
+    }
+    return { min: Math.min(FAMILY_Y_MAX - MIN_ZONE_HEIGHT, splitY + ZONE_GATE_GAP), max: FAMILY_Y_MAX };
   }
 
   // --- per-stage balance helpers -------------------------------------------
@@ -637,7 +654,7 @@ export class Game {
   }
 
   private nearGate(): boolean {
-    return Math.abs(this.py - GATE_Y) <= GATE_HALF_H;
+    return Math.abs(this.py - this.zoneSplitY()) <= GATE_HALF_H;
   }
 
   /** Higher IQ → faster on your feet, so you can dodge the bad things more easily. */
@@ -1525,7 +1542,7 @@ export class Game {
     if (this.px > DOOR_X) {
       if (!this.nearGate()) {
         this.px = DOOR_X;
-        this.hint("Use the right-center gate to grow up.");
+        this.hint("Use the right-side gate to grow up.");
       } else if (this.doorOpen()) this.advanceStage();
       else this.hint(`Grow a little more first (age ${Math.floor(this.age)} → ${s.ageEnd}).`);
     }
@@ -1813,6 +1830,7 @@ export class Game {
         scene: s.scene,
         atHome: !!s.atHome,
         homeQuality: this.homeQuality,
+        splitY: this.zoneSplitY(),
       });
 
       // draw stations, people and the avatar together, sorted by depth (y)

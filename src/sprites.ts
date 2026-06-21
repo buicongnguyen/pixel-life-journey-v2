@@ -1452,10 +1452,11 @@ export interface RoomDecor {
   scene: SceneKind;
   atHome: boolean;
   homeQuality: number;
+  splitY: number;
 }
 
 export function drawRoom(ctx: CanvasRenderingContext2D, theme: RoomTheme, W: number, H: number, floorY: number, doorActive: boolean, t: number, decor: RoomDecor): void {
-  const splitY = Math.round(floorY + (H - floorY) * 0.5);
+  const splitY = Math.round(decor.splitY);
   const wallG = ctx.createLinearGradient(0, 0, 0, floorY);
   wallG.addColorStop(0, tint(theme.wall, 14));
   wallG.addColorStop(1, theme.wall);
@@ -1470,7 +1471,7 @@ export function drawRoom(ctx: CanvasRenderingContext2D, theme: RoomTheme, W: num
   drawFamilyArea(ctx, decor.scene, theme, W, splitY, H, t);
   if (decor.atHome && decor.homeQuality > 0) drawHomeQuality(ctx, theme, W, splitY + 70, decor.homeQuality);
   drawZoneDivider(ctx, W, splitY);
-  drawDoor(ctx, theme, W, H, floorY, doorActive, t);
+  drawDoor(ctx, theme, W, H, splitY, doorActive, t);
 }
 
 function drawPixelTrim(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, a: string, b: string): void {
@@ -1736,11 +1737,11 @@ function drawPlant(ctx: CanvasRenderingContext2D, x: number, floorY: number): vo
   ellipse(ctx, x + 8, floorY - 30, 5, 6, "#4fb56b");
 }
 
-function drawDoor(ctx: CanvasRenderingContext2D, theme: RoomTheme, W: number, H: number, floorY: number, doorActive: boolean, t: number): void {
+function drawDoor(ctx: CanvasRenderingContext2D, theme: RoomTheme, W: number, H: number, gateY: number, doorActive: boolean, t: number): void {
   const dw = 58;
   const dh = 156;
   const dx = W - dw - 10;
-  const dy = Math.round(floorY + (H - floorY) * 0.5 - dh / 2);
+  const dy = Math.round(Math.max(120, Math.min(H - dh - 14, gateY - dh / 2)));
   px(ctx, dx - 6, dy - 8, dw + 12, dh + 16, "#1f1b2f");
   px(ctx, dx - 2, dy - 4, dw + 4, dh + 8, doorActive ? tint(theme.accent, 18) : theme.wallShade);
   px(ctx, dx, dy, dw, dh, doorActive ? theme.accent : "#2c2438");
