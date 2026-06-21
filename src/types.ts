@@ -220,6 +220,9 @@ export type Gender = "male" | "female";
 /** Visual-only avatar family style chosen on the setup screen. */
 export type HeritageStyle = "western" | "asian" | "middleEastern" | "black";
 
+/** Adopted room pet, chosen by the puppy/kitten surprise event. */
+export type PetKind = "dog" | "cat";
+
 /** A job chosen at the start of the Career stage. */
 export interface Occupation {
   id: string;

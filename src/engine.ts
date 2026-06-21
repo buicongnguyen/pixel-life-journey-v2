@@ -8,6 +8,7 @@ import type {
   OptionCategory,
   Partner,
   PersonKind,
+  PetKind,
   Stats,
   StatKey,
   UpperSceneKind,
@@ -56,7 +57,7 @@ import {
   makeMoment,
   newBiography,
 } from "./biography";
-import { avatarLook, drawAvatar, drawEventItem, drawPerson, drawRoom, drawStation, type AvatarFacing } from "./sprites";
+import { avatarLook, drawAvatar, drawEventItem, drawPerson, drawPet, drawRoom, drawStation, type AvatarFacing } from "./sprites";
 import { createUI, type UIRefs } from "./ui";
 import { generateStory, type CauseOfEnd, type LifeStory } from "./story";
 
@@ -80,6 +81,9 @@ const ITEM_R = 26; // contact / collect radius
 const BLOCK_R = 30; // an NPC standing in the path blocks a bad item
 const SATIATE_TIME = 9; // seconds a bad item stays frozen/faded after you do its good counterpart
 const BABY_FAMILY_SIT_R = 92; // newborn family sits only when the baby crawls right up to them
+const PET_FOLLOW_SPEED = 124;
+const PET_HAPPY_R = 34;
+const PET_HAPPY_COOLDOWN = 6;
 const BAD_SOCIAL_TAGS = ["smoker_friend", "gangster_friend", "playboy_friend"];
 const INVENTORY_MAX_SLOTS = 8;
 const INVENTORY_MAX_COUNT = 9;
@@ -185,6 +189,10 @@ interface Snapshot {
   bigFired: boolean;
   jackpotFired: boolean;
   petAdopted: boolean;
+  petKind: PetKind | null;
+  petX: number;
+  petY: number;
+  petHappyCd: number;
   eventsLog: string[];
   healthSum: number;
   happinessSum: number;
@@ -237,6 +245,12 @@ export class Game {
   private bigFired = false; // a "big" windfall already happened (1/life)
   private jackpotFired = false; // a jackpot already happened (1/life total)
   private petAdopted = false; // adopted a pet (1/life)
+  private petKind: PetKind | null = null;
+  private petX = 132;
+  private petY = 640;
+  private petFacing: "left" | "right" = "right";
+  private petWalkPhase = 0;
+  private petHappyCd = 0;
   private spouseDeceased = false;
   private habitCount = 0;
   private eventCooldown = 2;
@@ -339,7 +353,13 @@ export class Game {
       moneyWise: this.moneyWise,
       owned: [...this.owned],
       habitCount: this.habitCount,
-      caps: { bigFired: this.bigFired, jackpotFired: this.jackpotFired, petAdopted: this.petAdopted },
+      caps: { bigFired: this.bigFired, jackpotFired: this.jackpotFired, petAdopted: this.petAdopted, petKind: this.petKind },
+      pet: this.petKind ? {
+        kind: this.petKind,
+        x: Math.round(this.petX),
+        y: Math.round(this.petY),
+        happyCooldown: Math.round(this.petHappyCd * 10) / 10,
+      } : null,
       events: [...this.eventsLog],
       eventItems: this.stations
         .filter((s) => s.kind === "event" && s.event)
@@ -378,6 +398,13 @@ export class Game {
     const eventId = st.event!.id;
     this.collectEventItem(st);
     return eventId;
+  }
+
+  /** Test/debug: adopt a room pet immediately. */
+  debugAdoptPet(kind: PetKind = "dog"): PetKind | null {
+    if (this.mode !== "playing") return null;
+    this.adoptPet(kind, this.px + 70, this.py + 28);
+    return this.petKind;
   }
 
   /** Test/debug: choose an option by id in the current stage (ignores position). */
@@ -446,6 +473,12 @@ export class Game {
     this.bigFired = false;
     this.jackpotFired = false;
     this.petAdopted = false;
+    this.petKind = null;
+    this.petX = 132;
+    this.petY = 640;
+    this.petFacing = "right";
+    this.petWalkPhase = 0;
+    this.petHappyCd = 0;
     this.spouseDeceased = false;
     this.habitCount = 0;
     this.eventCooldown = 2;
@@ -481,6 +514,7 @@ export class Game {
     this.age = Math.max(this.age, s.ageStart);
     this.px = 70;
     this.py = 500;
+    this.placePetInRoom(this.px + 86, this.py + 48);
     this.focusIndex = -1;
     this.buildStations();
     this.renderFocusPanel(); // reset the panel to the default prompt on stage entry
@@ -541,6 +575,10 @@ export class Game {
       bigFired: this.bigFired,
       jackpotFired: this.jackpotFired,
       petAdopted: this.petAdopted,
+      petKind: this.petKind,
+      petX: this.petX,
+      petY: this.petY,
+      petHappyCd: this.petHappyCd,
       usedEvents: [...this.usedEvents],
       eventsLog: [...this.eventsLog],
       healthSum: this.healthSum,
@@ -736,6 +774,59 @@ export class Game {
       return { min: SOCIAL_Y_MIN, max: Math.max(SOCIAL_Y_MIN + MIN_ZONE_HEIGHT, splitY - ZONE_GATE_GAP) };
     }
     return { min: Math.min(FAMILY_Y_MAX - MIN_ZONE_HEIGHT, splitY + ZONE_GATE_GAP), max: FAMILY_Y_MAX };
+  }
+
+  private placePetInRoom(x = this.px + 86, y = this.py + 48): void {
+    if (!this.petKind) return;
+    const bounds = this.zoneBounds("family");
+    this.petX = Math.max(78, Math.min(W - 112, x));
+    this.petY = Math.max(bounds.min + 24, Math.min(bounds.max - 4, y));
+    this.petFacing = this.petX > this.px ? "left" : "right";
+  }
+
+  private adoptPet(kind: PetKind, x = this.px + 70, y = this.py + 36): void {
+    this.petAdopted = true;
+    this.petKind = kind;
+    this.petHappyCd = 1.6;
+    this.petWalkPhase = 0;
+    this.placePetInRoom(x, y);
+  }
+
+  private updatePet(dt: number): void {
+    if (!this.petKind) return;
+    if (this.petHappyCd > 0) this.petHappyCd = Math.max(0, this.petHappyCd - dt);
+    const bounds = this.zoneBounds("family");
+
+    if (this.petKind === "cat") {
+      this.petWalkPhase += dt * 1.2;
+      this.petX = Math.max(78, Math.min(W - 112, this.petX));
+      this.petY = Math.max(bounds.min + 24, Math.min(bounds.max - 4, this.petY));
+      return;
+    }
+
+    const targetX = Math.max(78, Math.min(W - 112, this.px + (this.facing === "left" ? 28 : -28)));
+    const targetY = Math.max(bounds.min + 24, Math.min(bounds.max - 4, this.py + 8));
+    const dx = targetX - this.petX;
+    const dy = targetY - this.petY;
+    const d = Math.hypot(dx, dy) || 1;
+    if (d > 22) {
+      const sp = PET_FOLLOW_SPEED * (d > 140 ? 1.25 : 1);
+      this.petX += (dx / d) * sp * dt;
+      this.petY += (dy / d) * sp * dt;
+      this.petFacing = dx < 0 ? "left" : "right";
+      this.petWalkPhase += dt * 10;
+    } else {
+      this.petWalkPhase += dt * 3;
+    }
+
+    this.petX = Math.max(78, Math.min(W - 112, this.petX));
+    this.petY = Math.max(bounds.min + 24, Math.min(bounds.max - 4, this.petY));
+    if (Math.hypot(this.px - this.petX, this.py - this.petY) <= PET_HAPPY_R && this.petHappyCd <= 0) {
+      this.petHappyCd = PET_HAPPY_COOLDOWN;
+      this.applyEff({ happiness: 2 }, "mental");
+      this.floats.push({ x: this.petX, y: this.petY - 58, text: "🐶 +happy", color: "#ffd23f", life: 1.25 });
+      this.hint("Your dog ran up to you. +2 Happy.");
+    }
   }
 
   // --- per-stage balance helpers -------------------------------------------
@@ -1224,7 +1315,7 @@ export class Game {
     if (e.once) this.usedEvents.add(e.id);
     if (e.tier === "big") this.bigFired = true;
     if (e.tier === "jackpot") this.jackpotFired = true;
-    if (e.tier === "pet") this.petAdopted = true;
+    if (e.tier === "pet") this.adoptPet(e.id === "kitten" ? "cat" : "dog", st.x, st.y);
     const i = this.stations.indexOf(st);
     if (i >= 0) this.stations.splice(i, 1);
     this.focusIndex = -1;
@@ -1249,6 +1340,10 @@ export class Game {
       });
     }
     this.spawnFloats(e.effects);
+    if (e.tier === "pet") {
+      const petName = this.petKind === "cat" ? "cat" : "dog";
+      this.hint(`You adopted a ${petName}. It now lives in the family room.`);
+    }
     this.renderFocusPanel();
     if (this.stats.health <= 0) this.finishLife("health", Math.round(this.age));
   }
@@ -1618,6 +1713,12 @@ export class Game {
     this.bigFired = snap.bigFired;
     this.jackpotFired = snap.jackpotFired;
     this.petAdopted = snap.petAdopted;
+    this.petKind = snap.petKind ?? null;
+    this.petX = snap.petX ?? 132;
+    this.petY = snap.petY ?? 640;
+    this.petHappyCd = snap.petHappyCd ?? 0;
+    this.petFacing = this.petX > this.px ? "left" : "right";
+    this.petWalkPhase = 0;
     this.usedEvents = new Set(snap.usedEvents);
     this.eventsLog = [...snap.eventsLog];
     this.eventCooldown = 2;
@@ -1703,6 +1804,7 @@ export class Game {
       this.verticalBias = 0;
       this.walkPhase += dt * 3;
     }
+    this.updatePet(dt);
 
     // Common good items flee until you touch them, bad items chase, people block,
     // and any un-satiated bad thing that catches you applies automatically.
@@ -2051,11 +2153,19 @@ export class Game {
       });
 
       // draw stations, people and the avatar together, sorted by depth (y)
-      type Drawable = { y: number; station?: Station };
+      type Drawable = { y: number; station?: Station; pet?: boolean };
       const drawables: Drawable[] = this.stations.map((st) => ({ y: st.y, station: st }));
+      if (this.petKind) drawables.push({ y: this.petY, pet: true });
       drawables.push({ y: this.py }); // the avatar
       drawables.sort((a, b) => a.y - b.y);
       for (const d of drawables) {
+        if (d.pet && this.petKind) {
+          drawPet(ctx, this.petX, this.petY, this.petKind, t + this.petWalkPhase * 0.08, {
+            facing: this.petFacing,
+            sitting: this.petKind === "cat",
+          });
+          continue;
+        }
         if (!d.station) {
           drawAvatar(ctx, this.px, this.py, avatarLook(this.stageIndex, this.gender, this.heritage), this.walkPhase, {
             moving: this.moving,

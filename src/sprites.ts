@@ -1,4 +1,4 @@
-import type { Gender, HeritageStyle, HouseTier, PersonKind, RoomTheme, SceneKind, UpperSceneKind, VehicleTier } from "./types";
+import type { Gender, HeritageStyle, HouseTier, PersonKind, PetKind, RoomTheme, SceneKind, UpperSceneKind, VehicleTier } from "./types";
 
 // ---------------------------------------------------------------------------
 // All drawing. The canvas is supersampled (see ui.ts) and rendered smoothly, so
@@ -2620,8 +2620,8 @@ export function drawEventItem(
   ctx.ellipse(x, y - 3, focused ? 27 : 22, focused ? 7 : 5, 0, 0, Math.PI * 2);
   ctx.fill();
 
-  if (eventId === "puppy") drawPetEvent(ctx, x, footY, "dog", focused);
-  else if (eventId === "kitten") drawPetEvent(ctx, x, footY, "cat", focused);
+  if (eventId === "puppy") drawPet(ctx, x, footY, "dog", t, { focused, shadow: false });
+  else if (eventId === "kitten") drawPet(ctx, x, footY, "cat", t, { focused, shadow: false });
   else if (EVENT_MONEY_IDS.has(eventId)) drawMoneyEvent(ctx, x, footY, eventId, focused);
   else if (!good) drawBadEvent(ctx, x, footY, eventId, focused);
   else if (EVENT_PRIZE_IDS.has(eventId)) drawPrizeEvent(ctx, x, footY, eventId, focused);
@@ -2645,43 +2645,62 @@ export function drawEventItem(
   ctx.restore();
 }
 
-function drawPetEvent(ctx: CanvasRenderingContext2D, x: number, footY: number, kind: "dog" | "cat", focused: boolean): void {
+export interface PetDrawOptions {
+  focused?: boolean;
+  facing?: "left" | "right";
+  sitting?: boolean;
+  shadow?: boolean;
+}
+
+export function drawPet(ctx: CanvasRenderingContext2D, x: number, footY: number, kind: PetKind, t: number, options: PetDrawOptions = {}): void {
   const dog = kind === "dog";
   const fur = dog ? "#c68148" : "#7d8794";
   const furLight = dog ? "#e6b17a" : "#b8c1cc";
   const ear = dog ? "#7b4a35" : "#4d5663";
-  const scale = focused ? 1.08 : 1;
+  const focused = !!options.focused;
+  const sitting = !!options.sitting;
+  const scale = (focused ? 1.08 : 1) * (sitting ? 0.96 : 1);
+  const dir = options.facing === "left" ? -1 : 1;
+  const wag = dog ? Math.sin(t * 9 + x * 0.04) * 3 : Math.sin(t * 2.2 + x * 0.02) * 2;
+  if (options.shadow !== false) {
+    ctx.save();
+    ctx.globalAlpha = focused ? 0.34 : 0.24;
+    ellipse(ctx, x, footY - 3, focused ? 27 : 23, focused ? 7 : 5, "rgba(0,0,0,0.38)");
+    ctx.restore();
+  }
   ctx.save();
-  ctx.scale(scale, scale);
-  const sx = x / scale;
-  const sy = footY / scale;
+  ctx.translate(x, footY);
+  ctx.scale(dir * scale, scale);
+  const sx = 0;
+  const sy = 0;
   ctx.lineWidth = 2;
   ctx.strokeStyle = OUTLINE;
-  ellipse(ctx, sx - 7, sy - 24, 21, 12, fur);
+  ellipse(ctx, sx - 7, sy - 24, sitting ? 19 : 21, sitting ? 13 : 12, fur);
   ctx.stroke();
-  px(ctx, sx - 20, sy - 16, 5, 15, OUTLINE);
-  px(ctx, sx - 18.8, sy - 16, 3, 14, furLight);
-  px(ctx, sx + 2, sy - 16, 5, 15, OUTLINE);
-  px(ctx, sx + 3.2, sy - 16, 3, 14, furLight);
+  const legH = sitting ? 10 : 15;
+  px(ctx, sx - 20, sy - 16, 5, legH, OUTLINE);
+  px(ctx, sx - 18.8, sy - 16, 3, legH - 1, furLight);
+  px(ctx, sx + 2, sy - 16, 5, legH, OUTLINE);
+  px(ctx, sx + 3.2, sy - 16, 3, legH - 1, furLight);
   ctx.lineWidth = dog ? 3 : 2;
   ctx.strokeStyle = OUTLINE;
   ctx.beginPath();
   if (dog) {
     ctx.moveTo(sx - 27, sy - 27);
-    ctx.lineTo(sx - 39, sy - 35);
+    ctx.lineTo(sx - 39, sy - 35 + wag);
   } else {
     ctx.moveTo(sx - 28, sy - 27);
-    ctx.quadraticCurveTo(sx - 43, sy - 44, sx - 27, sy - 50);
+    ctx.quadraticCurveTo(sx - 43, sy - 44 + wag, sx - 27, sy - 50);
   }
   ctx.stroke();
   ctx.strokeStyle = dog ? "#d59d6b" : "#9fa8b2";
   ctx.beginPath();
   if (dog) {
     ctx.moveTo(sx - 26, sy - 27);
-    ctx.lineTo(sx - 37, sy - 34);
+    ctx.lineTo(sx - 37, sy - 34 + wag);
   } else {
     ctx.moveTo(sx - 27, sy - 28);
-    ctx.quadraticCurveTo(sx - 39, sy - 43, sx - 27, sy - 48);
+    ctx.quadraticCurveTo(sx - 39, sy - 43 + wag, sx - 27, sy - 48);
   }
   ctx.stroke();
   ellipse(ctx, sx + 18, sy - 32, 13, 12, furLight);
