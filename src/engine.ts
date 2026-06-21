@@ -149,6 +149,138 @@ const TRAINING_PUZZLES = [
     correct: 1,
     win: "Careful logic beats fast guessing. +2 IQ.",
   },
+  {
+    q: "Which number comes next: 3, 6, 11, 18, 27, ?",
+    answers: ["36", "38", "41"],
+    correct: 1,
+    win: "You followed the odd-number gaps. +2 IQ.",
+  },
+  {
+    q: "A book and a pen cost $1.10 together. The book costs $1.00 more than the pen. How much is the pen?",
+    answers: ["$0.05", "$0.10", "$0.15"],
+    correct: 0,
+    win: "You slowed down and avoided the quick trap. +2 IQ.",
+  },
+  {
+    q: "If 6 robots make 6 toys in 6 minutes, how many minutes do 60 robots need to make 60 toys?",
+    answers: ["6 minutes", "10 minutes", "60 minutes"],
+    correct: 0,
+    win: "Rate reasoning unlocked. +2 IQ.",
+  },
+  {
+    q: "Which pair continues the pattern: 1A, 2B, 4D, 8H, ?",
+    answers: ["10J", "12L", "16P"],
+    correct: 2,
+    win: "You tracked both number and letter doubling. +2 IQ.",
+  },
+  {
+    q: "Maya is older than Leo. Leo is older than Nina. Who is youngest?",
+    answers: ["Maya", "Leo", "Nina"],
+    correct: 2,
+    win: "Clean ordering, clean answer. +2 IQ.",
+  },
+  {
+    q: "If today is Wednesday, what day is 10 days from now?",
+    answers: ["Friday", "Saturday", "Sunday"],
+    correct: 1,
+    win: "Calendar math handled. +2 IQ.",
+  },
+  {
+    q: "Which word does not belong: apple, pear, carrot, peach?",
+    answers: ["pear", "carrot", "peach"],
+    correct: 1,
+    win: "Category spotting sharpened. +2 IQ.",
+  },
+  {
+    q: "Wing is to bird as fin is to what?",
+    answers: ["fish", "boat", "cloud"],
+    correct: 0,
+    win: "Analogy solved. +2 IQ.",
+  },
+  {
+    q: "All red boxes are heavy. This box is heavy. Can we prove it is red?",
+    answers: ["Yes", "No", "Only if it is square"],
+    correct: 1,
+    win: "You avoided reversing the logic. +2 IQ.",
+  },
+  {
+    q: "Which number comes next: 2, 3, 5, 9, 17, ?",
+    answers: ["31", "33", "35"],
+    correct: 1,
+    win: "You spotted the doubling jumps. +2 IQ.",
+  },
+  {
+    q: "In a race, you pass the person in second place. What place are you in now?",
+    answers: ["First", "Second", "Third"],
+    correct: 1,
+    win: "Nice trap dodge. +2 IQ.",
+  },
+  {
+    q: "How many months have at least 28 days?",
+    answers: ["1", "11", "12"],
+    correct: 2,
+    win: "You read the question carefully. +2 IQ.",
+  },
+  {
+    q: "A die has opposite faces that sum to 7. What is opposite 2?",
+    answers: ["3", "4", "5"],
+    correct: 2,
+    win: "Spatial rule remembered. +2 IQ.",
+  },
+  {
+    q: "Which number is missing: 4, 9, 16, 25, ?",
+    answers: ["30", "36", "42"],
+    correct: 1,
+    win: "Square-number pattern solved. +2 IQ.",
+  },
+  {
+    q: "If A is taller than B, and B is taller than C, which must be true?",
+    answers: ["A is taller than C", "C is taller than A", "B is shortest"],
+    correct: 0,
+    win: "Transitive logic clicked. +2 IQ.",
+  },
+  {
+    q: "A code shifts each letter forward by 1. What does CAT become?",
+    answers: ["DBU", "CBU", "DBT"],
+    correct: 0,
+    win: "Code pattern cracked. +2 IQ.",
+  },
+  {
+    q: "Which comes next: 81, 27, 9, ?",
+    answers: ["6", "3", "1"],
+    correct: 1,
+    win: "Division pattern found. +2 IQ.",
+  },
+  {
+    q: "One kilogram of feathers and one kilogram of rice: which is heavier?",
+    answers: ["feathers", "rice", "same weight"],
+    correct: 2,
+    win: "Measurement trap avoided. +2 IQ.",
+  },
+  {
+    q: "A square has four equal sides. If its side is 5, what is its perimeter?",
+    answers: ["10", "20", "25"],
+    correct: 1,
+    win: "Geometry basics are strong. +2 IQ.",
+  },
+  {
+    q: "Which word completes the pattern: hot is to cold as up is to ?",
+    answers: ["high", "down", "sky"],
+    correct: 1,
+    win: "Opposite-pair reasoning solved. +2 IQ.",
+  },
+  {
+    q: "A train leaves at 2:00 and arrives at 3:45. How long was the trip?",
+    answers: ["1 hour 15 minutes", "1 hour 45 minutes", "2 hours 15 minutes"],
+    correct: 1,
+    win: "Time reasoning improved. +2 IQ.",
+  },
+  {
+    q: "Which number is the odd one out: 14, 21, 28, 35, 43?",
+    answers: ["21", "35", "43"],
+    correct: 2,
+    win: "Multiples pattern spotted. +2 IQ.",
+  },
 ] as const;
 
 type Mode =
@@ -3241,7 +3373,8 @@ export class Game {
       return;
     }
     this.mode = "training";
-    const puzzle = TRAINING_PUZZLES[this.trainingPuzzleIndex % TRAINING_PUZZLES.length];
+    const puzzleNumber = this.trainingPuzzleIndex % TRAINING_PUZZLES.length;
+    const puzzle = TRAINING_PUZZLES[puzzleNumber];
     const answers = puzzle.answers.map((answer, i) =>
       `<button class="plj-training-answer" data-answer="${i}">${esc(answer)}</button>`
     ).join("");
@@ -3257,7 +3390,7 @@ export class Game {
         <p class="plj-sub">Practice thinking, money, and family care. Each session takes a tiny slice of life time.</p>
         ${message ? `<p class="plj-training-result">${esc(message)}</p>` : ""}
         <section class="plj-training-puzzle">
-          <h3>🧩 Tricky IQ game</h3>
+          <h3>🧩 Tricky IQ game <span class="plj-training-count">Question ${puzzleNumber + 1} / ${TRAINING_PUZZLES.length}</span></h3>
           <p>${esc(puzzle.q)}</p>
           <div class="plj-training-answers">${answers}</div>
         </section>

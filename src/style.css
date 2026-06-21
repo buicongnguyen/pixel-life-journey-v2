@@ -1194,6 +1194,17 @@ body {
   margin: 0 0 6px;
   font-size: 13px;
 }
+.plj-training-count {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 2px 6px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 999px;
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 700;
+  white-space: nowrap;
+}
 .plj-training-puzzle p {
   margin: 0 0 9px;
   color: var(--ink);
