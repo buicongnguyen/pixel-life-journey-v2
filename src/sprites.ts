@@ -1491,33 +1491,66 @@ function window2(ctx: CanvasRenderingContext2D, x: number, y: number, w: number,
 }
 
 function drawSocialArea(ctx: CanvasRenderingContext2D, W: number, top: number, bottom: number, t: number): void {
-  const sky = ctx.createLinearGradient(0, top, 0, bottom);
+  const horizon = Math.round(Math.min(top + 86, bottom - 122));
+  const sky = ctx.createLinearGradient(0, top, 0, horizon);
   sky.addColorStop(0, "#8fd0ff");
-  sky.addColorStop(0.55, "#c8eeff");
-  sky.addColorStop(1, "#8edc92");
+  sky.addColorStop(1, "#d9f4ff");
   ctx.fillStyle = sky;
-  ctx.fillRect(0, top, W, bottom - top);
+  ctx.fillRect(0, top, W, horizon - top);
   px(ctx, 0, top, W, 3, "#5ca9d6");
   const cloudShift = (t * 9) % 160;
-  for (const [x0, y, s] of [[42, top + 46, 1], [240, top + 32, 0.75], [410, top + 68, 0.9], [585, top + 40, 0.7]] as const) {
+  for (const [x0, y, s] of [[42, top + 42, 1], [240, top + 28, 0.75], [410, top + 58, 0.9], [585, top + 36, 0.7]] as const) {
     const x = ((x0 + cloudShift) % (W + 120)) - 80;
     ellipse(ctx, x, y, 22 * s, 8 * s, "rgba(255,255,255,0.86)");
     ellipse(ctx, x + 20 * s, y + 4 * s, 26 * s, 9 * s, "rgba(255,255,255,0.80)");
     ellipse(ctx, x - 18 * s, y + 5 * s, 16 * s, 6 * s, "rgba(255,255,255,0.76)");
   }
-  ellipse(ctx, W - 70, top + 42, 24, 24, "#ffe27a");
-  px(ctx, 0, bottom - 84, W, 84, "#77c678");
-  px(ctx, 0, bottom - 78, W, 6, "#99df93");
+  ellipse(ctx, W - 70, top + 38, 22, 22, "#ffe27a");
+
+  const ground = ctx.createLinearGradient(0, horizon, 0, bottom);
+  ground.addColorStop(0, "#a5df86");
+  ground.addColorStop(0.48, "#74c979");
+  ground.addColorStop(1, "#5bb56e");
+  ctx.fillStyle = ground;
+  ctx.fillRect(0, horizon, W, bottom - horizon);
+  px(ctx, 0, horizon - 3, W, 8, "#8ed17f");
+  px(ctx, 0, horizon + 8, W, 3, "rgba(255,255,255,0.22)");
   for (let x = 24; x < W; x += 76) {
-    px(ctx, x, bottom - 78, 8, 34, "#6b4a32");
-    ellipse(ctx, x + 4, bottom - 88, 23, 18, x % 152 === 24 ? "#3fb46c" : "#52c77a");
+    px(ctx, x, horizon - 8, 8, 34, "#6b4a32");
+    ellipse(ctx, x + 4, horizon - 18, 23, 18, x % 152 === 24 ? "#3fb46c" : "#52c77a");
   }
-  const path = ctx.createLinearGradient(0, bottom - 50, 0, bottom);
+
+  if (bottom - horizon > 170) {
+    const pondX = 106;
+    const pondY = Math.round(horizon + (bottom - horizon) * 0.46);
+    ellipse(ctx, pondX, pondY, 86, 28, "#6ec8e8");
+    ellipse(ctx, pondX - 16, pondY - 4, 54, 12, "rgba(255,255,255,0.28)");
+    px(ctx, pondX - 92, pondY + 22, 178, 5, "#4d9c65");
+    for (let x = pondX - 72; x < pondX + 82; x += 28) px(ctx, x, pondY + 18, 14, 7, "#7cc46b");
+
+    const swingX = W - 166;
+    const swingY = Math.round(horizon + (bottom - horizon) * 0.28);
+    px(ctx, swingX, swingY, 5, 80, "#7a5a44");
+    px(ctx, swingX + 72, swingY, 5, 80, "#7a5a44");
+    px(ctx, swingX - 10, swingY, 96, 5, "#7a5a44");
+    px(ctx, swingX + 27, swingY + 5, 3, 54, "#3f5168");
+    px(ctx, swingX + 49, swingY + 5, 3, 54, "#3f5168");
+    px(ctx, swingX + 24, swingY + 58, 32, 7, "#f2b24c");
+  }
+
+  for (let x = 18; x < W; x += 38) {
+    const y = horizon + 18 + ((x / 38) % 4) * 29;
+    if (y < bottom - 68) px(ctx, x, y, 10, 3, "rgba(58,118,66,0.25)");
+  }
+
+  const pathTop = Math.max(horizon + 72, bottom - 58);
+  const path = ctx.createLinearGradient(0, pathTop, 0, bottom);
   path.addColorStop(0, "#eacb8f");
   path.addColorStop(1, "#c39b62");
   ctx.fillStyle = path;
-  ctx.fillRect(0, bottom - 50, W, 50);
-  for (let x = -20; x < W; x += 54) px(ctx, x, bottom - 24, 28, 4, "rgba(255,255,255,0.30)");
+  ctx.fillRect(0, pathTop, W, bottom - pathTop);
+  px(ctx, 0, pathTop, W, 4, "#e7d69a");
+  for (let x = -20; x < W; x += 54) px(ctx, x, pathTop + Math.max(16, (bottom - pathTop) * 0.52), 28, 4, "rgba(255,255,255,0.30)");
 }
 
 function drawFamilyArea(ctx: CanvasRenderingContext2D, scene: SceneKind, theme: RoomTheme, W: number, top: number, H: number, t: number): void {
