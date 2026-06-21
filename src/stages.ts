@@ -82,6 +82,7 @@ export const STAGES: Stage[] = [
     blurb: "Ages 2–3. Curious and wobbly. Everything is new!",
     theme: themes.play,
     scene: "playroom",
+    upperScenes: ["park", "amusementPark"],
     options: [
       { id: "fruit", label: "Fruit", icon: "🍓", desc: "Healthy fruit snacks — great for a growing body.", category: "food", effects: { health: 8 }, storyTag: "veggies" },
       { id: "candy", label: "Candy", icon: "🍬", desc: "Sweet treats. Fun now, not so good for you.", category: "food", effects: { fun: 8, health: -6 }, storyTag: "junkfood" },
@@ -104,6 +105,7 @@ export const STAGES: Stage[] = [
     blurb: "Ages 3–7. Play, stories and your first big questions.",
     theme: themes.yard,
     scene: "playroom",
+    upperScenes: ["park", "amusementPark"],
     options: [
       { id: "books", label: "Story books", icon: "📚", desc: "Picture books spark imagination and early smarts.", category: "smarts", effects: { smarts: 8, happiness: 2 }, storyTag: "read" },
       { id: "veg", label: "Veggies", icon: "🥦", desc: "Eat your vegetables — fuel for a healthy body.", category: "food", effects: { health: 8 }, storyTag: "veggies" },
@@ -125,6 +127,7 @@ export const STAGES: Stage[] = [
     blurb: "Ages 7–11. Reading, recess and your first report card.",
     theme: themes.school,
     scene: "school",
+    upperScenes: ["schoolOutdoor", "amusementPark"],
     options: [
       { id: "study", label: "Study", icon: "📖", desc: "Do your homework. Smarts open doors later.", category: "smarts", effects: { smarts: 9, fun: -2 }, storyTag: "study" },
       { id: "sports", label: "Sports", icon: "⚽", desc: "Join a sports team — healthy and social.", category: "health", effects: { health: 8, fun: 3 }, storyTag: "sports" },

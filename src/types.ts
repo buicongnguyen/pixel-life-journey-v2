@@ -62,6 +62,7 @@ export type SceneKind =
 /** The upper/social playable area's scenery. */
 export type UpperSceneKind =
   | "park"
+  | "amusementPark"
   | "schoolIndoor"
   | "schoolOutdoor"
   | "campusIndoor"

@@ -2060,8 +2060,62 @@ function window2(ctx: CanvasRenderingContext2D, x: number, y: number, w: number,
   px(ctx, x, y + h / 2 - 1, w, 2, "#6a5a3a");
 }
 
+function drawPixelTree(ctx: CanvasRenderingContext2D, x: number, groundY: number, scale = 1, variant = 0): void {
+  const trunkH = 42 * scale;
+  const trunkW = 10 * scale;
+  const leafA = variant % 2 ? "#42b96f" : "#35a969";
+  const leafB = variant % 2 ? "#68d57b" : "#55c96f";
+  const leafC = variant % 3 ? "#2e8d58" : "#2f9a61";
+  ctx.save();
+  ellipse(ctx, x + 2 * scale, groundY + 3 * scale, 27 * scale, 6 * scale, "rgba(33,72,40,0.24)");
+  px(ctx, x - trunkW / 2 - 1, groundY - trunkH, trunkW + 2, trunkH + 3 * scale, "#5c3b26");
+  px(ctx, x - trunkW / 2 + 2 * scale, groundY - trunkH + 4 * scale, trunkW * 0.36, trunkH - 4 * scale, "#8a5a35");
+  px(ctx, x - trunkW / 2 - 7 * scale, groundY - 3 * scale, 13 * scale, 3 * scale, "#5c3b26");
+  px(ctx, x + trunkW / 2 - 2 * scale, groundY - 4 * scale, 13 * scale, 3 * scale, "#5c3b26");
+
+  ctx.strokeStyle = "#5c3b26";
+  ctx.lineWidth = Math.max(2, 4 * scale);
+  ctx.lineCap = "round";
+  ctx.beginPath();
+  ctx.moveTo(x, groundY - trunkH + 9 * scale);
+  ctx.lineTo(x - 19 * scale, groundY - trunkH - 11 * scale);
+  ctx.moveTo(x + 1 * scale, groundY - trunkH + 4 * scale);
+  ctx.lineTo(x + 20 * scale, groundY - trunkH - 15 * scale);
+  ctx.moveTo(x, groundY - trunkH - 5 * scale);
+  ctx.lineTo(x + 4 * scale, groundY - trunkH - 28 * scale);
+  ctx.stroke();
+
+  const top = groundY - trunkH - 20 * scale;
+  const blobs = [
+    [-18, 8, 20, 17, leafC],
+    [0, -6, 25, 20, leafA],
+    [21, 7, 21, 18, leafB],
+    [-4, 15, 28, 18, leafB],
+    [11, -18, 18, 14, leafC],
+  ] as const;
+  for (const [dx, dy, rx, ry, color] of blobs) {
+    ellipse(ctx, x + dx * scale, top + dy * scale, rx * scale, ry * scale, color);
+  }
+  for (const [dx, dy] of [[-16, -1], [10, -15], [23, 8], [-1, 17]] as const) {
+    px(ctx, x + dx * scale, top + dy * scale, 7 * scale, 3 * scale, "rgba(235,255,206,0.42)");
+  }
+  ctx.restore();
+}
+
+function drawFlowerPatch(ctx: CanvasRenderingContext2D, x: number, y: number, count = 5): void {
+  for (let i = 0; i < count; i++) {
+    const px0 = x + i * 15;
+    const c = ["#ff7ab0", "#ffd23f", "#7fd0ff", "#ffffff"][i % 4];
+    px(ctx, px0, y + 5, 2, 7, "#3f8d4f");
+    ellipse(ctx, px0 + 1, y + 3, 4, 3, c);
+  }
+}
+
 function drawSocialArea(ctx: CanvasRenderingContext2D, W: number, top: number, bottom: number, t: number, scene: UpperSceneKind): void {
   switch (scene) {
+    case "amusementPark":
+      drawAmusementParkArea(ctx, W, top, bottom, t);
+      return;
     case "schoolIndoor":
       drawSchoolIndoorArea(ctx, W, top, bottom, false);
       return;
@@ -2112,9 +2166,10 @@ function drawOutdoorParkArea(ctx: CanvasRenderingContext2D, W: number, top: numb
   px(ctx, 0, horizon - 3, W, 8, "#8ed17f");
   px(ctx, 0, horizon + 8, W, 3, "rgba(255,255,255,0.22)");
   for (let x = 24; x < W; x += 76) {
-    px(ctx, x, horizon - 8, 8, 34, "#6b4a32");
-    ellipse(ctx, x + 4, horizon - 18, 23, 18, x % 152 === 24 ? "#3fb46c" : "#52c77a");
+    drawPixelTree(ctx, x + 5, horizon + 25 + (x % 3) * 5, 0.72, x);
   }
+  drawFlowerPatch(ctx, 226, horizon + 56, 7);
+  drawFlowerPatch(ctx, W - 314, horizon + 76, 6);
 
   if (bottom - horizon > 170) {
     const pondX = 106;
@@ -2147,6 +2202,115 @@ function drawOutdoorParkArea(ctx: CanvasRenderingContext2D, W: number, top: numb
   ctx.fillRect(0, pathTop, W, bottom - pathTop);
   px(ctx, 0, pathTop, W, 4, "#e7d69a");
   for (let x = -20; x < W; x += 54) px(ctx, x, pathTop + Math.max(16, (bottom - pathTop) * 0.52), 28, 4, "rgba(255,255,255,0.30)");
+}
+
+function drawAmusementParkArea(ctx: CanvasRenderingContext2D, W: number, top: number, bottom: number, t: number): void {
+  const horizon = Math.round(Math.min(top + 54, bottom - 128));
+  const sky = ctx.createLinearGradient(0, top, 0, horizon);
+  sky.addColorStop(0, "#9bd8ff");
+  sky.addColorStop(1, "#e8f9ff");
+  ctx.fillStyle = sky;
+  ctx.fillRect(0, top, W, horizon - top);
+  px(ctx, 0, top, W, 3, "#65b2dc");
+  ellipse(ctx, W - 58, top + 24, 17, 17, "#ffe27a");
+  const cloudShift = (t * 7) % 180;
+  for (const [x0, y, s] of [[70, top + 24, 0.65], [270, top + 20, 0.58], [480, top + 34, 0.72]] as const) {
+    const x = ((x0 + cloudShift) % (W + 120)) - 70;
+    ellipse(ctx, x, y, 20 * s, 7 * s, "rgba(255,255,255,0.84)");
+    ellipse(ctx, x + 18 * s, y + 4 * s, 24 * s, 8 * s, "rgba(255,255,255,0.78)");
+  }
+
+  const ground = ctx.createLinearGradient(0, horizon, 0, bottom);
+  ground.addColorStop(0, "#b7e883");
+  ground.addColorStop(0.48, "#77ce74");
+  ground.addColorStop(0.49, "#f2cf7f");
+  ground.addColorStop(1, "#d99b5e");
+  ctx.fillStyle = ground;
+  ctx.fillRect(0, horizon, W, bottom - horizon);
+  px(ctx, 0, horizon - 3, W, 8, "#8ed17f");
+
+  drawPixelTree(ctx, 42, horizon + 48, 0.68, 4);
+  drawPixelTree(ctx, W - 42, horizon + 54, 0.62, 5);
+  drawFerrisWheel(ctx, 154, Math.min(bottom - 78, horizon + 102), Math.min(54, Math.max(38, (bottom - horizon) * 0.21)), t);
+  drawCarousel(ctx, W - 166, Math.min(bottom - 46, horizon + 130), t);
+  drawTicketBooth(ctx, Math.round(W * 0.48), Math.min(bottom - 48, horizon + 136));
+  drawFlowerPatch(ctx, 260, Math.min(bottom - 52, horizon + 118), 6);
+  drawBalloonStand(ctx, W - 62, Math.min(bottom - 78, horizon + 96), t);
+}
+
+function drawFerrisWheel(ctx: CanvasRenderingContext2D, cx: number, cy: number, r: number, t: number): void {
+  ctx.save();
+  ctx.strokeStyle = "#6b5c88";
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.ellipse(cx, cy, r, r, 0, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.lineWidth = 1.6;
+  for (let i = 0; i < 8; i++) {
+    const a = t * 0.18 + (Math.PI * 2 * i) / 8;
+    ctx.beginPath();
+    ctx.moveTo(cx, cy);
+    ctx.lineTo(cx + Math.cos(a) * r, cy + Math.sin(a) * r);
+    ctx.stroke();
+  }
+  limb(ctx, cx - r * 0.42, cy + r * 0.9, cx, cy, 5, "#756b91");
+  limb(ctx, cx + r * 0.42, cy + r * 0.9, cx, cy, 5, "#756b91");
+  px(ctx, cx - r * 0.52, cy + r * 0.94, r * 1.04, 5, "#5f5378");
+  for (let i = 0; i < 6; i++) {
+    const a = t * 0.18 + (Math.PI * 2 * i) / 6;
+    const x = cx + Math.cos(a) * r;
+    const y = cy + Math.sin(a) * r;
+    const c = ["#ff6f91", "#ffd23f", "#74d6ff"][i % 3];
+    px(ctx, x - 6, y + 4, 12, 8, "#3d334f");
+    px(ctx, x - 5, y + 3, 10, 7, c);
+  }
+  ctx.restore();
+}
+
+function drawCarousel(ctx: CanvasRenderingContext2D, cx: number, groundY: number, t: number): void {
+  ellipse(ctx, cx, groundY + 6, 62, 10, "rgba(80,45,40,0.24)");
+  px(ctx, cx - 54, groundY - 10, 108, 18, "#e85d75");
+  px(ctx, cx - 48, groundY - 16, 96, 8, "#ffd23f");
+  ctx.fillStyle = "#ff8a54";
+  ctx.beginPath();
+  ctx.moveTo(cx - 62, groundY - 18);
+  ctx.lineTo(cx, groundY - 66);
+  ctx.lineTo(cx + 62, groundY - 18);
+  ctx.closePath();
+  ctx.fill();
+  ctx.strokeStyle = "#7a3f5a";
+  ctx.lineWidth = 2;
+  ctx.stroke();
+  for (let i = -2; i <= 2; i++) {
+    const px0 = cx + i * 22;
+    px(ctx, px0, groundY - 54, 2, 44, "#f7e8a5");
+    const bob = Math.sin(t * 4 + i) * 2;
+    ellipse(ctx, px0 + 5, groundY - 24 + bob, 9, 5, "#ffffff");
+    ellipse(ctx, px0 + 12, groundY - 29 + bob, 4, 4, "#ffffff");
+    px(ctx, px0 - 4, groundY - 19 + bob, 15, 4, "#8f6bd8");
+  }
+}
+
+function drawTicketBooth(ctx: CanvasRenderingContext2D, x: number, groundY: number): void {
+  px(ctx, x - 38, groundY - 58, 76, 58, "#73c7df");
+  px(ctx, x - 44, groundY - 70, 88, 14, "#ff6f91");
+  px(ctx, x - 34, groundY - 52, 28, 24, "#fff1be");
+  px(ctx, x + 12, groundY - 44, 16, 44, "#4e4660");
+  ctx.fillStyle = "#fff8df";
+  ctx.font = "bold 9px 'Trebuchet MS', sans-serif";
+  ctx.textAlign = "center";
+  ctx.fillText("TICKETS", x, groundY - 61);
+}
+
+function drawBalloonStand(ctx: CanvasRenderingContext2D, x: number, y: number, t: number): void {
+  px(ctx, x - 6, y + 12, 12, 34, "#7a5537");
+  px(ctx, x - 24, y + 42, 48, 8, "#dca85c");
+  for (let i = 0; i < 5; i++) {
+    const bx = x - 24 + i * 12;
+    const by = y - 4 - (i % 2) * 11 + Math.sin(t * 2 + i) * 1.5;
+    limb(ctx, x, y + 12, bx, by + 9, 1.1, "rgba(80,60,80,0.55)");
+    ellipse(ctx, bx, by, 7, 9, ["#ff6f91", "#ffd23f", "#74d6ff", "#8ff0a4", "#ad7cff"][i]);
+  }
 }
 
 function drawSchoolIndoorArea(ctx: CanvasRenderingContext2D, W: number, top: number, bottom: number, campus: boolean): void {
@@ -2253,6 +2417,8 @@ function drawSchoolOutdoorArea(ctx: CanvasRenderingContext2D, W: number, top: nu
   ctx.restore();
   px(ctx, W - 70, courtY + 20, 8, 42, "#4e5d69");
   px(ctx, W - 86, courtY + 18, 32, 4, "#4e5d69");
+  drawPixelTree(ctx, 34, horizon + 48, 0.58, campus ? 9 : 8);
+  drawPixelTree(ctx, W - 28, horizon + 52, 0.5, campus ? 11 : 10);
   px(ctx, 38, bottom - 62, 214, 34, campus ? "#d8c078" : "#c35f5f");
   for (let x = 48; x < 244; x += 38) px(ctx, x, bottom - 52, 22, 4, "rgba(255,255,255,0.58)");
 }
@@ -2322,9 +2488,9 @@ function drawOfficeOutdoorArea(ctx: CanvasRenderingContext2D, W: number, top: nu
   ctx.fillRect(0, horizon, W, bottom - horizon);
   px(ctx, 0, Math.round(horizon + (bottom - horizon) * 0.42), W, 5, "#e8d59b");
   for (let x = 44; x < W; x += 116) {
-    px(ctx, x, horizon + 18, 8, 46, "#6b4a32");
-    ellipse(ctx, x + 4, horizon + 10, 24, 18, "#42b96f");
+    drawPixelTree(ctx, x + 4, horizon + 62, 0.68, x);
   }
+  drawFlowerPatch(ctx, 72, horizon + 112, 5);
   px(ctx, W - 178, bottom - 98, 116, 54, "#f6f0da");
   px(ctx, W - 178, bottom - 108, 116, 12, "#37a5c7");
   ctx.fillStyle = "#37515c";
