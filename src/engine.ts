@@ -60,13 +60,18 @@ import { generateStory, type CauseOfEnd, type LifeStory } from "./story";
 
 const W = 640;
 const H = 800; // a tall room with only a thin wall strip — almost all play floor
-const FLOOR_Y = 160; // less wall, much more floor to run and dodge in
+const FLOOR_Y = 112; // smaller backdrop, taller playable split-zone room
 const DOOR_X = W - 74;
+const GATE_Y = 456;
+const GATE_HALF_H = 86;
+const SPLIT_Y = GATE_Y;
 const SPEED = 205; // base move speed (scaled up by your IQ — smart = nimble)
-const ROW_BACK = 255;
-const ROW_FRONT = 752;
-const PY_MIN = 210;
+const PY_MIN = 150;
 const PY_MAX = 782;
+const SOCIAL_Y_MIN = PY_MIN + 58;
+const SOCIAL_Y_MAX = SPLIT_Y - 50;
+const FAMILY_Y_MIN = SPLIT_Y + 58;
+const FAMILY_Y_MAX = PY_MAX - 24;
 // --- moving-items mechanic ---
 const GOOD_SPEED = 24; // good items drift AWAY (chase them + press to collect)
 const BAD_SPEED = 34; // bad items drift TOWARD you (auto-applied on contact)
@@ -94,12 +99,14 @@ type Mode =
   | "settings";
 
 type StationKind = "good" | "bad" | "person" | "neutral" | "event";
+type StationZone = "social" | "family";
 
 interface Station {
   x: number;
   y: number;
   opt: LifeOption;
   kind: StationKind;
+  zone: StationZone;
   /** For surprise world pickups/hazards spawned from events.ts. */
   event?: RandomEvent;
   /** For bad items: which good category satiates it (diet = food, fit = activity). */
@@ -520,20 +527,25 @@ export class Game {
 
   private buildStations(): void {
     const opts = this.currentOptions();
-    const n = opts.length;
     const xStart = 100;
     const xEnd = W - 120;
-    const rows = [ROW_BACK, (ROW_BACK + ROW_FRONT) / 2, ROW_FRONT];
-    // Spread choices across the width and over three rows of the (now taller)
-    // floor. Good/bad items get their velocity in moveStations; people & pickers
-    // stay put.
-    this.stations = opts.map((opt, i) => {
+    const totals: Record<StationZone, number> = { social: 0, family: 0 };
+    for (const opt of opts) totals[this.stationZone(opt)]++;
+    const counts: Record<StationZone, number> = { social: 0, family: 0 };
+    // Spread choices across each half of the taller room. Good/bad items get
+    // their velocity in moveStations; people and pickers stay put.
+    this.stations = opts.map((opt) => {
       const c = this.classifyOption(opt);
+      const zone = this.stationZone(opt);
+      const zoneIndex = counts[zone]++;
+      const zoneTotal = totals[zone];
+      const rows = this.zoneRows(zone);
       return {
-        x: n === 1 ? (xStart + xEnd) / 2 : xStart + ((xEnd - xStart) * i) / (n - 1),
-        y: rows[i % 3],
+        x: zoneTotal === 1 ? (xStart + xEnd) / 2 : xStart + ((xEnd - xStart) * zoneIndex) / (zoneTotal - 1),
+        y: rows[zoneIndex % rows.length],
         opt,
         kind: c.kind,
+        zone,
         guard: c.guard,
         contactCd: 0,
         satiated: 0,
@@ -542,19 +554,64 @@ export class Game {
     this.people = this.stations.filter((s) => s.kind === "person");
   }
 
+  private stationZone(opt: LifeOption): StationZone {
+    if (this.isFamilyOption(opt)) return "family";
+    if (opt.person) return "social";
+    const tag = opt.storyTag ?? "";
+    const socialTags = [
+      "friends",
+      "love",
+      "sports",
+      "exercise",
+      "play_active",
+      "travel",
+      "party",
+      "music",
+      "hobby",
+      "network",
+      "volunteer",
+      "date",
+      "gamble",
+    ];
+    if (opt.category === "social" || socialTags.includes(tag)) return "social";
+    return "family";
+  }
+
+  private isFamilyOption(opt: LifeOption): boolean {
+    const familyPeople: PersonKind[] = ["mother", "father", "grandma", "grandpa", "sibling", "spouse", "child", "grandkid"];
+    if (opt.person && familyPeople.includes(opt.person)) return true;
+    const tag = opt.storyTag ?? "";
+    return tag === "family" || tag === "family_love" || tag === "grandkids" || tag === "toy_doll" || opt.id === "baby";
+  }
+
+  private zoneRows(zone: StationZone): number[] {
+    const bounds = this.zoneBounds(zone);
+    return [bounds.min, (bounds.min + bounds.max) / 2, bounds.max];
+  }
+
+  private zoneBounds(zone: StationZone): { min: number; max: number } {
+    return zone === "social"
+      ? { min: SOCIAL_Y_MIN, max: SOCIAL_Y_MAX }
+      : { min: FAMILY_Y_MIN, max: FAMILY_Y_MAX };
+  }
+
   // --- per-stage balance helpers -------------------------------------------
 
   private stageStep(): number {
     const s = STAGES[this.stageIndex];
     // a gentle pace — each chapter now gives ~4× the old number of actions, so
-    // there's real time to study, exercise, dodge and live before the door opens.
+    // there's real time to study, exercise, dodge and live before the gate opens.
     return Math.max(0.03, Math.min(0.9, (s.ageEnd - s.ageStart) / 28));
   }
 
-  /** The chapter door is open once you're old enough — or always, when replaying
+  /** The chapter gate is open once you're old enough — or always, when replaying
    *  a biography (so quiet/short chapters are never a dead end). */
   private doorOpen(): boolean {
     return !!this.biography || this.age >= STAGES[this.stageIndex].ageEnd;
+  }
+
+  private nearGate(): boolean {
+    return Math.abs(this.py - GATE_Y) <= GATE_HALF_H;
   }
 
   /** Higher IQ → faster on your feet, so you can dodge the bad things more easily. */
@@ -692,9 +749,9 @@ export class Game {
   private doAction(): void {
     if (this.mode !== "playing" || this.cooldown > 0) return;
 
-    // near the open door? walk through to advance (also handy on touch)
+    // near the open gate? walk through to advance (also handy on touch)
     if (this.focusIndex < 0) {
-      if (this.doorOpen() && this.px > DOOR_X - 36) this.advanceStage();
+      if (this.doorOpen() && this.px > DOOR_X - 36 && this.nearGate()) this.advanceStage();
       return;
     }
 
@@ -903,7 +960,8 @@ export class Game {
   }
 
   private spawnEventItem(e: RandomEvent): void {
-    const pos = this.eventSpawnPosition();
+    const zone = this.eventZone(e);
+    const pos = this.eventSpawnPosition(zone);
     const category: OptionCategory =
       e.tier === "pet" ? "social" : e.money && e.money > 0 ? "wealth" : "special";
     this.stations.push({
@@ -918,6 +976,7 @@ export class Game {
         storyTag: "easter_event",
       },
       kind: "event",
+      zone,
       event: e,
       contactCd: 0,
       satiated: 0,
@@ -925,17 +984,24 @@ export class Game {
     this.eventCooldown = 4;
   }
 
-  private eventSpawnPosition(): { x: number; y: number } {
+  private eventZone(e: RandomEvent): StationZone {
+    if (e.tier === "pet") return "family";
+    if (e.good === false) return "social";
+    return e.money && e.money > 0 ? "social" : "family";
+  }
+
+  private eventSpawnPosition(zone: StationZone): { x: number; y: number } {
     const spawnLeft = this.px > W / 2;
-    const yMid = (PY_MIN + PY_MAX) / 2;
+    const bounds = this.zoneBounds(zone);
+    const yMid = (bounds.min + bounds.max) / 2;
     for (let tries = 0; tries < 14; tries++) {
       const x = spawnLeft ? 88 + Math.random() * 120 : W - 210 + Math.random() * 120;
-      const y = PY_MIN + 34 + Math.random() * (PY_MAX - PY_MIN - 68);
+      const y = bounds.min + Math.random() * (bounds.max - bounds.min);
       if (Math.hypot(x - this.px, y - this.py) < 150) continue;
       if (this.stations.some((st) => Math.hypot(x - st.x, y - st.y) < 58)) continue;
       return { x, y };
     }
-    const fallbackY = Math.max(PY_MIN + 34, Math.min(PY_MAX - 34, this.py + (this.py < yMid ? 165 : -165)));
+    const fallbackY = Math.max(bounds.min, Math.min(bounds.max, this.py + (this.py < yMid ? 120 : -120)));
     return { x: spawnLeft ? 130 : W - 150, y: fallbackY };
   }
 
@@ -1425,13 +1491,16 @@ export class Game {
 
     this.updateFocus();
 
-    // door
+    // center gate
     const s = STAGES[this.stageIndex];
     if (this.px > DOOR_X) {
-      if (this.doorOpen()) this.advanceStage();
+      if (!this.nearGate()) {
+        this.px = DOOR_X;
+        this.hint("Use the right-center gate to grow up.");
+      } else if (this.doorOpen()) this.advanceStage();
       else this.hint(`Grow a little more first (age ${Math.floor(this.age)} → ${s.ageEnd}).`);
     }
-    // walking through the door transitioned us — don't also run mortality
+    // walking through the gate transitioned us — don't also run mortality
     if (this.mode !== "playing") return;
 
     // continuous mortality
@@ -1496,7 +1565,8 @@ export class Game {
         }
       }
       st.x = Math.max(80, Math.min(W - 90, nx));
-      st.y = Math.max(PY_MIN, Math.min(PY_MAX, ny));
+      const bounds = this.zoneBounds(st.zone);
+      st.y = Math.max(bounds.min, Math.min(bounds.max, ny));
     }
   }
 
@@ -1524,9 +1594,10 @@ export class Game {
 
   /** Send a bad item back to a far edge (clear of people) to chase you down again. */
   private respawnBadItem(st: Station): void {
+    const bounds = this.zoneBounds(st.zone);
     for (let tries = 0; tries < 6; tries++) {
       st.x = this.px > W / 2 ? 90 + Math.random() * 70 : W - 170 - Math.random() * 70;
-      st.y = PY_MIN + Math.random() * (PY_MAX - PY_MIN);
+      st.y = bounds.min + Math.random() * (bounds.max - bounds.min);
       if (!this.people.some((p) => Math.hypot(st.x - p.x, st.y - p.y) < BLOCK_R)) break;
     }
   }
@@ -1682,10 +1753,10 @@ export class Game {
     const panel = this.ui.focusPanel;
     if (this.focusIndex < 0) {
       if (!this.guideSeen) {
-        panel.innerHTML = `<span class="plj-focus-title">How to play</span><span class="plj-focus-desc">🟢 Chase the good things and press ✓ / SPACE to do them. 🔴 Bad things chase YOU — do the matching good thing and they freeze & fade (eat well → junk stops; sport or family time → screen-time stops). A high IQ makes you faster. Reach the glowing door ➜ to grow up.</span>`;
+        panel.innerHTML = `<span class="plj-focus-title">How to play</span><span class="plj-focus-desc">🟢 Chase the good things and press ✓ / SPACE to do them. 🔴 Bad things chase YOU — do the matching good thing and they freeze & fade (eat well → junk stops; sport or family time → screen-time stops). A high IQ makes you faster. Reach the right-center gate ➜ to grow up.</span>`;
       } else {
         // tucked away during the game — just a tiny reminder
-        panel.innerHTML = `<span class="plj-focus-title">🟢 collect&nbsp;&nbsp;·&nbsp;&nbsp;🔴 dodge&nbsp;&nbsp;·&nbsp;&nbsp;🚪 grow up</span>`;
+        panel.innerHTML = `<span class="plj-focus-title">🟢 collect&nbsp;&nbsp;·&nbsp;&nbsp;🔴 dodge&nbsp;&nbsp;·&nbsp;&nbsp;center gate</span>`;
       }
       return;
     }

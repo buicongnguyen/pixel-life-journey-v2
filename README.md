@@ -21,7 +21,7 @@ them in balance, and at the very end the game writes the **story of the life you
    > **🧘 Mental** (time with family & friends, and your happiness). Keep all three strong
    > and your Health can climb **past 100** (up to 120); let one collapse and it drags the
    > whole thing down.
-3. When you're old enough, the **door on the right glows** — walk into it to grow up into
+3. When you're old enough, the **right-center gate glows** — walk into it to grow up into
    the next stage of life — and read a short **recap of your journey so far**.
 4. **Keep your balance.** Live on junk food and your weight climbs and your health
    collapses. Chase money with endless overtime and your fun, happiness and health pay for

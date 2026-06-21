@@ -12,7 +12,7 @@
 You live one whole pixel life, left to right, one room per stage. In each room you
 walk up/down/left/right between **option stations** and press a button to do them.
 Every choice nudges your five life **indices** and ages you a little. When you are
-old enough, the door on the right opens and you "grow up" into the next room.
+old enough, the right-center gate opens and you "grow up" into the next room.
 
 Balance is the whole game: chase money too hard and your health, fun and happiness
 suffer; ignore your health and your life is cut short. At the very end, the game
@@ -39,7 +39,7 @@ healthy band (40–64) quietly **drains health** every action, so it feeds longe
 Plus two derived values:
 
 - **Age** — advances with every action and slowly over time. Crossing a stage's
-  end-age opens the door.
+  end-age opens the gate.
 - **Life expectancy** — computed from your *average health across life*. Shown in
   the HUD as `~78y`. If your age reaches it, your life ends.
 
@@ -282,5 +282,5 @@ Effects are the immediate deltas; a small passive drain also applies each action
 
 - **Move:** Arrow keys / WASD (up, down, left, right)
 - **Choose:** Space / Enter / E on a highlighted station
-- **Grow up:** walk into the glowing door on the right once you're old enough
+- **Grow up:** walk into the glowing right-center gate once you're old enough
 - **Touch:** on-screen D-pad + ✓ button (shown on phones)

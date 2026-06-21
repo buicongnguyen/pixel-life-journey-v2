@@ -144,7 +144,7 @@ export interface Stage {
   emoji: string;
   /** Age the player is at when the stage starts. */
   ageStart: number;
-  /** The door opens once age >= ageEnd. */
+  /** The stage gate opens once age >= ageEnd. */
   ageEnd: number;
   blurb: string;
   theme: RoomTheme;

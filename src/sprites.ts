@@ -1339,7 +1339,7 @@ function drawNamePlate(ctx: CanvasRenderingContext2D, cx: number, y: number, tex
 }
 
 // ===========================================================================
-// Scenery (rooms) + door — simple rects, anti-aliased by the supersampling
+// Scenery (rooms) + gate — simple rects, anti-aliased by the supersampling
 // ===========================================================================
 
 export interface RoomDecor {
@@ -1349,6 +1349,7 @@ export interface RoomDecor {
 }
 
 export function drawRoom(ctx: CanvasRenderingContext2D, theme: RoomTheme, W: number, H: number, floorY: number, doorActive: boolean, t: number, decor: RoomDecor): void {
+  const splitY = Math.round(floorY + (H - floorY) * 0.5);
   const wallG = ctx.createLinearGradient(0, 0, 0, floorY);
   wallG.addColorStop(0, tint(theme.wall, 14));
   wallG.addColorStop(1, theme.wall);
@@ -1357,18 +1358,13 @@ export function drawRoom(ctx: CanvasRenderingContext2D, theme: RoomTheme, W: num
   drawPixelTrim(ctx, 0, 18, W, 8, tint(theme.wall, 30), shade(theme.wall, 10));
   drawPixelTrim(ctx, 0, floorY - 22, W, 8, tint(theme.wall, 18), shade(theme.wall, 14));
   px(ctx, 0, floorY - 12, W, 12, theme.wallShade);
-  const floorG = ctx.createLinearGradient(0, floorY, 0, H);
-  floorG.addColorStop(0, tint(theme.floor, 8));
-  floorG.addColorStop(1, shade(theme.floor, 10));
-  ctx.fillStyle = floorG;
-  ctx.fillRect(0, floorY, W, H - floorY);
-  ctx.fillStyle = theme.floorShade;
-  for (let x = 0; x < W; x += 40) ctx.fillRect(x, floorY, 2, H - floorY);
-  px(ctx, 0, floorY, W, 3, theme.floorShade);
 
   drawScene(ctx, decor.scene, theme, W, floorY, t);
-  if (decor.atHome && decor.homeQuality > 0) drawHomeQuality(ctx, theme, W, floorY, decor.homeQuality);
-  drawDoor(ctx, theme, W, floorY, doorActive, t);
+  drawSocialArea(ctx, W, floorY, splitY, t);
+  drawFamilyArea(ctx, decor.scene, theme, W, splitY, H, t);
+  if (decor.atHome && decor.homeQuality > 0) drawHomeQuality(ctx, theme, W, splitY + 70, decor.homeQuality);
+  drawZoneDivider(ctx, W, splitY);
+  drawDoor(ctx, theme, W, H, floorY, doorActive, t);
 }
 
 function drawPixelTrim(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, a: string, b: string): void {
@@ -1385,6 +1381,132 @@ function window2(ctx: CanvasRenderingContext2D, x: number, y: number, w: number,
   px(ctx, x, y, w, h, sky);
   px(ctx, x + w / 2 - 1, y, 2, h, "#6a5a3a");
   px(ctx, x, y + h / 2 - 1, w, 2, "#6a5a3a");
+}
+
+function drawSocialArea(ctx: CanvasRenderingContext2D, W: number, top: number, bottom: number, t: number): void {
+  const sky = ctx.createLinearGradient(0, top, 0, bottom);
+  sky.addColorStop(0, "#8fd0ff");
+  sky.addColorStop(0.55, "#c8eeff");
+  sky.addColorStop(1, "#8edc92");
+  ctx.fillStyle = sky;
+  ctx.fillRect(0, top, W, bottom - top);
+  px(ctx, 0, top, W, 3, "#5ca9d6");
+  const cloudShift = (t * 9) % 160;
+  for (const [x0, y, s] of [[42, top + 46, 1], [240, top + 32, 0.75], [410, top + 68, 0.9], [585, top + 40, 0.7]] as const) {
+    const x = ((x0 + cloudShift) % (W + 120)) - 80;
+    ellipse(ctx, x, y, 22 * s, 8 * s, "rgba(255,255,255,0.86)");
+    ellipse(ctx, x + 20 * s, y + 4 * s, 26 * s, 9 * s, "rgba(255,255,255,0.80)");
+    ellipse(ctx, x - 18 * s, y + 5 * s, 16 * s, 6 * s, "rgba(255,255,255,0.76)");
+  }
+  ellipse(ctx, W - 70, top + 42, 24, 24, "#ffe27a");
+  px(ctx, 0, bottom - 84, W, 84, "#77c678");
+  px(ctx, 0, bottom - 78, W, 6, "#99df93");
+  for (let x = 24; x < W; x += 76) {
+    px(ctx, x, bottom - 78, 8, 34, "#6b4a32");
+    ellipse(ctx, x + 4, bottom - 88, 23, 18, x % 152 === 24 ? "#3fb46c" : "#52c77a");
+  }
+  const path = ctx.createLinearGradient(0, bottom - 50, 0, bottom);
+  path.addColorStop(0, "#eacb8f");
+  path.addColorStop(1, "#c39b62");
+  ctx.fillStyle = path;
+  ctx.fillRect(0, bottom - 50, W, 50);
+  for (let x = -20; x < W; x += 54) px(ctx, x, bottom - 24, 28, 4, "rgba(255,255,255,0.30)");
+}
+
+function drawFamilyArea(ctx: CanvasRenderingContext2D, scene: SceneKind, theme: RoomTheme, W: number, top: number, H: number, t: number): void {
+  const wallBottom = top + 74;
+  const wall = scene === "sunset" ? "#f2b082" : tint(theme.wall, 10);
+  const floor = scene === "sunset" ? "#b48763" : theme.floor;
+  const wallG = ctx.createLinearGradient(0, top, 0, wallBottom);
+  wallG.addColorStop(0, tint(wall, 10));
+  wallG.addColorStop(1, wall);
+  ctx.fillStyle = wallG;
+  ctx.fillRect(0, top, W, wallBottom - top);
+  drawPixelTrim(ctx, 0, top + 14, W, 8, tint(wall, 26), shade(wall, 10));
+  const floorG = ctx.createLinearGradient(0, wallBottom, 0, H);
+  floorG.addColorStop(0, tint(floor, 8));
+  floorG.addColorStop(1, shade(floor, 14));
+  ctx.fillStyle = floorG;
+  ctx.fillRect(0, wallBottom, W, H - wallBottom);
+  ctx.fillStyle = shade(floor, 20);
+  for (let x = 0; x < W; x += 42) ctx.fillRect(x, wallBottom, 2, H - wallBottom);
+  px(ctx, 0, wallBottom, W, 3, shade(floor, 22));
+
+  switch (scene) {
+    case "nursery": {
+      window2(ctx, 58, top + 18, 72, 44, "#bfe6ff");
+      px(ctx, W - 164, wallBottom - 48, 96, 36, "#b58a62");
+      for (let i = 0; i < 4; i++) px(ctx, W - 154 + i * 21, wallBottom - 41, 12, 26, "#d2a47c");
+      px(ctx, 210, wallBottom - 22, 58, 18, "#9ad0ff");
+      px(ctx, 222, wallBottom - 46, 34, 30, "#fff2c6");
+      break;
+    }
+    case "playroom": {
+      window2(ctx, 58, top + 18, 72, 44, "#bfe6ff");
+      px(ctx, W - 178, wallBottom - 50, 126, 42, "#8a6ad6");
+      for (let i = 0; i < 8; i++) px(ctx, W - 168 + i * 14, wallBottom - 42 + (i % 2) * 14, 10, 10, ["#ffd23f", "#ff8fd0", "#7fd0ff", "#9be36b"][i % 4]);
+      ellipse(ctx, 170 + Math.sin(t * 2) * 4, wallBottom - 8, 11, 11, "#ff6b6b");
+      break;
+    }
+    case "school": {
+      px(ctx, 56, top + 14, 190, 54, "#26402f");
+      px(ctx, 52, top + 10, 198, 5, "#6a5a3a");
+      ctx.fillStyle = "rgba(235,235,220,0.9)";
+      ctx.font = "12px 'Trebuchet MS', monospace";
+      ctx.textAlign = "left";
+      ctx.fillText("A B C  1 2 3", 74, top + 36);
+      ctx.fillText("2 + 2 = 4", 74, top + 56);
+      for (let i = 0; i < 4; i++) px(ctx, 92 + i * 92, wallBottom - 18, 54, 14, "#9a7a4a");
+      break;
+    }
+    case "campus": {
+      window2(ctx, 54, top + 14, 116, 54, "#a9d4ff");
+      px(ctx, W - 178, top + 16, 116, 24, "#7a3f9e");
+      ctx.fillStyle = "#ffe9a8";
+      ctx.font = "12px 'Trebuchet MS', sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillText("UNIVERSITY", W - 120, top + 34);
+      for (let i = 0; i < 8; i++) px(ctx, W - 170 + i * 13, wallBottom - 44 + (i % 2) * 18, 10, 34, ["#ff6b6b", "#6bd0ff", "#9be36b", "#ffd23f"][i % 4]);
+      break;
+    }
+    case "office": {
+      window2(ctx, 54, top + 13, 140, 56, "#8fb8e6");
+      for (let i = 0; i < 6; i++) px(ctx, 62 + i * 22, top + 63 - (i % 3) * 12, 16, 12 + (i % 3) * 12, "#41506a");
+      for (let i = 0; i < 3; i++) {
+        const deskX = W - 240 + i * 74;
+        px(ctx, deskX, wallBottom - 24, 58, 18, "#8b6a4a");
+        px(ctx, deskX + 15, wallBottom - 44, 28, 18, "#222");
+        px(ctx, deskX + 18, wallBottom - 41, 22, 12, "#5fd0ff");
+      }
+      break;
+    }
+    case "home": {
+      window2(ctx, 60, top + 15, 90, 52, "#bfe0ff");
+      px(ctx, W - 218, wallBottom - 34, 132, 26, "#9a5a6a");
+      px(ctx, W - 218, wallBottom - 46, 132, 14, "#b06a7a");
+      px(ctx, 100, top + 30, 72, 36, "#1c1c24");
+      px(ctx, 104, top + 34, 64, 28, "#3a4a6a");
+      break;
+    }
+    case "sunset": {
+      const sky = ctx.createLinearGradient(0, top, 0, wallBottom);
+      sky.addColorStop(0, "#ffd6a8");
+      sky.addColorStop(0.65, "#ff9e7a");
+      sky.addColorStop(1, "#c46a8e");
+      ctx.fillStyle = sky;
+      ctx.fillRect(0, top, W, wallBottom - top);
+      ellipse(ctx, 130, top + 45, 16, 16, "#ffe9b0");
+      for (let x = 24; x < W; x += 86) px(ctx, x, wallBottom - 28, 40, 28, "#6b5a4b");
+      break;
+    }
+  }
+}
+
+function drawZoneDivider(ctx: CanvasRenderingContext2D, W: number, y: number): void {
+  px(ctx, 0, y - 8, W, 8, "#365a63");
+  px(ctx, 0, y, W, 5, "#f4d67a");
+  px(ctx, 0, y + 5, W, 5, "#7a5537");
+  for (let x = 18; x < W; x += 48) px(ctx, x, y - 5, 24, 3, "rgba(255,255,255,0.40)");
 }
 
 function drawScene(ctx: CanvasRenderingContext2D, scene: SceneKind, theme: RoomTheme, W: number, floorY: number, t: number): void {
@@ -1508,18 +1630,20 @@ function drawPlant(ctx: CanvasRenderingContext2D, x: number, floorY: number): vo
   ellipse(ctx, x + 8, floorY - 30, 5, 6, "#4fb56b");
 }
 
-function drawDoor(ctx: CanvasRenderingContext2D, theme: RoomTheme, W: number, floorY: number, doorActive: boolean, t: number): void {
+function drawDoor(ctx: CanvasRenderingContext2D, theme: RoomTheme, W: number, H: number, floorY: number, doorActive: boolean, t: number): void {
   const dw = 58;
-  const dh = 124;
+  const dh = 156;
   const dx = W - dw - 10;
-  const dy = floorY - dh;
-  px(ctx, dx - 5, dy - 5, dw + 10, dh + 5, theme.wallShade);
+  const dy = Math.round(floorY + (H - floorY) * 0.5 - dh / 2);
+  px(ctx, dx - 6, dy - 8, dw + 12, dh + 16, "#1f1b2f");
+  px(ctx, dx - 2, dy - 4, dw + 4, dh + 8, doorActive ? tint(theme.accent, 18) : theme.wallShade);
   px(ctx, dx, dy, dw, dh, doorActive ? theme.accent : "#2c2438");
+  px(ctx, dx + 8, dy + 10, dw - 16, dh - 20, doorActive ? tint(theme.accent, 18) : "#342a44");
   if (doorActive) {
     const a = 0.35 + 0.25 * Math.sin(t * 4);
     ctx.fillStyle = `rgba(255,255,255,${a})`;
-    ctx.fillRect(dx, dy, dw, dh);
-    px(ctx, dx + dw / 2 - 3, dy + dh / 2 - 14, 6, 28, "#27202e");
+    ctx.fillRect(dx + 8, dy + 10, dw - 16, dh - 20);
+    px(ctx, dx + dw / 2 - 3, dy + dh / 2 - 18, 6, 36, "#27202e");
     drawArrow(ctx, dx + dw / 2 + 11, dy + dh / 2, "#27202e");
   } else {
     ellipse(ctx, dx + dw - 11, dy + dh / 2, 3.5, 4, theme.accent);
