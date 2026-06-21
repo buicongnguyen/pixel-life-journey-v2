@@ -140,8 +140,8 @@ export function createUI(mount: HTMLElement): UIRefs {
   // --- bottom focus panel ---------------------------------------------------
   const focusPanel = el(
     "div",
-    "plj-focus",
-    `<span class="plj-focus-title">Move with arrows / WASD</span><span class="plj-focus-desc">Touch green items to add them to the tray. Swipe left/right to select; swipe up to eat food or give items near people.</span>`
+    "plj-focus is-hidden",
+    ""
   );
 
   // --- touch controls -------------------------------------------------------

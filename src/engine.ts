@@ -2600,14 +2600,11 @@ export class Game {
   private renderFocusPanel(): void {
     const panel = this.ui.focusPanel;
     if (this.focusIndex < 0) {
-      if (!this.guideSeen) {
-        panel.innerHTML = `<span class="plj-focus-title">How to play</span><span class="plj-focus-desc">🟢 Touch green items to collect them into the tray. Swipe left/right to select; swipe up to eat food or give items near people. 🔴 Bad things chase YOU. Reach the right-side gate ➜ to grow up.</span>`;
-      } else {
-        // tucked away during the game — just a tiny reminder
-        panel.innerHTML = `<span class="plj-focus-title">🟢 collect tray items&nbsp;&nbsp;·&nbsp;&nbsp;swipe ↑ eat/give&nbsp;&nbsp;·&nbsp;&nbsp;🔴 dodge</span>`;
-      }
+      panel.classList.add("is-hidden");
+      panel.innerHTML = "";
       return;
     }
+    panel.classList.remove("is-hidden");
     const st = this.stations[this.focusIndex];
     const mk = (text: string, color: string) => `<span class="plj-chip" style="color:${color}">${text}</span>`;
     if (st.kind === "event" && st.event) {
@@ -2707,7 +2704,6 @@ export class Game {
         <div class="plj-set-list">
           <button class="plj-btn" id="plj-set-resume">▶ Resume</button>
           <button class="plj-btn plj-btn-ghost" id="plj-set-skip">⏭ Skip this chapter</button>
-          <button class="plj-btn plj-btn-ghost" id="plj-set-guide">📖 Show how-to-play</button>
           <button class="plj-btn plj-btn-ghost" id="plj-set-restart">🔄 Start a new life</button>
           <button class="plj-btn plj-btn-ghost" id="plj-set-menu">🏠 Main menu</button>
         </div>
@@ -2723,15 +2719,6 @@ export class Game {
     };
     ov.querySelector<HTMLButtonElement>("#plj-set-resume")!.onclick = () => { this.mode = "playing"; this.clearOverlay(); };
     ov.querySelector<HTMLButtonElement>("#plj-set-skip")!.onclick = () => { this.mode = "playing"; this.clearOverlay(); this.skipStage(); };
-    ov.querySelector<HTMLButtonElement>("#plj-set-guide")!.onclick = () => {
-      this.guideSeen = false;
-      try { localStorage.removeItem("plj-guide-seen-v1"); } catch { /* ignore */ }
-      this.mode = "playing";
-      this.clearOverlay();
-      this.focusIndex = -1;
-      this.renderFocusPanel();
-      this.hint("📖 The how-to-play guide is back on.");
-    };
     ov.querySelector<HTMLButtonElement>("#plj-set-restart")!.onclick = () => this.showSetup();
     ov.querySelector<HTMLButtonElement>("#plj-set-menu")!.onclick = () => this.showTitle();
   }

@@ -232,6 +232,9 @@ body {
   gap: 2px;
   box-shadow: 0 4px 0 rgba(0, 0, 0, 0.35);
 }
+.plj-focus.is-hidden {
+  display: none;
+}
 .plj-focus-title {
   font-weight: 700;
   font-size: 15px;
