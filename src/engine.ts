@@ -86,6 +86,14 @@ const FOOD_USE_COOLDOWN = 5;
 const CAREER_INDEX = STAGES.findIndex((s) => s.id === "career");
 const BAD_FIT_TAGS = ["sedentary", "gaming", "screen", "toy_phone", "cigarette"];
 const BAD_FOCUS_TAGS = ["wine", "whisky"];
+const FAMILY_MONEY_MIN = 10000;
+const FAMILY_MONEY_MAX = 2000000;
+const FAMILY_MONEY_SKEW = 3.25; // higher = richer births are rarer
+const PARENT_SUPPORT_END_AGE = 18;
+const PARENT_SUPPORT_MIN = 800;
+const PARENT_SUPPORT_MAX = 160000;
+const PARENT_INCOME_SHIFT_MIN = 0.1;
+const PARENT_INCOME_SHIFT_MAX = 0.5;
 
 type Mode =
   | "title"
@@ -145,6 +153,8 @@ interface Snapshot {
   commute: string | null;
   lifetimeEarned: number;
   connections: number;
+  familyFund: number;
+  parentAnnualSupport: number;
   homeQuality: number;
   homeIds: string[];
   hadChild: boolean;
@@ -197,6 +207,8 @@ export class Game {
   private playerName = ""; // optional name for the LinkedIn-style career profile
   private lifetimeEarned = 0; // total dollars earned from work over the whole life
   private connections = 0; // professional network — grown by coworkers & networking
+  private familyFund = START_MONEY; // family resources rolled at birth
+  private parentAnnualSupport = 0; // yearly support from Mommy & Daddy until adulthood
   private homeQuality = 0;
   private homes: HouseTier[] = []; // every property bought; you live in the best one
   private houseUpkeep = 0; // per-action dollar drain from your home (mortgage/upkeep)
@@ -297,6 +309,8 @@ export class Game {
       connections: this.connections,
       money: Math.round(this.money),
       netWorth: Math.round(this.netWorth()),
+      familyFund: Math.round(this.familyFund),
+      parentAnnualSupport: Math.round(this.parentAnnualSupport),
       iq: Math.round(this.stats.smarts),
       iqCeiling: this.iqCeiling,
       geneBonus: this.geneBonus,
@@ -388,7 +402,9 @@ export class Game {
     this.stats = { ...START_STATS };
     this.age = 0;
     this.weight = START_WEIGHT;
-    this.money = START_MONEY;
+    this.familyFund = this.rollFamilyMoney();
+    this.parentAnnualSupport = this.rollParentSupport(this.familyFund);
+    this.money = this.familyFund;
     this.muscle = START_MUSCLE;
     this.nutrition = START_NUTRITION;
     this.mental = START_MENTAL;
@@ -434,6 +450,7 @@ export class Game {
     this.renderInventory();
     this.sampleHealth();
     this.loadStage(0);
+    this.hint(`👪 Family start: ${formatMoney(this.familyFund)}. Mommy & Daddy support: ~${formatMoney(this.parentAnnualSupport)}/yr.`);
   }
 
   private loadStage(i: number, restoring = false): void {
@@ -483,6 +500,8 @@ export class Game {
       commute: this.commute,
       lifetimeEarned: this.lifetimeEarned,
       connections: this.connections,
+      familyFund: this.familyFund,
+      parentAnnualSupport: this.parentAnnualSupport,
       homeQuality: this.homeQuality,
       homeIds: this.homes.map((h) => h.id),
       hadChild: this.hadChild,
@@ -699,6 +718,37 @@ export class Game {
   /** Higher IQ → faster on your feet, so you can dodge the bad things more easily. */
   private speedFactor(): number {
     return 0.8 + Math.max(0, this.stats.smarts - 40) * 0.005; // iq 40→0.8 … 160→1.4
+  }
+
+  private rollFamilyMoney(): number {
+    const skewed = Math.pow(Math.random(), FAMILY_MONEY_SKEW);
+    const raw = FAMILY_MONEY_MIN + (FAMILY_MONEY_MAX - FAMILY_MONEY_MIN) * skewed;
+    return Math.round(raw / 1000) * 1000;
+  }
+
+  private rollParentSupport(familyFund: number): number {
+    const rate = 0.025 + Math.pow(Math.random(), 1.7) * 0.06;
+    const raw = Math.max(PARENT_SUPPORT_MIN, Math.min(PARENT_SUPPORT_MAX, familyFund * rate));
+    return Math.round(raw / 100) * 100;
+  }
+
+  private applyParentSupportForChapter(cur: (typeof STAGES)[number], lines: string[]): void {
+    const endAge = Math.min(cur.ageEnd, PARENT_SUPPORT_END_AGE);
+    const years = Math.max(0, endAge - cur.ageStart);
+    if (years <= 0 || this.parentAnnualSupport <= 0) return;
+
+    const shiftMagnitude = PARENT_INCOME_SHIFT_MIN + Math.random() * (PARENT_INCOME_SHIFT_MAX - PARENT_INCOME_SHIFT_MIN);
+    const shift = (Math.random() < 0.58 ? 1 : -1) * shiftMagnitude;
+    this.parentAnnualSupport = Math.round(
+      Math.max(PARENT_SUPPORT_MIN, Math.min(PARENT_SUPPORT_MAX, this.parentAnnualSupport * (1 + shift))) / 100
+    ) * 100;
+
+    const support = Math.round(this.parentAnnualSupport * years);
+    this.money += support;
+    lines.push(
+      `👪 Mommy & Daddy support: +${formatMoney(support)} over these years. Parent income flow ${shift >= 0 ? "+" : "−"}${Math.round(Math.abs(shift) * 100)}%/yr (now ~${formatMoney(this.parentAnnualSupport)}/yr).`
+    );
+    this.floats.push({ x: this.px, y: this.py - 104, text: `👪 +${formatMoney(support)}`, color: "#3ddc84", life: 1.6 });
   }
 
   private idCounter = 0;
@@ -1206,6 +1256,8 @@ export class Game {
       if (this.partner.moneyMod) this.money = Math.max(0, this.money + this.partner.moneyMod);
     }
 
+    this.applyParentSupportForChapter(cur, lines);
+
     // IQ drifts toward the age-appropriate average each chapter (so it tracks the
     // age curve smoothly and stays within a band of your potential — never snaps)
     this.driftIq();
@@ -1471,6 +1523,8 @@ export class Game {
     this.commute = snap.commute;
     this.lifetimeEarned = snap.lifetimeEarned;
     this.connections = snap.connections;
+    this.familyFund = snap.familyFund;
+    this.parentAnnualSupport = snap.parentAnnualSupport;
     this.homes = snap.homeIds.map((id) => HOUSE_TIERS.find((h) => h.id === id)).filter(Boolean) as HouseTier[];
     this.recomputeHomes();
     this.hadChild = snap.hadChild;
