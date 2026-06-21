@@ -78,7 +78,7 @@ const BAD_EVENT_ALERT_R = 185; // bad-luck hazards wake up only when you get clo
 const ITEM_R = 26; // contact / collect radius
 const BLOCK_R = 30; // an NPC standing in the path blocks a bad item
 const SATIATE_TIME = 9; // seconds a bad item stays frozen/faded after you do its good counterpart
-const BABY_FAMILY_SIT_R = 172; // newborn family lowers themselves when the baby crawls close
+const BABY_FAMILY_SIT_R = 92; // newborn family sits only when the baby crawls right up to them
 const BAD_SOCIAL_TAGS = ["smoker_friend", "gangster_friend", "playboy_friend"];
 const INVENTORY_MAX_SLOTS = 8;
 const INVENTORY_MAX_COUNT = 9;
@@ -625,14 +625,15 @@ export class Game {
   }
 
   private shouldSitWithNewborn(st: Station): boolean {
-    const dx = Math.abs(this.px - st.x);
-    const dy = Math.abs((this.py - 32) - st.y);
+    const babyCenterX = this.px;
+    const babyCenterY = this.py - 32;
+    const dx = babyCenterX - st.x;
+    const dy = babyCenterY - st.y;
     return this.stageIndex === 0 &&
       st.kind === "person" &&
       !!st.opt.person &&
       this.isFamilyOption(st.opt) &&
-      dx <= BABY_FAMILY_SIT_R &&
-      dy <= BABY_FAMILY_SIT_R;
+      Math.hypot(dx, dy) <= BABY_FAMILY_SIT_R;
   }
 
   private zoneRows(zone: StationZone): number[] {
