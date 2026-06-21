@@ -73,7 +73,7 @@ const SOCIAL_Y_MAX = SPLIT_Y - 50;
 const FAMILY_Y_MIN = SPLIT_Y + 58;
 const FAMILY_Y_MAX = PY_MAX - 24;
 // --- moving-items mechanic ---
-const GOOD_SPEED = 24; // good items drift AWAY (chase them + press to collect)
+const GOOD_SPEED = 24; // common good items drift AWAY; touch them to collect
 const BAD_SPEED = 34; // bad items drift TOWARD you (auto-applied on contact)
 const BAD_EVENT_ALERT_R = 185; // bad-luck hazards wake up only when you get close
 const ITEM_R = 26; // contact / collect radius
@@ -515,7 +515,7 @@ export class Game {
   }
 
   /** Sort each choice into a kind: people are static, junk/screen-time CHASE you
-   *  (bad), pickers are static (neutral), and everything beneficial FLEES (good). */
+   *  (bad), pickers are static (neutral), and free beneficial items FLEE (good). */
   private classifyOption(opt: LifeOption): { kind: StationKind; guard?: string } {
     if (opt.person) return { kind: "person" };
     if (opt.opensHousePicker || opt.opensVehiclePicker || opt.opensCareerDesk || opt.gamble || opt.invest || opt.moneyMgmt || opt.category === "special")
@@ -533,8 +533,8 @@ export class Game {
     const totals: Record<StationZone, number> = { social: 0, family: 0 };
     for (const opt of opts) totals[this.stationZone(opt)]++;
     const counts: Record<StationZone, number> = { social: 0, family: 0 };
-    // Spread choices across each half of the taller room. Good/bad items get
-    // their velocity in moveStations; people and pickers stay put.
+    // Spread choices across each half of the taller room. Common good/bad
+    // items get their velocity in moveStations; people and pickers stay put.
     this.stations = opts.map((opt) => {
       const c = this.classifyOption(opt);
       const zone = this.stationZone(opt);
@@ -809,8 +809,8 @@ export class Game {
 
   /**
    * Apply a choice's full outcome — effects, money, weight, ageing, habits and
-   * events. Used both when you PRESS a good/neutral choice and when a BAD thing
-   * catches you (auto). Gating + pickers are the caller's job.
+   * events. Used when you press deliberate choices, touch common good items, or
+   * when a BAD thing catches you. Gating + pickers are the caller's job.
    */
   private applyOption(opt: LifeOption): void {
     const s = STAGES[this.stageIndex];
@@ -1476,9 +1476,10 @@ export class Game {
       this.walkPhase += dt * 3;
     }
 
-    // items move (good flee, bad chase, people block) and any un-satiated bad
-    // thing that catches you applies automatically
+    // Common good items flee until you touch them, bad items chase, people block,
+    // and any un-satiated bad thing that catches you applies automatically.
     this.moveStations(dt);
+    this.checkCommonItemContacts();
     this.checkBadContacts();
     this.checkEventContacts();
     if (this.mode !== "playing") return;
@@ -1511,12 +1512,13 @@ export class Game {
   }
 
   private updateFocus(): void {
-    // only good/neutral/person items can be FOCUSED and pressed — bad things are
-    // auto-collected on contact, never pressed
+    // Only deliberate choices can be focused and pressed. Common green items
+    // collect on contact, and bad things apply on contact.
     let best = -1;
     let bestD = 999;
     this.stations.forEach((st, i) => {
       if (st.kind === "bad") return;
+      if (this.isCommonCollectible(st)) return;
       if (st.kind === "event" && st.event?.good === false) return;
       const dx = Math.abs(this.px - st.x);
       const dy = Math.abs(this.py - st.y);
@@ -1570,6 +1572,58 @@ export class Game {
       const bounds = this.zoneBounds(st.zone);
       st.y = Math.max(bounds.min, Math.min(bounds.max, ny));
     }
+  }
+
+  /** Common green items are free repeatable choices collected on contact. */
+  private isCommonCollectible(st: Station): boolean {
+    const opt = st.opt;
+    return st.kind === "good" &&
+      !opt.person &&
+      !opt.once &&
+      !opt.permanent &&
+      !opt.cost &&
+      !opt.opensHousePicker &&
+      !opt.opensVehiclePicker &&
+      !opt.opensCareerDesk &&
+      !opt.gamble &&
+      !opt.invest &&
+      !opt.moneyMgmt &&
+      opt.category !== "special";
+  }
+
+  /** Common green items collect by touch, then reappear elsewhere in their zone. */
+  private checkCommonItemContacts(): void {
+    if (this.cooldown > 0) return;
+    for (const st of this.stations) {
+      if (!this.isCommonCollectible(st) || st.contactCd > 0) continue;
+      if (Math.hypot(this.px - st.x, this.py - st.y) > ITEM_R + 6) continue;
+      st.contactCd = 0.45;
+      this.cooldown = 0.1;
+      this.markGuideSeen();
+      this.applyOption(st.opt);
+      if (this.mode !== "playing") return;
+      this.respawnCommonItem(st);
+      this.focusIndex = -1;
+      this.renderFocusPanel();
+      return;
+    }
+  }
+
+  /** Move a collected common item to a new far-enough place in its own zone. */
+  private respawnCommonItem(st: Station): void {
+    const bounds = this.zoneBounds(st.zone);
+    const spawnLeft = this.px > W / 2;
+    for (let tries = 0; tries < 12; tries++) {
+      const x = spawnLeft ? 88 + Math.random() * 140 : W - 230 + Math.random() * 140;
+      const y = bounds.min + Math.random() * (bounds.max - bounds.min);
+      if (Math.hypot(x - this.px, y - this.py) < 120) continue;
+      if (this.stations.some((other) => other !== st && Math.hypot(x - other.x, y - other.y) < 54)) continue;
+      st.x = x;
+      st.y = y;
+      return;
+    }
+    st.x = spawnLeft ? 120 : W - 170;
+    st.y = Math.max(bounds.min, Math.min(bounds.max, this.py + (this.py < (bounds.min + bounds.max) / 2 ? 120 : -120)));
   }
 
   /** A bad item touching the player applies automatically — unless it's satiated. */
@@ -1652,8 +1706,8 @@ export class Game {
         const used = !!st.opt.once && this.usedOnce.has(st.opt.id);
         // a satiated bad thing has backed off — draw it ghostly and ring-less
         const satiated = st.kind === "bad" && st.satiated > 0;
-        // a ground-ring marks moving items: red = a BAD thing chasing you (dodge
-        // it!), green = a GOOD thing fleeing (chase it + press SPACE)
+        // a ground-ring marks moving items: red = a BAD thing chasing you,
+        // green = a common GOOD thing you collect by touch.
         if (!satiated && (st.kind === "bad" || st.kind === "good" || st.kind === "event")) {
           const bad = st.kind === "bad" || st.event?.good === false;
           const eventMoney = st.kind === "event" && !!st.event?.money && st.event.money > 0;
@@ -1755,10 +1809,10 @@ export class Game {
     const panel = this.ui.focusPanel;
     if (this.focusIndex < 0) {
       if (!this.guideSeen) {
-        panel.innerHTML = `<span class="plj-focus-title">How to play</span><span class="plj-focus-desc">🟢 Chase the good things and press ✓ / SPACE to do them. 🔴 Bad things chase YOU — do the matching good thing and they freeze & fade (eat well → junk stops; sport or family time → screen-time stops). A high IQ makes you faster. Reach the right-center gate ➜ to grow up.</span>`;
+        panel.innerHTML = `<span class="plj-focus-title">How to play</span><span class="plj-focus-desc">🟢 Touch common good items to collect them. 🔴 Bad things chase YOU — do the matching good thing and they freeze & fade (eat well → junk stops; sport or family time → screen-time stops). Press SPACE for people, surprise rewards, and special choices. Reach the right-center gate ➜ to grow up.</span>`;
       } else {
         // tucked away during the game — just a tiny reminder
-        panel.innerHTML = `<span class="plj-focus-title">🟢 collect&nbsp;&nbsp;·&nbsp;&nbsp;🔴 dodge&nbsp;&nbsp;·&nbsp;&nbsp;center gate</span>`;
+        panel.innerHTML = `<span class="plj-focus-title">🟢 touch to collect&nbsp;&nbsp;·&nbsp;&nbsp;🔴 dodge&nbsp;&nbsp;·&nbsp;&nbsp;center gate</span>`;
       }
       return;
     }
@@ -1879,7 +1933,7 @@ export class Game {
           <button class="plj-btn plj-btn-ghost" id="plj-bio-write">✍️ Write a biography</button>
           <button class="plj-btn plj-btn-ghost" id="plj-bio-list">📖 Biographies${bioCount ? ` (${bioCount})` : ""}</button>
         </div>
-        <p class="plj-foot">Arrows / WASD to move · SPACE to choose · or use the on-screen pad</p>
+        <p class="plj-foot">Arrows / WASD to move · touch green items · SPACE for people and special choices</p>
       </div>`;
     this.ui.overlay.classList.add("show");
     this.ui.overlay.querySelector<HTMLButtonElement>("#plj-start")!.onclick = () => this.showSetup();
@@ -2584,7 +2638,7 @@ function effectChips(effects: Partial<Stats>): string {
     .join("");
 }
 
-/** Draw a glowing ground-ring under a moving item (good = flee, bad = chase). */
+/** Draw a glowing ground-ring under a moving item (green = touch, red = chase). */
 function ellipseRing(ctx: CanvasRenderingContext2D, cx: number, cy: number, rx: number, ry: number): void {
   ctx.beginPath();
   ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2);

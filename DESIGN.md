@@ -281,6 +281,7 @@ Effects are the immediate deltas; a small passive drain also applies each action
 ## 8. Controls
 
 - **Move:** Arrow keys / WASD (up, down, left, right)
-- **Choose:** Space / Enter / E on a highlighted station
+- **Collect:** touch common green items; they respawn elsewhere
+- **Choose:** Space / Enter / E on people, surprise rewards, and special highlighted stations
 - **Grow up:** walk into the glowing right-center gate once you're old enough
 - **Touch:** on-screen D-pad + ✓ button (shown on phones)

@@ -139,7 +139,7 @@ export function createUI(mount: HTMLElement): UIRefs {
   const focusPanel = el(
     "div",
     "plj-focus",
-    `<span class="plj-focus-title">Move with arrows / WASD</span><span class="plj-focus-desc">Walk onto a glowing choice and press SPACE. Reach the right-center gate to grow up.</span>`
+    `<span class="plj-focus-title">Move with arrows / WASD</span><span class="plj-focus-desc">Touch green items to collect them. Press SPACE for people and special choices. Reach the right-center gate to grow up.</span>`
   );
 
   // --- touch controls -------------------------------------------------------
