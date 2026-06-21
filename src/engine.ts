@@ -59,14 +59,14 @@ import { createUI, type UIRefs } from "./ui";
 import { generateStory, type CauseOfEnd, type LifeStory } from "./story";
 
 const W = 640;
-const H = 800; // a tall room with only a thin wall strip — almost all play floor
-const FLOOR_Y = 112; // smaller backdrop, taller playable split-zone room
+const H = 800; // a tall room with only a thin sky strip above the playfield
+const FLOOR_Y = 72; // sky-only non-playable band; ground starts right below it
 const DOOR_X = W - 74;
 const GATE_HALF_H = 86;
 const SPEED = 205; // base move speed (scaled up by your IQ — smart = nimble)
-const PY_MIN = 196; // keep the sky strip scenic; feet stay on outdoor ground
+const PY_MIN = 142; // feet stay on ground while the sky remains scenic only
 const PY_MAX = 782;
-const SOCIAL_Y_MIN = PY_MIN + 58;
+const SOCIAL_Y_MIN = PY_MIN + 48;
 const FAMILY_Y_MAX = PY_MAX - 24;
 const ZONE_GATE_GAP = 48;
 const MIN_ZONE_HEIGHT = 118;

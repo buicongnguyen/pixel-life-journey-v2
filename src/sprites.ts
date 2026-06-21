@@ -1473,21 +1473,28 @@ export interface RoomDecor {
 
 export function drawRoom(ctx: CanvasRenderingContext2D, theme: RoomTheme, W: number, H: number, floorY: number, doorActive: boolean, t: number, decor: RoomDecor): void {
   const splitY = Math.round(decor.splitY);
-  const wallG = ctx.createLinearGradient(0, 0, 0, floorY);
-  wallG.addColorStop(0, tint(theme.wall, 14));
-  wallG.addColorStop(1, theme.wall);
-  ctx.fillStyle = wallG;
-  ctx.fillRect(0, 0, W, floorY);
-  drawPixelTrim(ctx, 0, 18, W, 8, tint(theme.wall, 30), shade(theme.wall, 10));
-  drawPixelTrim(ctx, 0, floorY - 22, W, 8, tint(theme.wall, 18), shade(theme.wall, 14));
-  px(ctx, 0, floorY - 12, W, 12, theme.wallShade);
-
-  drawScene(ctx, decor.scene, theme, W, floorY, t);
+  drawTopSky(ctx, W, floorY, t);
   drawSocialArea(ctx, W, floorY, splitY, t);
   drawFamilyArea(ctx, decor.scene, theme, W, splitY, H, t);
   if (decor.atHome && decor.homeQuality > 0) drawHomeQuality(ctx, theme, W, splitY + 70, decor.homeQuality);
   drawZoneDivider(ctx, W, splitY);
   drawDoor(ctx, theme, W, H, splitY, doorActive, t);
+}
+
+function drawTopSky(ctx: CanvasRenderingContext2D, W: number, bottom: number, t: number): void {
+  const sky = ctx.createLinearGradient(0, 0, 0, bottom);
+  sky.addColorStop(0, "#77c8ff");
+  sky.addColorStop(1, "#ccefff");
+  ctx.fillStyle = sky;
+  ctx.fillRect(0, 0, W, bottom);
+  px(ctx, 0, bottom - 4, W, 4, "#a6e2ff");
+  const cloudShift = (t * 7) % 160;
+  for (const [x0, y, s] of [[68, 28, 0.7], [292, 18, 0.55], [514, 34, 0.62]] as const) {
+    const x = ((x0 + cloudShift) % (W + 100)) - 50;
+    ellipse(ctx, x, y, 22 * s, 7 * s, "rgba(255,255,255,0.82)");
+    ellipse(ctx, x + 18 * s, y + 4 * s, 24 * s, 8 * s, "rgba(255,255,255,0.74)");
+    ellipse(ctx, x - 16 * s, y + 4 * s, 14 * s, 5 * s, "rgba(255,255,255,0.70)");
+  }
 }
 
 function drawPixelTrim(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, a: string, b: string): void {
