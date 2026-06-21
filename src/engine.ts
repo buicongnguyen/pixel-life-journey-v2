@@ -1388,6 +1388,13 @@ export class Game {
     this.rentalIncome = rent;
   }
 
+  private liveHome(): HouseTier | null {
+    if (this.homes.length === 0) return null;
+    let best = this.homes[0];
+    for (const h of this.homes) if (h.quality > best.quality) best = h;
+    return best;
+  }
+
   private buyVehicle(v: VehicleTier): void {
     const key = "veh_" + v.id;
     if (this.owned.has(key)) {
@@ -1901,6 +1908,8 @@ export class Game {
         atHome: !!s.atHome,
         homeQuality: this.homeQuality,
         splitY: this.zoneSplitY(),
+        ownedVehicles: VEHICLES.filter((v) => this.owned.has("veh_" + v.id)),
+        ownedHome: this.liveHome(),
       });
 
       // draw stations, people and the avatar together, sorted by depth (y)

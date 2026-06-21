@@ -1,4 +1,4 @@
-import type { Gender, PersonKind, RoomTheme, SceneKind, UpperSceneKind } from "./types";
+import type { Gender, HouseTier, PersonKind, RoomTheme, SceneKind, UpperSceneKind, VehicleTier } from "./types";
 
 // ---------------------------------------------------------------------------
 // All drawing. The canvas is supersampled (see ui.ts) and rendered smoothly, so
@@ -1572,6 +1572,8 @@ export interface RoomDecor {
   atHome: boolean;
   homeQuality: number;
   splitY: number;
+  ownedVehicles: Pick<VehicleTier, "id" | "name">[];
+  ownedHome: Pick<HouseTier, "id" | "name" | "quality"> | null;
 }
 
 export function drawRoom(ctx: CanvasRenderingContext2D, theme: RoomTheme, W: number, H: number, floorY: number, doorActive: boolean, t: number, decor: RoomDecor): void {
@@ -1579,9 +1581,137 @@ export function drawRoom(ctx: CanvasRenderingContext2D, theme: RoomTheme, W: num
   drawTopSky(ctx, W, floorY, t);
   drawSocialArea(ctx, W, floorY, splitY, t, decor.upperScene);
   drawFamilyArea(ctx, decor.scene, theme, W, splitY, H, t);
+  drawOwnedVehicles(ctx, W, splitY, decor.ownedVehicles, t);
+  drawOwnedHomeExterior(ctx, W, splitY, decor.ownedHome);
   if (decor.atHome && decor.homeQuality > 0) drawHomeQuality(ctx, theme, W, splitY + 70, decor.homeQuality);
   drawZoneDivider(ctx, W, splitY);
   drawDoor(ctx, theme, W, H, splitY, doorActive, t);
+}
+
+function drawOwnedVehicles(ctx: CanvasRenderingContext2D, W: number, splitY: number, vehicles: Pick<VehicleTier, "id" | "name">[], t: number): void {
+  if (vehicles.length === 0) return;
+  const shown = vehicles.slice(0, 4);
+  const baseY = Math.max(124, splitY - 22);
+  const left = 22;
+  const stripW = Math.min(W - 176, 46 + shown.length * 58);
+  px(ctx, left, baseY - 9, stripW, 20, "rgba(44,68,76,0.68)");
+  px(ctx, left, baseY + 8, stripW, 3, "rgba(255,255,255,0.42)");
+  for (let x = left + 14; x < left + stripW - 10; x += 36) px(ctx, x, baseY + 1, 18, 3, "rgba(255,218,114,0.64)");
+  shown.forEach((v, i) => drawOwnedVehicle(ctx, left + 36 + i * 58, baseY + 3, v.id, t + i * 0.6));
+}
+
+function drawOwnedVehicle(ctx: CanvasRenderingContext2D, cx: number, groundY: number, id: string, t: number): void {
+  ellipse(ctx, cx, groundY + 10, id === "bicycle" || id === "motorbike" ? 24 : 31, 5, "rgba(18,14,22,0.22)");
+  if (id === "bicycle") {
+    const spin = Math.sin(t * 2) * 0.6;
+    strokeCircle(ctx, cx - 17, groundY + 3, 9, "#263546", 2.2);
+    strokeCircle(ctx, cx + 17, groundY + 3, 9, "#263546", 2.2);
+    ctx.strokeStyle = "#ffd76b";
+    ctx.lineWidth = 2.2;
+    ctx.lineCap = "round";
+    ctx.beginPath();
+    ctx.moveTo(cx - 17, groundY + 3);
+    ctx.lineTo(cx - 2, groundY - 9 + spin);
+    ctx.lineTo(cx + 17, groundY + 3);
+    ctx.lineTo(cx - 5, groundY + 3);
+    ctx.lineTo(cx - 17, groundY + 3);
+    ctx.moveTo(cx - 2, groundY - 9 + spin);
+    ctx.lineTo(cx + 7, groundY - 16);
+    ctx.moveTo(cx + 10, groundY - 16);
+    ctx.lineTo(cx + 18, groundY - 14);
+    ctx.stroke();
+    px(ctx, cx - 7, groundY - 16, 12, 3, "#2f2634");
+    return;
+  }
+  if (id === "motorbike") {
+    strokeCircle(ctx, cx - 20, groundY + 4, 9, "#242936", 2.4);
+    strokeCircle(ctx, cx + 20, groundY + 4, 9, "#242936", 2.4);
+    limb(ctx, cx - 14, groundY, cx + 12, groundY - 8, 7, "#1e2532");
+    ellipse(ctx, cx + 4, groundY - 10, 18, 8, "#ff9b35");
+    px(ctx, cx - 6, groundY - 17, 18, 5, "#3d4658");
+    limb(ctx, cx + 16, groundY - 8, cx + 25, groundY - 18, 3.2, "#354052");
+    return;
+  }
+  const sporty = id === "sportscar";
+  const body = sporty ? "#e9485a" : "#4aa3ff";
+  const roof = sporty ? "#ffd15c" : "#2e5f8e";
+  const w = sporty ? 58 : 52;
+  const h = sporty ? 17 : 22;
+  px(ctx, cx - w / 2, groundY - h, w, h, shade(body, 8));
+  px(ctx, cx - w / 2 + 6, groundY - h - 4, w - 12, h, body);
+  if (sporty) {
+    px(ctx, cx + w / 2 - 5, groundY - h - 10, 12, 5, shade(body, 18));
+    px(ctx, cx - 10, groundY - h - 13, 26, 10, roof);
+  } else {
+    px(ctx, cx - 14, groundY - h - 14, 30, 14, roof);
+  }
+  px(ctx, cx - 8, groundY - h - 10, 10, 8, "#bdefff");
+  px(ctx, cx + 5, groundY - h - 10, 10, 8, "#92d8ff");
+  ellipse(ctx, cx - w * 0.3, groundY + 1, 7, 7, "#222631");
+  ellipse(ctx, cx + w * 0.3, groundY + 1, 7, 7, "#222631");
+  ellipse(ctx, cx - w * 0.3, groundY + 1, 3.2, 3.2, "#8894a1");
+  ellipse(ctx, cx + w * 0.3, groundY + 1, 3.2, 3.2, "#8894a1");
+}
+
+function strokeCircle(ctx: CanvasRenderingContext2D, cx: number, cy: number, r: number, color: string, w: number): void {
+  ctx.strokeStyle = color;
+  ctx.lineWidth = w;
+  ctx.beginPath();
+  ctx.ellipse(cx, cy, r, r, 0, 0, Math.PI * 2);
+  ctx.stroke();
+}
+
+function drawOwnedHomeExterior(ctx: CanvasRenderingContext2D, W: number, splitY: number, home: Pick<HouseTier, "id" | "name" | "quality"> | null): void {
+  if (!home) return;
+  const x = 22;
+  const y = splitY + 15;
+  const w = 126;
+  const h = 58;
+  px(ctx, x - 4, y - 4, w + 8, h + 8, "rgba(36,26,32,0.24)");
+  px(ctx, x, y, w, h, "#bfeaff");
+  px(ctx, x, y + h - 20, w, 20, "#7fcf74");
+  px(ctx, x, y + h - 2, w, 2, "#5c9b55");
+  if (home.id === "studio" || home.id === "condo") drawApartmentExterior(ctx, x + 20, y + 6, home.quality);
+  else drawHouseExterior(ctx, x + 18, y + 8, home.quality, home.id === "villa");
+  px(ctx, x + w - 34, y + h - 24, 20, 8, "#6ba85e");
+  ellipse(ctx, x + w - 24, y + h - 31, 13, 12, "#4bb366");
+  ellipse(ctx, x + w - 12, y + h - 29, 10, 9, "#62c87a");
+}
+
+function drawApartmentExterior(ctx: CanvasRenderingContext2D, x: number, y: number, quality: number): void {
+  const floors = quality >= 2 ? 3 : 2;
+  const col = quality >= 2 ? "#8faac5" : "#8f8f98";
+  px(ctx, x, y + (3 - floors) * 9, 52, floors * 14 + 12, col);
+  px(ctx, x - 3, y + (3 - floors) * 9 - 4, 58, 5, shade(col, 20));
+  for (let r = 0; r < floors; r++) {
+    for (let c = 0; c < 3; c++) px(ctx, x + 7 + c * 14, y + 7 + r * 14 + (3 - floors) * 9, 7, 7, "#d8f3ff");
+  }
+  px(ctx, x + 22, y + floors * 14 + 4 + (3 - floors) * 9, 10, 13, "#3d3a45");
+}
+
+function drawHouseExterior(ctx: CanvasRenderingContext2D, x: number, y: number, quality: number, villa: boolean): void {
+  const body = villa ? "#f5ecd2" : quality >= 4 ? "#ffe1a8" : "#f0c58f";
+  const roof = villa ? "#e0b84e" : quality >= 4 ? "#c24f62" : "#9c5a45";
+  const w = villa ? 76 : quality >= 4 ? 68 : 58;
+  const h = villa ? 35 : 31;
+  ctx.fillStyle = roof;
+  ctx.beginPath();
+  ctx.moveTo(x - 4, y + 18);
+  ctx.lineTo(x + w / 2, y);
+  ctx.lineTo(x + w + 4, y + 18);
+  ctx.closePath();
+  ctx.fill();
+  ctx.strokeStyle = "rgba(42,30,32,0.55)";
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+  px(ctx, x, y + 18, w, h, body);
+  px(ctx, x + 9, y + 27, 12, 11, "#bdefff");
+  px(ctx, x + w - 22, y + 27, 12, 11, "#bdefff");
+  px(ctx, x + w / 2 - 6, y + 34, 12, 19, "#6b493d");
+  if (villa) {
+    for (let c = 0; c < 4; c++) px(ctx, x + 8 + c * 15, y + 20, 4, h + 1, "#d6c393");
+    px(ctx, x - 7, y + h + 20, w + 14, 4, "#d6c393");
+  }
 }
 
 function drawTopSky(ctx: CanvasRenderingContext2D, W: number, bottom: number, t: number): void {
