@@ -196,6 +196,27 @@ interface InventorySlot {
   count: number;
 }
 
+type FamilyRelationKind = "parent" | "child" | "partner" | "sibling";
+
+interface FamilyMember {
+  id: string;
+  name: string;
+  role: string;
+  icon: string;
+  ageOffset: number;
+  generation: number;
+  tone: string;
+  locked?: boolean;
+}
+
+interface FamilyEdge {
+  id: string;
+  from: string;
+  to: string;
+  kind: FamilyRelationKind;
+  label: string;
+}
+
 /** A rewindable snapshot of the whole life, captured at each stage's start. */
 interface Snapshot {
   stageIndex: number;
@@ -232,6 +253,11 @@ interface Snapshot {
   usedEvents: string[];
   inventory: InventorySlot[];
   selectedInventory: number;
+  familyMembers: FamilyMember[];
+  familyEdges: FamilyEdge[];
+  familyHiddenIds: string[];
+  familySelectedId: string;
+  familyNextId: number;
   bigFired: boolean;
   jackpotFired: boolean;
   petAdopted: boolean;
@@ -310,6 +336,11 @@ export class Game {
   private history: HistoryEntry[] = [];
   private partner: Partner | null = null;
   private hadChild = false;
+  private familyMembers: FamilyMember[] = [];
+  private familyEdges: FamilyEdge[] = [];
+  private familyHiddenIds = new Set<string>();
+  private familySelectedId = "player";
+  private familyNextId = 1;
   private biography: Biography | null = null; // set when replaying an authored life
   private editBio: Biography | null = null; // the draft being edited in the author
   // the how-to-play guide shows once (then it's tucked away during the game)
@@ -432,6 +463,12 @@ export class Game {
         count: slot.count,
         selected: i === this.selectedInventory,
       })),
+      familyGraph: {
+        members: this.familyMembers.length,
+        edges: this.familyEdges.length,
+        hidden: this.familyHiddenIds.size,
+        selected: this.familySelectedId,
+      },
       foodCooldown: Math.round(this.foodCooldown * 10) / 10,
       timelineLen: this.timeline.filter(Boolean).length,
       historyLen: this.history.length,
@@ -548,6 +585,7 @@ export class Game {
     this.history = [];
     this.partner = null;
     this.hadChild = false;
+    this.resetFamilyGraph();
     this.healthSum = 0;
     this.happinessSum = 0;
     this.smartsSum = 0;
@@ -631,6 +669,11 @@ export class Game {
       jobsTaken: [...this.jobsTaken],
       inventory: this.inventory.map((slot) => ({ opt: slot.opt, count: slot.count })),
       selectedInventory: this.selectedInventory,
+      familyMembers: this.familyMembers.map((m) => ({ ...m })),
+      familyEdges: this.familyEdges.map((e) => ({ ...e })),
+      familyHiddenIds: [...this.familyHiddenIds],
+      familySelectedId: this.familySelectedId,
+      familyNextId: this.familyNextId,
       bigFired: this.bigFired,
       jackpotFired: this.jackpotFired,
       petAdopted: this.petAdopted,
@@ -1850,6 +1893,11 @@ export class Game {
     this.jobsTaken = new Set(snap.jobsTaken);
     this.inventory = snap.inventory.map((slot) => ({ opt: slot.opt, count: slot.count }));
     this.selectedInventory = Math.max(0, Math.min(snap.selectedInventory, this.inventory.length - 1));
+    this.familyMembers = snap.familyMembers.map((m) => ({ ...m }));
+    this.familyEdges = snap.familyEdges.map((e) => ({ ...e }));
+    this.familyHiddenIds = new Set(snap.familyHiddenIds);
+    this.familySelectedId = snap.familySelectedId;
+    this.familyNextId = snap.familyNextId;
     this.bigFired = snap.bigFired;
     this.jackpotFired = snap.jackpotFired;
     this.petAdopted = snap.petAdopted;
@@ -2699,14 +2747,261 @@ export class Game {
     return this.playerName.trim() || (this.gender === "female" ? "Alex" : "Sam");
   }
 
-  private familyNode(name: string, role: string, age: number, icon: string, tone = ""): string {
-    const ageLabel = age <= 0 ? "newborn" : `age ${Math.floor(age)}`;
+  private resetFamilyGraph(): void {
+    const playerIcon = this.gender === "female" ? "👧" : "👦";
+    this.familyHiddenIds = new Set();
+    this.familyMembers = [
+      { id: "grandpa", name: "Grandpa", role: "grandparent", icon: "👴", ageOffset: 66, generation: -2, tone: "elder" },
+      { id: "grandma", name: "Grandma", role: "grandparent", icon: "👵", ageOffset: 64, generation: -2, tone: "elder" },
+      { id: "daddy", name: "Daddy", role: "parent", icon: "👨", ageOffset: 31, generation: -1, tone: "parent" },
+      { id: "mommy", name: "Mommy", role: "parent", icon: "👩", ageOffset: 29, generation: -1, tone: "parent" },
+      { id: "bigsib", name: "Big sib", role: "sibling", icon: "🧒", ageOffset: 4, generation: 0, tone: "sibling" },
+      { id: "player", name: this.playerDisplayName(), role: "you", icon: playerIcon, ageOffset: 0, generation: 0, tone: "you", locked: true },
+    ];
+    this.familyEdges = [];
+    this.ensureFamilyEdge("grandpa", "daddy", "parent", "parent");
+    this.ensureFamilyEdge("grandma", "mommy", "parent", "parent");
+    this.ensureFamilyEdge("daddy", "bigsib", "parent", "parent");
+    this.ensureFamilyEdge("mommy", "bigsib", "parent", "parent");
+    this.ensureFamilyEdge("daddy", "player", "parent", "parent");
+    this.ensureFamilyEdge("mommy", "player", "parent", "parent");
+    this.familySelectedId = "player";
+    this.familyNextId = 1;
+  }
+
+  private selectedFamilyMember(): FamilyMember {
+    let member = this.familyMembers.find((m) => m.id === this.familySelectedId);
+    if (!member) {
+      this.familySelectedId = "player";
+      member = this.familyMembers.find((m) => m.id === "player") ?? this.familyMembers[0];
+    }
+    return member;
+  }
+
+  private upsertFamilyMember(member: FamilyMember, refresh = false): boolean {
+    const existing = this.familyMembers.find((m) => m.id === member.id);
+    if (existing) {
+      if (refresh) Object.assign(existing, member);
+      return false;
+    }
+    this.familyMembers.push(member);
+    return true;
+  }
+
+  private familyRelationId(from: string, to: string, kind: FamilyRelationKind): string {
+    const pair = kind === "partner" || kind === "sibling" ? [from, to].sort() : [from, to];
+    return `${pair[0]}-${pair[1]}-${kind}`;
+  }
+
+  private ensureFamilyEdge(from: string, to: string, kind: FamilyRelationKind, label: string = kind): void {
+    if (from === to) return;
+    const id = this.familyRelationId(from, to, kind);
+    const existing = this.familyEdges.find((e) => e.id === id);
+    if (existing) {
+      existing.label = label;
+      return;
+    }
+    this.familyEdges.push({ id, from, to, kind, label });
+  }
+
+  private connectFamilyRelation(baseId: string, otherId: string, relation: FamilyRelationKind): void {
+    const base = this.familyMembers.find((m) => m.id === baseId);
+    const other = this.familyMembers.find((m) => m.id === otherId);
+    if (!base || !other || base.id === other.id) return;
+    if (relation === "parent") this.ensureFamilyEdge(other.id, base.id, relation, "parent");
+    else if (relation === "child") this.ensureFamilyEdge(base.id, other.id, relation, "child");
+    else this.ensureFamilyEdge(base.id, other.id, relation, relation);
+  }
+
+  private syncFamilyGraph(): void {
+    if (!this.familyMembers.length) this.resetFamilyGraph();
+    const playerIcon = this.gender === "female" ? "👧" : "👦";
+    const player = this.familyMembers.find((m) => m.id === "player");
+    if (player) {
+      player.name = this.playerDisplayName();
+      player.ageOffset = 0;
+      player.generation = 0;
+      player.tone = "you";
+      player.locked = true;
+    } else {
+      this.upsertFamilyMember({
+        id: "player",
+        name: this.playerDisplayName(),
+        role: "you",
+        icon: playerIcon,
+        ageOffset: 0,
+        generation: 0,
+        tone: "you",
+        locked: true,
+      });
+    }
+
+    const hasBabySibling = this.age >= 1 || this.history.some((h) => h.optionId === "babysib");
+    if (hasBabySibling && !this.familyHiddenIds.has("babysib")) {
+      const added = this.upsertFamilyMember({ id: "babysib", name: "Baby sib", role: "sibling", icon: "👶", ageOffset: -1, generation: 0, tone: "sibling" });
+      if (added) {
+        this.ensureFamilyEdge("daddy", "babysib", "parent", "parent");
+        this.ensureFamilyEdge("mommy", "babysib", "parent", "parent");
+      }
+    }
+
+    if (this.partner && !this.familyHiddenIds.has("partner")) {
+      const added = this.upsertFamilyMember({
+        id: "partner",
+        name: this.partner.name,
+        role: this.partner.title,
+        icon: this.partner.emoji,
+        ageOffset: -1,
+        generation: 0,
+        tone: "partner",
+      });
+      if (added) this.ensureFamilyEdge("player", "partner", "partner", this.spouseDeceased ? "widowed" : "partner");
+    }
+
+    if (this.hadChild && !this.familyHiddenIds.has("child")) {
+      const added = this.upsertFamilyMember({ id: "child", name: "Baby", role: "your child", icon: this.age - 30 < 3 ? "👶" : "🧒", ageOffset: -30, generation: 1, tone: "child" });
+      if (added) {
+        this.ensureFamilyEdge("player", "child", "child", "child");
+        if (this.partner && !this.familyHiddenIds.has("partner")) this.ensureFamilyEdge("partner", "child", "child", "child");
+      }
+    }
+
+    if (this.hadChild && this.familyBond >= 3 && this.age >= 60 && !this.familyHiddenIds.has("grandkid")) {
+      const added = this.upsertFamilyMember({ id: "grandkid", name: "Little Star", role: "grandkid", icon: "👶", ageOffset: -60, generation: 2, tone: "child" });
+      if (added) this.ensureFamilyEdge("child", "grandkid", "child", "child");
+    }
+
+    const ids = new Set(this.familyMembers.map((m) => m.id));
+    this.familyEdges = this.familyEdges.filter((e) => ids.has(e.from) && ids.has(e.to));
+    if (!ids.has(this.familySelectedId)) this.familySelectedId = "player";
+  }
+
+  private familyAgeValue(member: FamilyMember): number {
+    return Math.max(0, Math.floor(this.age + member.ageOffset));
+  }
+
+  private familyAgeLabel(member: FamilyMember): string {
+    const age = this.familyAgeValue(member);
+    return age <= 0 ? "newborn" : `age ${age}`;
+  }
+
+  private familyMemberOptions(exceptId = ""): string {
+    return this.familyMembers
+      .filter((m) => m.id !== exceptId)
+      .map((m) => `<option value="${esc(m.id)}">${esc(m.name)} (${esc(m.role)})</option>`)
+      .join("");
+  }
+
+  private familyRelationOptions(): string {
     return `
-      <div class="plj-family-node ${tone}">
-        <span class="plj-family-name">${esc(name)}</span>
-        <span class="plj-family-face">${icon}</span>
-        <span class="plj-family-role">${esc(role)}</span>
-        <small>${ageLabel}</small>
+      <option value="parent">parent of selected</option>
+      <option value="child">child of selected</option>
+      <option value="partner">partner of selected</option>
+      <option value="sibling">sibling of selected</option>`;
+  }
+
+  private familyGraphMarkup(): string {
+    const width = 620;
+    const nodeW = 84;
+    const nodeH = 94;
+    const top = 20;
+    const rowGap = 120;
+    const gens = [...new Set(this.familyMembers.map((m) => m.generation))].sort((a, b) => a - b);
+    const minGen = gens[0] ?? -1;
+    const order = ["grandpa", "grandma", "daddy", "mommy", "bigsib", "babysib", "player", "partner", "child", "grandkid"];
+    const positions = new Map<string, { x: number; y: number; cx: number; cy: number }>();
+    for (const gen of gens) {
+      const row = this.familyMembers
+        .filter((m) => m.generation === gen)
+        .sort((a, b) => (order.indexOf(a.id) === -1 ? 999 : order.indexOf(a.id)) - (order.indexOf(b.id) === -1 ? 999 : order.indexOf(b.id)) || a.name.localeCompare(b.name));
+      row.forEach((member, index) => {
+        const cx = Math.round((width / (row.length + 1)) * (index + 1));
+        const y = top + (gen - minGen) * rowGap;
+        positions.set(member.id, { x: cx - nodeW / 2, y, cx, cy: y + nodeH / 2 });
+      });
+    }
+    const height = Math.max(360, top * 2 + Math.max(1, gens.length) * rowGap);
+    const lines = this.familyEdges.map((edge) => {
+      const from = positions.get(edge.from);
+      const to = positions.get(edge.to);
+      if (!from || !to) return "";
+      const mx = Math.round((from.cx + to.cx) / 2);
+      const my = Math.round((from.cy + to.cy) / 2);
+      return `
+        <g class="plj-family-edge ${esc(edge.kind)}">
+          <line x1="${from.cx}" y1="${from.cy}" x2="${to.cx}" y2="${to.cy}"></line>
+          <text x="${mx}" y="${my - 4}">${esc(edge.label)}</text>
+        </g>`;
+    }).join("");
+    const nodes = this.familyMembers.map((member) => {
+      const p = positions.get(member.id);
+      if (!p) return "";
+      const selected = member.id === this.familySelectedId ? " is-selected" : "";
+      const locked = member.locked ? " is-locked" : "";
+      return `
+        <button class="plj-family-node ${esc(member.tone)}${selected}${locked}" data-family-id="${esc(member.id)}" style="left:${p.x}px;top:${p.y}px">
+          <span class="plj-family-name">${esc(member.name)}</span>
+          <span class="plj-family-face">${member.icon}</span>
+          <span class="plj-family-role">${esc(member.role)}</span>
+          <small>${this.familyAgeLabel(member)}</small>
+        </button>`;
+    }).join("");
+    return `
+      <div class="plj-family-graph" style="--family-graph-w:${width}px;--family-graph-h:${height}px">
+        <svg class="plj-family-lines" viewBox="0 0 ${width} ${height}" aria-hidden="true">${lines}</svg>
+        ${nodes}
+      </div>`;
+  }
+
+  private familyEditorMarkup(): string {
+    const selected = this.selectedFamilyMember();
+    const deleteDisabled = selected.locked ? "disabled" : "";
+    const related = this.familyEdges
+      .filter((edge) => edge.from === selected.id || edge.to === selected.id)
+      .map((edge) => {
+        const otherId = edge.from === selected.id ? edge.to : edge.from;
+        const other = this.familyMembers.find((m) => m.id === otherId);
+        return `
+          <div class="plj-family-relation-row">
+            <span>${esc(edge.label)}: <b>${esc(other?.name ?? "unknown")}</b></span>
+            <button class="plj-mini-pill" data-family-unlink="${esc(edge.id)}">Remove</button>
+          </div>`;
+      }).join("") || `<div class="plj-family-empty">No relation lines yet.</div>`;
+    return `
+      <div class="plj-family-editor">
+        <div class="plj-family-edit-box">
+          <h3>Edit selected</h3>
+          <div class="plj-family-form-grid">
+            <label>Name <input id="plj-family-name" maxlength="20" value="${esc(selected.name)}"></label>
+            <label>Role <input id="plj-family-role" maxlength="24" value="${esc(selected.role)}"></label>
+            <label>Age <input id="plj-family-age" type="number" min="0" max="120" value="${this.familyAgeValue(selected)}" inputmode="numeric"></label>
+            <label>Icon <input id="plj-family-icon" maxlength="4" value="${esc(selected.icon)}"></label>
+          </div>
+          <div class="plj-family-toolbar">
+            <button class="plj-mini-pill is-primary" id="plj-family-save">Save</button>
+            <button class="plj-mini-pill" id="plj-family-delete" ${deleteDisabled}>Delete</button>
+          </div>
+        </div>
+        <div class="plj-family-edit-box">
+          <h3>Add person</h3>
+          <div class="plj-family-form-grid">
+            <label>Name <input id="plj-family-add-name" maxlength="20" value="New relative"></label>
+            <label>Role <input id="plj-family-add-role" maxlength="24" value="relative"></label>
+            <label>Age <input id="plj-family-add-age" type="number" min="0" max="120" value="${Math.max(0, this.familyAgeValue(selected) - 2)}" inputmode="numeric"></label>
+            <label>Icon <input id="plj-family-add-icon" maxlength="4" value="🙂"></label>
+            <label class="plj-family-wide">Relation <select id="plj-family-add-relation">${this.familyRelationOptions()}</select></label>
+          </div>
+          <button class="plj-mini-pill is-primary" id="plj-family-add">Add to graph</button>
+        </div>
+        <div class="plj-family-edit-box">
+          <h3>Relationships</h3>
+          <div class="plj-family-link-controls">
+            <select id="plj-family-link-target">${this.familyMemberOptions(selected.id)}</select>
+            <select id="plj-family-link-relation">${this.familyRelationOptions()}</select>
+            <button class="plj-mini-pill is-primary" id="plj-family-link">Link</button>
+          </div>
+          <div class="plj-family-relations">${related}</div>
+        </div>
       </div>`;
   }
 
@@ -2725,14 +3020,11 @@ export class Game {
       return;
     }
     this.mode = "familytree";
-    const age = Math.floor(this.age);
-    const playerIcon = this.gender === "female" ? "👧" : "👦";
-    const partnerIcon = this.partner?.emoji ?? "💍";
-    const siblingAge = Math.max(0, age + 4);
-    const babySiblingAge = Math.max(0, age - 1);
-    const hasBabySibling = age >= 1 || this.history.some((h) => h.optionId === "babysib");
-    const childAge = Math.max(0, age - 30);
-    const grandkidAge = Math.max(0, age - 60);
+    this.renderFamilyTreeOverlay();
+  }
+
+  private renderFamilyTreeOverlay(): void {
+    this.syncFamilyGraph();
     const liveHome = this.liveHome();
     const houseCards = [
       `<div class="plj-house-chip"><b>Parents' home</b><span>${esc(this.birthHomeLabel())}</span><small>Family fund ${formatMoney(this.familyFund)}</small></div>`,
@@ -2743,12 +3035,6 @@ export class Game {
         .map(({ h, i }) => `<div class="plj-house-chip"><b>${h.emoji} Rental house</b><span>${esc(h.name)}</span><small>rent ${formatMoney(h.rentYield)}/yr</small></div>`),
       `<div class="plj-house-chip"><b>Sibling house</b><span>other branch</span><small>browse the family map</small></div>`,
     ].join("");
-    const childRow = this.hadChild
-      ? this.familyNode("Baby", "your child", childAge, childAge < 3 ? "👶" : "🧒", "child")
-      : `<div class="plj-family-placeholder">No child branch yet</div>`;
-    const grandkidRow = this.hadChild && this.familyBond >= 3 && age >= 60
-      ? this.familyNode("Little Star", "grandkid", grandkidAge, "👶", "child")
-      : `<div class="plj-family-placeholder">Grandkid branch unlocks with family time</div>`;
 
     const utilityButtons = `
       <div class="plj-mini-actions">
@@ -2761,28 +3047,9 @@ export class Game {
           <h2>🌳 Family Tree</h2>
           ${utilityButtons}
         </div>
-        <p class="plj-sub">Names sit above each head. Scroll the houses row to browse the family homes.</p>
-        <div class="plj-family-map">
-          <div class="plj-family-row">
-            ${this.familyNode("Grandpa", "grandparent", age + 66, "👴", "elder")}
-            ${this.familyNode("Grandma", "grandparent", age + 64, "👵", "elder")}
-          </div>
-          <div class="plj-family-link"></div>
-          <div class="plj-family-row">
-            ${this.familyNode("Daddy", "parent", age + 31, "👨", "parent")}
-            ${this.familyNode("Mommy", "parent", age + 29, "👩", "parent")}
-          </div>
-          <div class="plj-family-link"></div>
-          <div class="plj-family-row">
-            ${this.familyNode("Big sib", "sibling", siblingAge, "🧒", "sibling")}
-            ${hasBabySibling ? this.familyNode("Baby sib", "sibling", babySiblingAge, "👶", "sibling") : ""}
-            ${this.familyNode(this.playerDisplayName(), "you", age, playerIcon, "you")}
-            ${this.partner ? this.familyNode(this.partner.name, this.partner.title, Math.max(18, age - 1), partnerIcon, "partner") : ""}
-          </div>
-          <div class="plj-family-link"></div>
-          <div class="plj-family-row">${childRow}</div>
-          <div class="plj-family-row">${grandkidRow}</div>
-        </div>
+        <p class="plj-sub">Tap a person to edit details. Use relationships to draw parent, child, partner, and sibling lines.</p>
+        <div class="plj-family-map">${this.familyGraphMarkup()}</div>
+        ${this.familyEditorMarkup()}
         <h3 class="plj-prof-h3">🏘️ Houses</h3>
         <div class="plj-family-houses">${houseCards}</div>
         <div class="plj-title-row">
@@ -2790,21 +3057,107 @@ export class Game {
         </div>
       </div>`;
     this.ui.overlay.classList.add("show");
-    this.ui.overlay.querySelector<HTMLButtonElement>("#plj-tree-close")!.onclick = () => {
+    this.bindFamilyTreeOverlay();
+  }
+
+  private bindFamilyTreeOverlay(): void {
+    const ov = this.ui.overlay;
+    ov.querySelectorAll<HTMLButtonElement>("[data-family-id]").forEach((btn) => {
+      btn.onclick = () => {
+        this.familySelectedId = btn.dataset.familyId ?? "player";
+        this.renderFamilyTreeOverlay();
+      };
+    });
+    ov.querySelector<HTMLButtonElement>("#plj-family-save")!.onclick = () => {
+      const selected = this.selectedFamilyMember();
+      const name = ov.querySelector<HTMLInputElement>("#plj-family-name")!.value.trim();
+      const role = ov.querySelector<HTMLInputElement>("#plj-family-role")!.value.trim();
+      const icon = ov.querySelector<HTMLInputElement>("#plj-family-icon")!.value.trim();
+      const age = Number(ov.querySelector<HTMLInputElement>("#plj-family-age")!.value);
+      selected.name = name || selected.name;
+      selected.role = role || selected.role;
+      selected.icon = icon || selected.icon;
+      if (Number.isFinite(age)) selected.ageOffset = Math.round(Math.max(0, age)) - Math.floor(this.age);
+      if (selected.id === "player") this.playerName = selected.name;
+      this.captureFamilyEdit("Saved family member.");
+      this.renderFamilyTreeOverlay();
+    };
+    ov.querySelector<HTMLButtonElement>("#plj-family-delete")!.onclick = () => {
+      const selected = this.selectedFamilyMember();
+      if (selected.locked) {
+        this.hint("You stay in your own family tree.");
+        return;
+      }
+      this.familyHiddenIds.add(selected.id);
+      this.familyMembers = this.familyMembers.filter((m) => m.id !== selected.id);
+      this.familyEdges = this.familyEdges.filter((e) => e.from !== selected.id && e.to !== selected.id);
+      this.familySelectedId = "player";
+      this.captureFamilyEdit("Removed family member.");
+      this.renderFamilyTreeOverlay();
+    };
+    ov.querySelector<HTMLButtonElement>("#plj-family-add")!.onclick = () => {
+      const selected = this.selectedFamilyMember();
+      const relation = ov.querySelector<HTMLSelectElement>("#plj-family-add-relation")!.value as FamilyRelationKind;
+      const name = ov.querySelector<HTMLInputElement>("#plj-family-add-name")!.value.trim() || "New relative";
+      const role = ov.querySelector<HTMLInputElement>("#plj-family-add-role")!.value.trim() || "relative";
+      const icon = ov.querySelector<HTMLInputElement>("#plj-family-add-icon")!.value.trim() || "🙂";
+      const age = Number(ov.querySelector<HTMLInputElement>("#plj-family-add-age")!.value);
+      const generation = relation === "parent" ? selected.generation - 1 : relation === "child" ? selected.generation + 1 : selected.generation;
+      const id = `custom-${this.familyNextId++}`;
+      this.familyMembers.push({
+        id,
+        name,
+        role,
+        icon,
+        ageOffset: Number.isFinite(age) ? Math.round(Math.max(0, age)) - Math.floor(this.age) : 0,
+        generation,
+        tone: "custom",
+      });
+      this.connectFamilyRelation(selected.id, id, relation);
+      this.familySelectedId = id;
+      this.captureFamilyEdit("Added family member.");
+      this.renderFamilyTreeOverlay();
+    };
+    ov.querySelector<HTMLButtonElement>("#plj-family-link")!.onclick = () => {
+      const selected = this.selectedFamilyMember();
+      const otherId = ov.querySelector<HTMLSelectElement>("#plj-family-link-target")!.value;
+      const relation = ov.querySelector<HTMLSelectElement>("#plj-family-link-relation")!.value as FamilyRelationKind;
+      this.connectFamilyRelation(selected.id, otherId, relation);
+      this.captureFamilyEdit("Updated family relationship.");
+      this.renderFamilyTreeOverlay();
+    };
+    ov.querySelectorAll<HTMLButtonElement>("[data-family-unlink]").forEach((btn) => {
+      btn.onclick = () => {
+        const edgeId = btn.dataset.familyUnlink;
+        this.familyEdges = this.familyEdges.filter((edge) => edge.id !== edgeId);
+        this.captureFamilyEdit("Removed family relationship.");
+        this.renderFamilyTreeOverlay();
+      };
+    });
+    ov.querySelector<HTMLButtonElement>("#plj-tree-close")!.onclick = () => {
       this.mode = "playing";
       this.clearOverlay();
     };
-    const assetsLink = this.ui.overlay.querySelector<HTMLButtonElement>("#plj-tree-assets");
+    const assetsLink = ov.querySelector<HTMLButtonElement>("#plj-tree-assets");
     if (assetsLink) assetsLink.onclick = () => {
       this.mode = "playing";
       this.clearOverlay();
       this.showAssets();
     };
-    this.ui.overlay.querySelector<HTMLButtonElement>("#plj-tree-training")!.onclick = () => {
+    ov.querySelector<HTMLButtonElement>("#plj-tree-training")!.onclick = () => {
       this.mode = "playing";
       this.clearOverlay();
       this.showTraining();
     };
+  }
+
+  private captureFamilyEdit(message: string): void {
+    this.familyEdges = this.familyEdges.filter((edge) =>
+      this.familyMembers.some((m) => m.id === edge.from) &&
+      this.familyMembers.some((m) => m.id === edge.to)
+    );
+    if (this.timeline[this.stageIndex]) this.timeline[this.stageIndex] = this.snapshot();
+    this.hint(message);
   }
 
   private annualPlayerIncome(): number {

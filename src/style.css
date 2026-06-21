@@ -820,9 +820,17 @@ body {
 .plj-family-card,
 .plj-assets-card,
 .plj-training-card {
-  max-width: 560px;
   width: 94%;
   text-align: left;
+}
+.plj-family-card {
+  max-width: 720px;
+  max-height: min(92vh, 760px);
+  overflow-y: auto;
+}
+.plj-assets-card,
+.plj-training-card {
+  max-width: 560px;
 }
 .plj-family-head {
   display: flex;
@@ -852,27 +860,48 @@ body {
 }
 .plj-family-map {
   position: relative;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 7px;
   padding: 10px 6px;
   margin: 8px 0 10px;
   border: 1px solid var(--line);
   border-radius: 12px;
   background: rgba(0, 0, 0, 0.18);
   overflow-x: auto;
+  overflow-y: hidden;
 }
-.plj-family-row {
-  display: flex;
-  justify-content: center;
-  gap: 8px;
-  min-width: max-content;
+.plj-family-graph {
+  position: relative;
+  width: var(--family-graph-w);
+  min-width: var(--family-graph-w);
+  height: var(--family-graph-h);
 }
-.plj-family-link {
-  width: 2px;
-  height: 12px;
-  background: rgba(255, 255, 255, 0.25);
+.plj-family-lines {
+  position: absolute;
+  inset: 0;
+  width: var(--family-graph-w);
+  height: var(--family-graph-h);
+  pointer-events: none;
+}
+.plj-family-edge line {
+  stroke: rgba(255, 255, 255, 0.28);
+  stroke-width: 2;
+}
+.plj-family-edge.parent line,
+.plj-family-edge.child line {
+  stroke: rgba(255, 210, 63, 0.48);
+}
+.plj-family-edge.partner line {
+  stroke: rgba(255, 94, 168, 0.55);
+}
+.plj-family-edge.sibling line {
+  stroke: rgba(93, 184, 255, 0.48);
+}
+.plj-family-edge text {
+  fill: rgba(255, 248, 223, 0.78);
+  paint-order: stroke;
+  stroke: rgba(16, 10, 31, 0.92);
+  stroke-width: 3px;
+  font-size: 10px;
+  text-anchor: middle;
 }
 .plj-family-node,
 .plj-family-placeholder {
@@ -888,6 +917,22 @@ body {
   background: rgba(23, 15, 44, 0.92);
   text-align: center;
 }
+.plj-family-node {
+  position: absolute;
+  width: 84px;
+  min-height: 94px;
+  padding: 6px 4px;
+  color: var(--ink);
+  font: inherit;
+  cursor: pointer;
+  transition: border-color 120ms ease, transform 120ms ease, box-shadow 120ms ease;
+}
+.plj-family-node:hover,
+.plj-family-node.is-selected {
+  border-color: #ffd23f;
+  transform: translateY(-1px);
+  box-shadow: 0 0 0 2px rgba(255, 210, 63, 0.17);
+}
 .plj-family-node.you {
   border-color: #5db8ff;
   box-shadow: 0 0 0 2px rgba(93, 184, 255, 0.16);
@@ -897,6 +942,19 @@ body {
 }
 .plj-family-node.child {
   border-color: #ffd23f;
+}
+.plj-family-node.custom {
+  border-color: rgba(126, 217, 87, 0.75);
+}
+.plj-family-node.is-locked::after {
+  content: "";
+  position: absolute;
+  right: 6px;
+  top: 6px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #5db8ff;
 }
 .plj-family-name {
   max-width: 68px;
@@ -921,6 +979,91 @@ body {
 }
 .plj-family-placeholder {
   padding: 8px;
+}
+.plj-family-editor {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin: 8px 0 12px;
+}
+.plj-family-edit-box {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 9px;
+  background: rgba(0, 0, 0, 0.18);
+}
+.plj-family-edit-box h3 {
+  margin: 0 0 8px;
+  font-size: 13px;
+}
+.plj-family-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+}
+.plj-family-form-grid label,
+.plj-family-link-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  color: var(--muted);
+  font-size: 10px;
+  line-height: 1.15;
+}
+.plj-family-form-grid input,
+.plj-family-form-grid select,
+.plj-family-link-controls select {
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: rgba(0, 0, 0, 0.28);
+  color: var(--ink);
+  padding: 7px 8px;
+  font: inherit;
+  font-size: 12px;
+}
+.plj-family-wide {
+  grid-column: 1 / -1;
+}
+.plj-family-toolbar,
+.plj-family-link-controls {
+  margin-top: 8px;
+}
+.plj-family-toolbar {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.plj-mini-pill.is-primary {
+  border-color: rgba(126, 217, 87, 0.8);
+  background: rgba(126, 217, 87, 0.18);
+}
+.plj-mini-pill:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.plj-family-relations {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 8px;
+  max-height: 120px;
+  overflow-y: auto;
+}
+.plj-family-relation-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  color: var(--muted);
+  font-size: 11px;
+}
+.plj-family-relation-row b {
+  color: var(--ink);
+}
+.plj-family-empty {
+  color: var(--muted);
+  font-size: 11px;
 }
 .plj-family-houses {
   display: flex;
@@ -1607,7 +1750,16 @@ body {
   .plj-training-answers {
     grid-template-columns: 1fr;
   }
-  .plj-family-node,
+  .plj-family-card {
+    width: 96%;
+    max-height: calc(100vh - 18px);
+  }
+  .plj-family-editor {
+    grid-template-columns: 1fr;
+  }
+  .plj-family-node {
+    width: 84px;
+  }
   .plj-family-placeholder {
     width: 70px;
   }
