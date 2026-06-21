@@ -30,6 +30,7 @@ export type PersonKind =
   | "father"
   | "grandma"
   | "grandpa"
+  | "babySibling"
   | "sibling"
   | "playmate"
   | "studyFriend"
@@ -43,6 +44,7 @@ export type PersonKind =
   | "boss"
   | "gymBuddy"
   | "spouse"
+  | "baby"
   | "child"
   | "grandkid"
   | "oldFriend";

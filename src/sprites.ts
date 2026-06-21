@@ -362,7 +362,9 @@ export function avatarLook(stageIndex: number, gender: Gender = "male"): AvatarL
   };
 }
 
-const PERSON_PROFILE: Record<"child" | "teen" | "adult" | "elder", number> = {
+const PERSON_PROFILE: Record<"newborn" | "toddler" | "child" | "teen" | "adult" | "elder", number> = {
+  newborn: 0,
+  toddler: 1,
   child: 2,
   teen: 5,
   adult: 7,
@@ -377,6 +379,7 @@ export function personLook(kind: PersonKind, playerGender: Gender, stageIndex?: 
     father: { g: "male", age: "adult", hair: "#3a2a1e", shirt: "#5f93cf" },
     grandma: { g: "female", age: "elder", hair: "#e4e4ec", shirt: "#c9a6d6" },
     grandpa: { g: "male", age: "elder", hair: "#cdced6", shirt: "#8fa0ab" },
+    babySibling: { g: "male", age: "newborn", hair: "#824d22", shirt: "#78baff" },
     sibling: { g: "male", age: "child", hair: "#824d22", shirt: "#69c06a" },
     playmate: { g: "female", age: "child", hair: "#8a5a2e", shirt: "#ffd23f" },
     studyFriend: { g: "male", age: "teen", hair: "#3a2a1e", shirt: "#5aa3df" },
@@ -390,6 +393,7 @@ export function personLook(kind: PersonKind, playerGender: Gender, stageIndex?: 
     boss: { g: "male", age: "adult", hair: "#2a2a2a", shirt: "#4a5562" },
     gymBuddy: { g: "male", age: "adult", hair: "#2a2018", shirt: "#ff6b6b" },
     spouse: { g: opp, age: "adult", hair: opp === "female" ? "#6a4327" : "#3a2a1e", shirt: opp === "female" ? "#ff9ec0" : "#5f93cf" },
+    baby: { g: playerGender, age: "newborn", hair: "#824d22", shirt: "#78baff" },
     child: { g: "male", age: "child", hair: "#824d22", shirt: "#ffd23f" },
     grandkid: { g: "female", age: "child", hair: "#8a5a2e", shirt: "#8fdf6b" },
     oldFriend: { g: "male", age: "elder", hair: "#cdced6", shirt: "#9c8cff" },
@@ -398,6 +402,12 @@ export function personLook(kind: PersonKind, playerGender: Gender, stageIndex?: 
   const female = s.g === "female";
   let profileIndex = PERSON_PROFILE[s.age];
   if (stageIndex !== undefined) {
+    if (kind === "sibling") {
+      if (stageIndex === 0) profileIndex = 2;
+      else if (stageIndex === 1) profileIndex = 0;
+      else if (stageIndex === 2) profileIndex = 1;
+      else if (stageIndex <= 4) profileIndex = 3;
+    }
     if (kind === "spouse") profileIndex = stageIndex >= 10 ? 10 : 7;
     if (kind === "child") profileIndex = stageIndex >= 9 ? 3 : 2;
     if (kind === "grandkid") profileIndex = stageIndex >= 11 ? 2 : 1;
@@ -1496,10 +1506,10 @@ export function drawAvatar(ctx: CanvasRenderingContext2D, cx: number, footY: num
 
 const PERSON_LABEL: Record<PersonKind, string> = {
   mother: "Mum", father: "Dad", grandma: "Grandma", grandpa: "Grandpa",
-  sibling: "Sibling", playmate: "Playmate", studyFriend: "Study pal", bestFriend: "Best friend",
+  babySibling: "Baby sibling", sibling: "Sibling", playmate: "Playmate", studyFriend: "Study pal", bestFriend: "Best friend",
   crush: "Crush", smokerFriend: "Smoker friend", gangster: "Gangster", playboy: "Playboy",
   roommate: "Roommate", coworker: "Coworker", boss: "Boss",
-  gymBuddy: "Gym buddy", spouse: "Spouse", child: "Your child", grandkid: "Grandkid", oldFriend: "Old friend",
+  gymBuddy: "Gym buddy", spouse: "Spouse", baby: "Newborn baby", child: "Your child", grandkid: "Grandkid", oldFriend: "Old friend",
 };
 
 export interface PersonDrawOptions {

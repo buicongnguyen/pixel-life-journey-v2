@@ -88,7 +88,7 @@ export const STAGES: Stage[] = [
       { id: "doll", label: "Doll", icon: "🧸", desc: "Cuddle a doll or teddy — gentle, nurturing play.", category: "social", effects: { happiness: 6, fun: 3 }, storyTag: "toy_doll" },
       { id: "mum", label: "Mum", icon: "👩", person: "mother", desc: "Read picture books on Mum's lap.", category: "social", effects: { happiness: 7, smarts: 3 }, storyTag: "family_love" },
       { id: "playmate", label: "Playmate", icon: "🧒", person: "playmate", desc: "Toddle after a little friend at the park.", category: "social", effects: { happiness: 6, fun: 4, health: 2 }, storyTag: "friends" },
-      { id: "babysib", label: "Baby sibling", icon: "👶", person: "sibling", desc: "A new baby has joined the family — your little brother or sister, growing fast.", category: "social", effects: { happiness: 6, health: 2 }, storyTag: "family" },
+      { id: "babysib", label: "Baby sibling", icon: "👶", person: "babySibling", desc: "A new baby has joined the family — your little brother or sister, tiny and crawling close by.", category: "social", effects: { happiness: 6, health: 2 }, storyTag: "family" },
     ],
   },
   {
@@ -258,7 +258,7 @@ export const STAGES: Stage[] = [
     isMarriage: true,
     atHome: true,
     options: [
-      { id: "baby", label: "Have a baby", icon: "👶", desc: "Start a family. Overwhelming love (and a few sleepless, costly years).", category: "special", effects: { happiness: 12, fun: -4, health: -2 }, cost: 5000, once: true, storyTag: "baby" },
+      { id: "baby", label: "Newborn baby", icon: "👶", person: "baby", desc: "Have a baby and welcome a tiny newborn into your family. Overwhelming love, and a few sleepless costly years.", category: "special", effects: { happiness: 12, fun: -4, health: -2 }, cost: 5000, once: true, storyTag: "baby" },
       { id: "date", label: "Date nights", icon: "🌹", desc: "Keep the romance alive with your partner — a little money well spent.", category: "fun", effects: { happiness: 6, fun: 5 }, cost: 1800, storyTag: "date" },
       { id: "provide", label: "Work for family", icon: "💼", desc: "Provide for the household. A higher IQ and better job pay more.", category: "wealth", effects: { fun: -3 }, earn: 34000, scalesWithSmarts: true, storyTag: "provide" },
       { id: "meals", label: "Family meals", icon: "🥗", desc: "Cook healthy meals together. Good for everyone.", category: "food", effects: { health: 8, happiness: 2 }, storyTag: "veggies" },

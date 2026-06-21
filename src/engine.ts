@@ -614,7 +614,7 @@ export class Game {
   }
 
   private isFamilyOption(opt: LifeOption): boolean {
-    const familyPeople: PersonKind[] = ["mother", "father", "grandma", "grandpa", "sibling", "spouse", "child", "grandkid"];
+    const familyPeople: PersonKind[] = ["mother", "father", "grandma", "grandpa", "babySibling", "sibling", "spouse", "baby", "child", "grandkid"];
     if (opt.person && familyPeople.includes(opt.person)) return true;
     const tag = opt.storyTag ?? "";
     return tag === "family" || tag === "family_love" || tag === "grandkids" || tag === "toy_doll" || opt.id === "baby";
