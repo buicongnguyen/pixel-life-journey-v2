@@ -141,7 +141,7 @@ export function createUI(mount: HTMLElement): UIRefs {
   const focusPanel = el(
     "div",
     "plj-focus",
-    `<span class="plj-focus-title">Move with arrows / WASD</span><span class="plj-focus-desc">Touch green items to add them to the tray. Swipe the tray left/right to select and up near a person to use.</span>`
+    `<span class="plj-focus-title">Move with arrows / WASD</span><span class="plj-focus-desc">Touch green items to add them to the tray. Swipe left/right to select; swipe up to eat food or give items near people.</span>`
   );
 
   // --- touch controls -------------------------------------------------------
@@ -153,7 +153,7 @@ export function createUI(mount: HTMLElement): UIRefs {
   const down = el("button", "plj-tbtn plj-down", "▼");
   dpad.append(up, left, right, down);
   const inventoryWrap = el("div", "plj-inventory");
-  inventoryWrap.title = "Swipe left/right to select. Swipe up near a person to use.";
+  inventoryWrap.title = "Swipe left/right to select. Swipe up to eat food, or near a person to give.";
   const inventoryTrack = el("div", "plj-inventory-track");
   inventoryWrap.append(inventoryTrack);
   touchWrap.append(dpad, inventoryWrap);

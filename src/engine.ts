@@ -79,6 +79,7 @@ const BLOCK_R = 30; // an NPC standing in the path blocks a bad item
 const SATIATE_TIME = 9; // seconds a bad item stays frozen/faded after you do its good counterpart
 const INVENTORY_MAX_SLOTS = 8;
 const INVENTORY_MAX_COUNT = 9;
+const FOOD_USE_COOLDOWN = 5;
 const CAREER_INDEX = STAGES.findIndex((s) => s.id === "career");
 
 type Mode =
@@ -237,6 +238,7 @@ export class Game {
   private facing: AvatarFacing = "front";
   private verticalBias = 0;
   private cooldown = 0;
+  private foodCooldown = 0;
   private hintTimer = 0;
 
   private transitionTimer = 0;
@@ -318,6 +320,7 @@ export class Game {
         count: slot.count,
         selected: i === this.selectedInventory,
       })),
+      foodCooldown: Math.round(this.foodCooldown * 10) / 10,
       timelineLen: this.timeline.filter(Boolean).length,
       historyLen: this.history.length,
     };
@@ -406,6 +409,7 @@ export class Game {
     this.spouseDeceased = false;
     this.habitCount = 0;
     this.eventCooldown = 2;
+    this.foodCooldown = 0;
     this.usedEvents = new Set();
     this.inventory = [];
     this.selectedInventory = 0;
@@ -1471,6 +1475,7 @@ export class Game {
 
   private update(dt: number): void {
     if (this.cooldown > 0) this.cooldown -= dt;
+    if (this.foodCooldown > 0) this.foodCooldown = Math.max(0, this.foodCooldown - dt);
     if (this.hintTimer > 0) {
       this.hintTimer -= dt;
       if (this.hintTimer <= 0) this.ui.hint.textContent = "";
@@ -1664,7 +1669,8 @@ export class Game {
     this.renderInventory();
     if (announce) {
       const slot = this.inventory[this.selectedInventory];
-      this.hint(`${slot.opt.icon} ${slot.opt.label} selected. Swipe up near a person to use it.`);
+      const useText = slot.opt.category === "food" ? "Swipe up to eat it, or near a person to give it." : "Swipe up near a person to use it.";
+      this.hint(`${slot.opt.icon} ${slot.opt.label} selected. ${useText}`);
     }
   }
 
@@ -1680,6 +1686,29 @@ export class Game {
       this.inventory.splice(this.selectedInventory, 1);
       this.selectedInventory = Math.max(0, Math.min(this.selectedInventory, this.inventory.length - 1));
     }
+  }
+
+  private eatSelectedFoodItem(slot: InventorySlot): void {
+    if (slot.opt.category !== "food") {
+      this.hint(`Move close to a person, then swipe up to use ${slot.opt.icon}.`);
+      return;
+    }
+    if (this.foodCooldown > 0) {
+      this.hint(`Still full. Eat again in ${Math.ceil(this.foodCooldown)}s.`);
+      return;
+    }
+
+    const opt = slot.opt;
+    this.cooldown = 0.22;
+    this.foodCooldown = FOOD_USE_COOLDOWN;
+    this.markGuideSeen();
+    this.consumeSelectedInventoryItem();
+    this.applyOption(opt);
+    this.floats.push({ x: this.px, y: this.py - 86, text: `${opt.icon} eaten`, color: "#9fe870", life: 1.25 });
+    if (this.mode !== "playing") return;
+    this.hint(`${opt.label} eaten. Wait ${FOOD_USE_COOLDOWN}s before eating again.`);
+    this.renderFocusPanel();
+    this.renderInventory();
   }
 
   private personUseTarget(): Station | null {
@@ -1717,7 +1746,7 @@ export class Game {
     }
     const person = this.personUseTarget();
     if (!person) {
-      this.hint(`Move close to a person, then swipe up to use ${slot.opt.icon}.`);
+      this.eatSelectedFoodItem(slot);
       return;
     }
 
@@ -1745,8 +1774,13 @@ export class Game {
       this.cooldown = 0.1;
       this.markGuideSeen();
       this.addInventoryItem(st.opt);
-      this.applyOption(st.opt);
-      if (this.mode !== "playing") return;
+      if (st.opt.category === "food") {
+        this.floats.push({ x: st.x, y: st.y - 52, text: `${st.opt.icon} stored`, color: "#9fe870", life: 1.1 });
+        this.hint(`${st.opt.label} stored. Swipe up to eat it, or give it to someone.`);
+      } else {
+        this.applyOption(st.opt);
+        if (this.mode !== "playing") return;
+      }
       this.respawnCommonItem(st);
       this.focusIndex = -1;
       this.renderFocusPanel();
@@ -1955,10 +1989,10 @@ export class Game {
     const panel = this.ui.focusPanel;
     if (this.focusIndex < 0) {
       if (!this.guideSeen) {
-        panel.innerHTML = `<span class="plj-focus-title">How to play</span><span class="plj-focus-desc">🟢 Touch green items to collect them into the tray. Swipe the tray left/right to select, then swipe up near a person to use one. 🔴 Bad things chase YOU. Reach the right-center gate ➜ to grow up.</span>`;
+        panel.innerHTML = `<span class="plj-focus-title">How to play</span><span class="plj-focus-desc">🟢 Touch green items to collect them into the tray. Swipe left/right to select; swipe up to eat food or give items near people. 🔴 Bad things chase YOU. Reach the right-side gate ➜ to grow up.</span>`;
       } else {
         // tucked away during the game — just a tiny reminder
-        panel.innerHTML = `<span class="plj-focus-title">🟢 collect tray items&nbsp;&nbsp;·&nbsp;&nbsp;swipe ↑ near people&nbsp;&nbsp;·&nbsp;&nbsp;🔴 dodge</span>`;
+        panel.innerHTML = `<span class="plj-focus-title">🟢 collect tray items&nbsp;&nbsp;·&nbsp;&nbsp;swipe ↑ eat/give&nbsp;&nbsp;·&nbsp;&nbsp;🔴 dodge</span>`;
       }
       return;
     }
@@ -2003,11 +2037,12 @@ export class Game {
   private renderInventory(): void {
     const wrap = this.ui.inventoryWrap;
     const track = this.ui.inventoryTrack;
-    const usable = this.mode === "playing" && !!this.personUseTarget() && this.inventory.length > 0;
+    const selected = this.inventory[this.selectedInventory];
+    const usable = this.mode === "playing" && this.inventory.length > 0 && (!!this.personUseTarget() || selected?.opt.category === "food");
     wrap.classList.toggle("is-empty", this.inventory.length === 0);
     wrap.classList.toggle("can-use", usable);
     if (this.inventory.length === 0) {
-      track.innerHTML = `<span class="plj-inventory-empty">collect green items<br>swipe up near people</span>`;
+      track.innerHTML = `<span class="plj-inventory-empty">collect green items<br>swipe up to eat/give</span>`;
       return;
     }
     track.innerHTML = this.inventory.map((slot, i) => {
@@ -2096,7 +2131,7 @@ export class Game {
           <button class="plj-btn plj-btn-ghost" id="plj-bio-write">✍️ Write a biography</button>
           <button class="plj-btn plj-btn-ghost" id="plj-bio-list">📖 Biographies${bioCount ? ` (${bioCount})` : ""}</button>
         </div>
-        <p class="plj-foot">Arrows / WASD to move · touch green items · swipe tray ↑ near people</p>
+        <p class="plj-foot">Arrows / WASD to move · touch green items · swipe tray ↑ to eat/give</p>
       </div>`;
     this.ui.overlay.classList.add("show");
     this.ui.overlay.querySelector<HTMLButtonElement>("#plj-start")!.onclick = () => this.showSetup();

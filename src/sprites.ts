@@ -340,6 +340,7 @@ const STAGE_PROFILES: BodyProfile[] = [
 const SKIN = "#ffd0a8";
 const SHIRTS_M = ["#4aa3ff", "#45c46a", "#ffb934", "#6d7dff", "#1fc7b6", "#ff7f50", "#2d95ff", "#42c98f"];
 const SHIRTS_F = ["#ff6eb5", "#ff8cd3", "#ad7cff", "#ff6f91", "#79a6ff", "#ff70c7", "#e56bd6", "#ff7aa8"];
+const SKIRTS_F = ["#f7f2ff", "#ff9ec0", "#8cc9ff", "#ffd36e", "#9a6ac4", "#f07ca8", "#b7e28a", "#ffffff"];
 
 export function avatarLook(stageIndex: number, gender: Gender = "male"): AvatarLook {
   const i = Math.max(0, Math.min(STAGE_PROFILES.length - 1, stageIndex));
@@ -353,7 +354,7 @@ export function avatarLook(stageIndex: number, gender: Gender = "male"): AvatarL
     hair,
     hairStyle: female ? (p.elder ? "bun" : "long") : "short",
     shirt: shirts[i % shirts.length],
-    pants: female ? "#8d5bd4" : i >= 7 ? "#243d68" : "#2d4f9c",
+    pants: female ? SKIRTS_F[i % SKIRTS_F.length] : i >= 7 ? "#243d68" : "#2d4f9c",
     shoes: female ? "#f04d8e" : "#3a2a35",
     gender,
     skirt: female && i >= 3 && !p.baby,
@@ -409,10 +410,10 @@ export function personLook(kind: PersonKind, playerGender: Gender, stageIndex?: 
     hair: ageAwareHair,
     hairStyle: female ? (p.elder ? "bun" : "long") : "short",
     shirt: s.shirt,
-    pants: female ? "#9a6ac4" : "#33405a",
+    pants: female ? SKIRTS_F[(profileIndex + kind.length) % SKIRTS_F.length] : "#33405a",
     shoes: female ? "#c25b8e" : "#33293f",
     gender: s.g,
-    skirt: female && !p.child && !p.baby,
+    skirt: female && !p.baby,
   };
 }
 
@@ -520,7 +521,8 @@ function drawStanding(ctx: CanvasRenderingContext2D, cx: number, footY: number, 
 
   // --- skirt or lower body -------------------------------------------------
   if (look.skirt) {
-    taper(ctx, cx, torsoTopY + torsoH * 0.64, waistW * 0.95, hipY + H * 0.07, hipW * 1.22, hgrad(ctx, cx - hipW * 0.62, hipW * 1.24, look.pants));
+    const skirtHemY = hipY + H * (look.child ? 0.035 : look.elder ? 0.095 : (look.pants === "#ffffff" || look.pants === "#f7f2ff") ? 0.085 : 0.065);
+    taper(ctx, cx, torsoTopY + torsoH * 0.64, waistW * 0.95, skirtHemY, hipW * 1.22, hgrad(ctx, cx - hipW * 0.62, hipW * 1.24, look.pants));
   } else {
     taper(ctx, cx, torsoTopY + torsoH * 0.66, waistW, hipY + H * 0.01, hipW, hgrad(ctx, cx - hipW / 2, hipW, look.pants));
   }
@@ -667,11 +669,24 @@ function drawSideStanding(ctx: CanvasRenderingContext2D, cx: number, footY: numb
   sideShoe(ctx, farFootX + dir * legW * 0.14, footBaseY - farLift + H * 0.017, dir, legW * 2.05, H * 0.044, hgrad(ctx, farFootX - legW, legW * 2, shade(look.shoes, 8)));
 
   if (look.skirt) {
-    taper(ctx, cx, torsoTopY + torsoH * 0.64, sideWaistW * 1.1, hipY + H * 0.07, sideHipW * 1.42, hgrad(ctx, cx - sideHipW * 0.7, sideHipW * 1.4, look.pants));
+    const skirtHemY = hipY + H * (look.child ? 0.035 : look.elder ? 0.095 : (look.pants === "#ffffff" || look.pants === "#f7f2ff") ? 0.085 : 0.065);
+    taper(ctx, cx, torsoTopY + torsoH * 0.64, sideWaistW * 1.1, skirtHemY, sideHipW * 1.42, hgrad(ctx, cx - sideHipW * 0.7, sideHipW * 1.4, look.pants));
   } else {
     taper(ctx, cx, torsoTopY + torsoH * 0.66, sideWaistW, hipY + H * 0.01, sideHipW, hgrad(ctx, cx - sideHipW / 2, sideHipW, look.pants));
   }
   taper(ctx, torsoCx, torsoTopY, sideShoulderW, torsoTopY + torsoH * 0.66, sideWaistW, hgrad(ctx, torsoCx - sideShoulderW / 2, sideShoulderW, look.shirt, 22, 22));
+  if (female && !look.child) {
+    const bustY = torsoTopY + torsoH * 0.32;
+    const bustX = torsoCx + dir * sideShoulderW * 0.18;
+    const bustScale = look.elder ? 0.12 : 0.18;
+    ellipse(ctx, bustX, bustY, sideShoulderW * bustScale, torsoH * (look.elder ? 0.09 : 0.12), tint(look.shirt, 18));
+    ctx.strokeStyle = shade(look.shirt, 34);
+    ctx.lineWidth = Math.max(1, H * 0.007);
+    ctx.beginPath();
+    ctx.moveTo(bustX - dir * sideShoulderW * 0.12, bustY + torsoH * 0.07);
+    ctx.quadraticCurveTo(bustX + dir * sideShoulderW * 0.08, bustY + torsoH * 0.14, bustX + dir * sideShoulderW * 0.22, bustY + torsoH * 0.05);
+    ctx.stroke();
+  }
   ctx.strokeStyle = "rgba(255,255,255,0.38)";
   ctx.lineWidth = Math.max(1, H * 0.012);
   ctx.lineCap = "round";
@@ -767,7 +782,8 @@ function drawBackStanding(ctx: CanvasRenderingContext2D, cx: number, footY: numb
   ellipse(ctx, rightFootX, shoeY + H * 0.016 - (swing < 0 ? lift : 0), legW * 1.05, H * 0.028, hgrad(ctx, rightFootX - legW, legW * 2, look.shoes));
 
   if (look.skirt) {
-    taper(ctx, cx, torsoTopY + torsoH * 0.64, waistW * 0.95, hipY + H * 0.07, hipW * 1.14, hgrad(ctx, cx - hipW * 0.57, hipW * 1.14, look.pants));
+    const skirtHemY = hipY + H * (look.child ? 0.035 : look.elder ? 0.095 : (look.pants === "#ffffff" || look.pants === "#f7f2ff") ? 0.085 : 0.065);
+    taper(ctx, cx, torsoTopY + torsoH * 0.64, waistW * 0.95, skirtHemY, hipW * 1.14, hgrad(ctx, cx - hipW * 0.57, hipW * 1.14, look.pants));
   } else {
     taper(ctx, cx, torsoTopY + torsoH * 0.66, waistW, hipY + H * 0.01, hipW, hgrad(ctx, cx - hipW / 2, hipW, look.pants));
   }
