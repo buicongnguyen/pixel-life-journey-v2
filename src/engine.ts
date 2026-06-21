@@ -113,9 +113,10 @@ const PARENT_INCOME_SHIFT_MAX = 0.5;
 const HOUSE_APPRECIATION_MIN = 0.03;
 const HOUSE_APPRECIATION_MAX = 0.05;
 const VEHICLE_DEPRECIATION = 0.12;
-const LIFE_SPEED_MIN = 0.5;
-const LIFE_SPEED_MAX = 2;
-const LIFE_SPEED_STEP = 0.25;
+const LIFE_SPEEDS = [1 / 16, 1 / 8, 1 / 4, 1 / 2, 1, 2, 4, 8, 16] as const;
+const LIFE_SPEED_DEFAULT_INDEX = 4;
+const LIFE_SPEED_MIN_INDEX = 0;
+const LIFE_SPEED_MAX_INDEX = LIFE_SPEEDS.length - 1;
 const HERITAGE_OPTIONS: { id: HeritageStyle; label: string; icon: string }[] = [
   { id: "western", label: "Western / current", icon: "🌎" },
   { id: "asian", label: "Asian", icon: "🏮" },
@@ -878,15 +879,42 @@ export class Game {
     return (opt.ageCost ?? this.baseStageStep()) * this.lifeSpeed;
   }
 
-  private setLifeSpeed(value: number): void {
-    const raw = Number.isFinite(value) ? value : 1;
-    const stepped = LIFE_SPEED_MIN + Math.round((raw - LIFE_SPEED_MIN) / LIFE_SPEED_STEP) * LIFE_SPEED_STEP;
-    this.lifeSpeed = Math.max(LIFE_SPEED_MIN, Math.min(LIFE_SPEED_MAX, stepped));
+  private nearestLifeSpeedIndex(value: number): number {
+    if (!Number.isFinite(value) || value <= 0) return LIFE_SPEED_DEFAULT_INDEX;
+    let best = LIFE_SPEED_DEFAULT_INDEX;
+    let bestDelta = Number.POSITIVE_INFINITY;
+    LIFE_SPEEDS.forEach((speed, i) => {
+      const delta = Math.abs(Math.log2(value / speed));
+      if (delta < bestDelta) {
+        best = i;
+        bestDelta = delta;
+      }
+    });
+    return best;
+  }
+
+  private lifeSpeedIndex(): number {
+    return this.nearestLifeSpeedIndex(this.lifeSpeed);
+  }
+
+  private setLifeSpeedIndex(index: number): void {
+    const raw = Number.isFinite(index) ? index : LIFE_SPEED_DEFAULT_INDEX;
+    const safe = Math.max(LIFE_SPEED_MIN_INDEX, Math.min(LIFE_SPEED_MAX_INDEX, Math.round(raw)));
+    this.lifeSpeed = LIFE_SPEEDS[safe];
     this.renderHud();
   }
 
+  private setLifeSpeed(value: number): void {
+    this.setLifeSpeedIndex(this.nearestLifeSpeedIndex(value));
+  }
+
+  private lifeSpeedInputAttrs(): string {
+    return `min="${LIFE_SPEED_MIN_INDEX}" max="${LIFE_SPEED_MAX_INDEX}" step="1" value="${this.lifeSpeedIndex()}"`;
+  }
+
   private lifeSpeedLabel(): string {
-    return `${this.lifeSpeed.toFixed(2).replace(/\.?0+$/, "")}x`;
+    if (this.lifeSpeed < 1) return `1/${Math.round(1 / this.lifeSpeed)}x`;
+    return `${this.lifeSpeed}x`;
   }
 
   private normalizeStageIndex(i: number): number {
@@ -2563,7 +2591,7 @@ export class Game {
             <span>Life speed</span>
             <strong id="plj-set-speed-readout">${this.lifeSpeedLabel()}</strong>
           </div>
-          <input id="plj-set-speed" type="range" min="${LIFE_SPEED_MIN}" max="${LIFE_SPEED_MAX}" step="${LIFE_SPEED_STEP}" value="${this.lifeSpeed}">
+          <input id="plj-set-speed" type="range" ${this.lifeSpeedInputAttrs()}>
         </div>
         <div class="plj-set-list">
           <button class="plj-btn" id="plj-set-resume">▶ Resume</button>
@@ -2578,8 +2606,8 @@ export class Game {
     const speedInput = ov.querySelector<HTMLInputElement>("#plj-set-speed")!;
     const speedReadout = ov.querySelector<HTMLElement>("#plj-set-speed-readout")!;
     speedInput.oninput = () => {
-      this.setLifeSpeed(Number(speedInput.value));
-      speedInput.value = String(this.lifeSpeed);
+      this.setLifeSpeedIndex(Number(speedInput.value));
+      speedInput.value = String(this.lifeSpeedIndex());
       speedReadout.textContent = this.lifeSpeedLabel();
     };
     ov.querySelector<HTMLButtonElement>("#plj-set-resume")!.onclick = () => { this.mode = "playing"; this.clearOverlay(); };
@@ -2880,7 +2908,7 @@ export class Game {
           </label>
           <label class="plj-setup-field">
             <span>Life speed <b id="plj-life-speed-readout">${this.lifeSpeedLabel()}</b></span>
-            <input id="plj-life-speed" type="range" min="${LIFE_SPEED_MIN}" max="${LIFE_SPEED_MAX}" step="${LIFE_SPEED_STEP}" value="${this.lifeSpeed}">
+            <input id="plj-life-speed" type="range" ${this.lifeSpeedInputAttrs()}>
           </label>
         </div>
         <p class="plj-sub">Is it a boy or a girl?</p>
@@ -2894,8 +2922,8 @@ export class Game {
     const speedInput = this.ui.overlay.querySelector<HTMLInputElement>("#plj-life-speed")!;
     const speedReadout = this.ui.overlay.querySelector<HTMLElement>("#plj-life-speed-readout")!;
     speedInput.oninput = () => {
-      this.setLifeSpeed(Number(speedInput.value));
-      speedInput.value = String(this.lifeSpeed);
+      this.setLifeSpeedIndex(Number(speedInput.value));
+      speedInput.value = String(this.lifeSpeedIndex());
       speedReadout.textContent = this.lifeSpeedLabel();
     };
     this.ui.overlay.querySelectorAll<HTMLButtonElement>(".plj-heritage").forEach((btn) => {
@@ -2912,7 +2940,7 @@ export class Game {
         this.gender = btn.dataset.g === "female" ? "female" : "male";
         this.heritage = this.normalizeHeritage(this.ui.overlay.querySelector<HTMLButtonElement>(".plj-heritage.is-selected")?.dataset.heritage);
         const startIndex = this.normalizeStageIndex(Number(this.ui.overlay.querySelector<HTMLSelectElement>("#plj-start-stage")?.value ?? 0));
-        this.setLifeSpeed(Number(speedInput.value));
+        this.setLifeSpeedIndex(Number(speedInput.value));
         this.newGame(false, startIndex);
       };
     });
