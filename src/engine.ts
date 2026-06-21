@@ -2282,7 +2282,7 @@ export class Game {
   }
 
   private canShowTrainingGate(): boolean {
-    return this.stageIndex >= ELEMENTARY_INDEX;
+    return true;
   }
 
   private hitCircle(x: number, y: number, cx: number, cy: number, r: number): boolean {
@@ -2907,7 +2907,7 @@ export class Game {
           <h2>🎓 Training</h2>
           <div class="plj-mini-actions">
             ${this.canShowAssetsGate() ? `<button class="plj-mini-pill" id="plj-training-assets">💼 Assets</button>` : ""}
-            <button class="plj-mini-pill" id="plj-training-tree">🌳 Family Tree</button>
+            ${this.canShowFamilyTreeGate() ? `<button class="plj-mini-pill" id="plj-training-tree">🌳 Family Tree</button>` : ""}
           </div>
         </div>
         <p class="plj-sub">Practice thinking, money, and family care. Each session takes a tiny slice of life time.</p>
@@ -2951,7 +2951,8 @@ export class Game {
       this.clearOverlay();
       this.showAssets();
     };
-    this.ui.overlay.querySelector<HTMLButtonElement>("#plj-training-tree")!.onclick = () => {
+    const treeBtn = this.ui.overlay.querySelector<HTMLButtonElement>("#plj-training-tree");
+    if (treeBtn) treeBtn.onclick = () => {
       this.mode = "playing";
       this.clearOverlay();
       this.showFamilyTree();
