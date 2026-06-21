@@ -679,6 +679,27 @@ body {
 .plj-settings-card {
   max-width: 360px;
 }
+.plj-settings-guide {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 10px 0 12px;
+  padding: 9px 11px;
+  border: 1px solid rgba(93, 184, 255, 0.45);
+  border-radius: 10px;
+  background: rgba(93, 184, 255, 0.1);
+  color: #dff2ff;
+  text-align: left;
+}
+.plj-settings-guide b {
+  color: #fff8df;
+  font-size: 12px;
+}
+.plj-settings-guide span {
+  color: var(--ink);
+  font-size: 11px;
+  line-height: 1.35;
+}
 .plj-speed-box {
   display: flex;
   flex-direction: column;
@@ -1545,16 +1566,15 @@ body {
     gap: 4px;
     padding: 5px;
   }
-  /* the GUIDE sits on top so the bottom is free for thumbs */
   .plj-hud {
     order: 0;
     padding: 5px 9px;
   }
   .plj-focus {
-    order: 1;
+    display: none;
   }
   .plj-stage-wrap {
-    order: 2;
+    order: 1;
     flex: 1 1 0; /* fill the rest — works in portrait AND landscape */
     min-height: 0;
     aspect-ratio: auto;
@@ -1564,7 +1584,7 @@ body {
     object-fit: contain;
     object-position: center top;
   }
-  /* trim the HUD + focus panel so the play area gets the room */
+  /* trim the HUD so the play area gets the room */
   .plj-hud-top {
     margin-bottom: 5px;
   }
@@ -1577,17 +1597,6 @@ body {
   .plj-subbars {
     margin-top: 4px;
     padding-top: 4px;
-  }
-  .plj-focus {
-    min-height: 0;
-    padding: 6px 11px;
-  }
-  .plj-focus-title {
-    font-size: 13px;
-  }
-  .plj-focus-desc {
-    font-size: 11px;
-    line-height: 1.3;
   }
   .plj-card {
     padding: 16px 14px;

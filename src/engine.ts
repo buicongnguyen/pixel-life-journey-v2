@@ -2652,6 +2652,10 @@ export class Game {
           </div>
           <input id="plj-set-speed" type="range" ${this.lifeSpeedInputAttrs()}>
         </div>
+        <div class="plj-settings-guide">
+          <b>How to play</b>
+          <span>Move with the left pad or WASD/arrows. Touch green items to collect them into the tray. Swipe the tray left/right to select, then swipe up to eat or give. Dodge red hazards and use the right gate to grow up.</span>
+        </div>
         <div class="plj-set-list">
           <button class="plj-btn" id="plj-set-resume">▶ Resume</button>
           <button class="plj-btn plj-btn-ghost" id="plj-set-skip">⏭ Skip this chapter</button>
