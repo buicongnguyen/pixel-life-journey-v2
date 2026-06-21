@@ -268,16 +268,17 @@ body {
   left: 0;
   right: 0;
   bottom: 10px;
-  display: none;
+  display: flex;
   justify-content: space-between;
   align-items: flex-end;
   padding: 0 12px;
+  gap: 10px;
   pointer-events: none; /* taps fall through to nothing — only the buttons act */
   user-select: none;
   z-index: 3;
 }
 .plj-dpad,
-.plj-act {
+.plj-inventory {
   pointer-events: auto;
 }
 .plj-dpad {
@@ -294,8 +295,7 @@ body {
 .plj-down { grid-area: down; }
 .plj-left { grid-area: left; }
 .plj-right { grid-area: right; }
-.plj-tbtn,
-.plj-act {
+.plj-tbtn {
   border: 2px solid rgba(255, 255, 255, 0.18);
   background: rgba(44, 30, 84, 0.62);
   color: var(--ink);
@@ -306,22 +306,103 @@ body {
   cursor: pointer;
   box-shadow: 0 3px 0 rgba(0, 0, 0, 0.4);
 }
-.plj-tbtn:active,
-.plj-act:active {
+.plj-tbtn:active {
   transform: translateY(2px);
   box-shadow: 0 1px 0 rgba(0, 0, 0, 0.4);
 }
-.plj-act {
-  width: 80px;
-  height: 80px;
-  border-radius: 50%;
-  background: rgba(255, 122, 217, 0.8);
-  color: #2a0f24;
-  font-size: 30px;
+.plj-inventory {
+  flex: 1 1 0;
+  max-width: 304px;
+  min-width: 0;
+  min-height: 56px;
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  border-radius: 14px;
+  background: linear-gradient(180deg, rgba(32, 59, 105, 0.82), rgba(17, 27, 52, 0.78));
+  box-shadow: 0 3px 0 rgba(0, 0, 0, 0.42);
+  padding: 6px;
+  touch-action: none;
+  overflow: hidden;
 }
-@media (pointer: coarse), (max-width: 700px), (max-height: 620px) {
+.plj-inventory-track {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 40px;
+  overflow: hidden;
+}
+.plj-inventory-empty {
+  width: 100%;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 700;
+  text-align: center;
+  line-height: 1.25;
+}
+.plj-inv-item {
+  position: relative;
+  flex: 0 0 40px;
+  width: 40px;
+  height: 40px;
+  border: 2px solid rgba(255, 255, 255, 0.18);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--ink);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  touch-action: none;
+}
+.plj-inv-item.is-selected {
+  border-color: var(--gold);
+  background: rgba(255, 225, 79, 0.2);
+  box-shadow: 0 0 0 2px rgba(255, 225, 79, 0.22);
+}
+.plj-inv-emoji {
+  font-size: 20px;
+  line-height: 1;
+}
+.plj-inv-count {
+  position: absolute;
+  right: 3px;
+  bottom: 2px;
+  min-width: 15px;
+  padding: 0 3px;
+  border-radius: 8px;
+  background: var(--pink);
+  color: #2a0f24;
+  font-size: 10px;
+  font-weight: 800;
+  line-height: 14px;
+}
+.plj-inventory.can-use {
+  border-color: rgba(61, 220, 132, 0.72);
+}
+@media (max-width: 420px) {
   .plj-touch {
-    display: flex;
+    padding: 0 8px;
+    gap: 7px;
+  }
+  .plj-dpad {
+    grid-template-columns: repeat(3, 40px);
+    grid-template-rows: repeat(3, 40px);
+    gap: 3px;
+  }
+  .plj-inventory {
+    min-height: 52px;
+    padding: 5px;
+  }
+  .plj-inventory-track {
+    min-height: 38px;
+    gap: 5px;
+  }
+  .plj-inv-item {
+    flex-basis: 36px;
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+  }
+  .plj-inv-emoji {
+    font-size: 18px;
   }
 }
 

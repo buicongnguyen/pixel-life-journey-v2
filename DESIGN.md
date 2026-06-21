@@ -281,7 +281,8 @@ Effects are the immediate deltas; a small passive drain also applies each action
 ## 8. Controls
 
 - **Move:** Arrow keys / WASD (up, down, left, right)
-- **Collect:** touch common green items; they respawn elsewhere
+- **Collect:** touch common green items; they respawn elsewhere and stack in the bottom tray
+- **Inventory tray:** swipe left/right to select an item; swipe up near a person to use it
 - **Choose:** Space / Enter / E on people, surprise rewards, and special highlighted stations
 - **Grow up:** walk into the glowing right-center gate once you're old enough
-- **Touch:** on-screen D-pad + ✓ button (shown on phones)
+- **Touch:** left on-screen D-pad for movement, bottom tray for collected items

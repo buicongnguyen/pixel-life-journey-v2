@@ -27,8 +27,10 @@ export interface UIRefs {
   settingsBtn: HTMLElement;
   skipBtn: HTMLElement;
   touchWrap: HTMLElement;
+  inventoryWrap: HTMLElement;
+  inventoryTrack: HTMLElement;
   overlay: HTMLElement;
-  touch: Record<"up" | "down" | "left" | "right" | "act", HTMLElement>;
+  touch: Record<"up" | "down" | "left" | "right", HTMLElement>;
 }
 
 function el<K extends keyof HTMLElementTagNameMap>(
@@ -139,7 +141,7 @@ export function createUI(mount: HTMLElement): UIRefs {
   const focusPanel = el(
     "div",
     "plj-focus",
-    `<span class="plj-focus-title">Move with arrows / WASD</span><span class="plj-focus-desc">Touch green items to collect them. Press SPACE for people and special choices. Reach the right-center gate to grow up.</span>`
+    `<span class="plj-focus-title">Move with arrows / WASD</span><span class="plj-focus-desc">Touch green items to add them to the tray. Swipe the tray left/right to select and up near a person to use.</span>`
   );
 
   // --- touch controls -------------------------------------------------------
@@ -150,8 +152,11 @@ export function createUI(mount: HTMLElement): UIRefs {
   const right = el("button", "plj-tbtn plj-right", "▶");
   const down = el("button", "plj-tbtn plj-down", "▼");
   dpad.append(up, left, right, down);
-  const act = el("button", "plj-act", "✓");
-  touchWrap.append(dpad, act);
+  const inventoryWrap = el("div", "plj-inventory");
+  inventoryWrap.title = "Swipe left/right to select. Swipe up near a person to use.";
+  const inventoryTrack = el("div", "plj-inventory-track");
+  inventoryWrap.append(inventoryTrack);
+  touchWrap.append(dpad, inventoryWrap);
   // the touch controls live INSIDE the stage so they overlay the canvas (thumbs
   // on the game), keeping everything on one mobile screen with no page scroll
   stage.append(touchWrap);
@@ -181,7 +186,9 @@ export function createUI(mount: HTMLElement): UIRefs {
     settingsBtn,
     skipBtn,
     touchWrap,
+    inventoryWrap,
+    inventoryTrack,
     overlay,
-    touch: { up, down, left, right, act },
+    touch: { up, down, left, right },
   };
 }

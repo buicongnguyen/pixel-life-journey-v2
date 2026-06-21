@@ -79,6 +79,8 @@ const BAD_EVENT_ALERT_R = 185; // bad-luck hazards wake up only when you get clo
 const ITEM_R = 26; // contact / collect radius
 const BLOCK_R = 30; // an NPC standing in the path blocks a bad item
 const SATIATE_TIME = 9; // seconds a bad item stays frozen/faded after you do its good counterpart
+const INVENTORY_MAX_SLOTS = 8;
+const INVENTORY_MAX_COUNT = 9;
 const CAREER_INDEX = STAGES.findIndex((s) => s.id === "career");
 
 type Mode =
@@ -118,6 +120,11 @@ interface Station {
   satiated: number;
 }
 
+interface InventorySlot {
+  opt: LifeOption;
+  count: number;
+}
+
 /** A rewindable snapshot of the whole life, captured at each stage's start. */
 interface Snapshot {
   stageIndex: number;
@@ -147,6 +154,8 @@ interface Snapshot {
   owned: string[];
   jobsTaken: string[];
   usedEvents: string[];
+  inventory: InventorySlot[];
+  selectedInventory: number;
   bigFired: boolean;
   jackpotFired: boolean;
   petAdopted: boolean;
@@ -236,6 +245,8 @@ export class Game {
   private transitionNext = 0;
 
   private story: LifeStory | null = null;
+  private inventory: InventorySlot[] = [];
+  private selectedInventory = 0;
 
   private input = { left: false, right: false, up: false, down: false };
   private actQueued = false;
@@ -246,6 +257,7 @@ export class Game {
     this.ui = createUI(mount);
     this.bindInput();
     this.showTitle();
+    this.renderInventory();
     requestAnimationFrame(this.frame);
     // Debug handle for headless verification (mirrors other games' debug APIs).
     (window as unknown as { __pixelLife: Game }).__pixelLife = this;
@@ -299,6 +311,13 @@ export class Game {
           x: Math.round(s.x),
           y: Math.round(s.y),
         })),
+      inventory: this.inventory.map((slot, i) => ({
+        id: slot.opt.id,
+        label: slot.opt.label,
+        icon: slot.opt.icon,
+        count: slot.count,
+        selected: i === this.selectedInventory,
+      })),
       timelineLen: this.timeline.filter(Boolean).length,
       historyLen: this.history.length,
     };
@@ -388,6 +407,8 @@ export class Game {
     this.habitCount = 0;
     this.eventCooldown = 2;
     this.usedEvents = new Set();
+    this.inventory = [];
+    this.selectedInventory = 0;
     this.eventsLog = [];
     this.timeline = [];
     this.history = [];
@@ -399,6 +420,7 @@ export class Game {
     this.healthCount = 0;
     this.floats = [];
     this.story = null;
+    this.renderInventory();
     this.sampleHealth();
     this.loadStage(0);
   }
@@ -413,6 +435,7 @@ export class Game {
     this.focusIndex = -1;
     this.buildStations();
     this.renderFocusPanel(); // reset the panel to the default prompt on stage entry
+    this.renderInventory();
     // On a rewind the running averages + entry snapshot were just restored from
     // timeline[i] (which already counts this entry's sample) — re-sampling and
     // re-snapshotting here would double-count it and drift life expectancy.
@@ -461,6 +484,8 @@ export class Game {
       geneBonus: this.geneBonus,
       owned: [...this.owned],
       jobsTaken: [...this.jobsTaken],
+      inventory: this.inventory.map((slot) => ({ opt: slot.opt, count: slot.count })),
+      selectedInventory: this.selectedInventory,
       bigFired: this.bigFired,
       jackpotFired: this.jackpotFired,
       petAdopted: this.petAdopted,
@@ -1389,6 +1414,8 @@ export class Game {
     this.geneBonus = snap.geneBonus;
     this.owned = new Set(snap.owned);
     this.jobsTaken = new Set(snap.jobsTaken);
+    this.inventory = snap.inventory.map((slot) => ({ opt: slot.opt, count: slot.count }));
+    this.selectedInventory = Math.max(0, Math.min(snap.selectedInventory, this.inventory.length - 1));
     this.bigFired = snap.bigFired;
     this.jackpotFired = snap.jackpotFired;
     this.petAdopted = snap.petAdopted;
@@ -1530,6 +1557,7 @@ export class Game {
     if (best !== this.focusIndex) {
       this.focusIndex = best;
       this.renderFocusPanel();
+      this.renderInventory();
     }
   }
 
@@ -1591,6 +1619,105 @@ export class Game {
       opt.category !== "special";
   }
 
+  private addInventoryItem(opt: LifeOption): void {
+    const existing = this.inventory.find((slot) => slot.opt.id === opt.id);
+    if (existing) {
+      existing.count = Math.min(INVENTORY_MAX_COUNT, existing.count + 1);
+      this.selectedInventory = this.inventory.indexOf(existing);
+    } else {
+      if (this.inventory.length >= INVENTORY_MAX_SLOTS) {
+        this.inventory.shift();
+        this.selectedInventory = Math.max(0, this.selectedInventory - 1);
+      }
+      this.inventory.push({ opt, count: 1 });
+      this.selectedInventory = this.inventory.length - 1;
+    }
+    this.renderInventory();
+  }
+
+  private setInventorySelection(index: number, announce = true): void {
+    if (this.inventory.length === 0) {
+      this.selectedInventory = 0;
+      this.renderInventory();
+      if (announce) this.hint("Collect green items first.");
+      return;
+    }
+    const len = this.inventory.length;
+    this.selectedInventory = ((index % len) + len) % len;
+    this.renderInventory();
+    if (announce) {
+      const slot = this.inventory[this.selectedInventory];
+      this.hint(`${slot.opt.icon} ${slot.opt.label} selected. Swipe up near a person to use it.`);
+    }
+  }
+
+  private stepInventorySelection(delta: number): void {
+    this.setInventorySelection(this.selectedInventory + delta);
+  }
+
+  private consumeSelectedInventoryItem(): void {
+    const slot = this.inventory[this.selectedInventory];
+    if (!slot) return;
+    slot.count -= 1;
+    if (slot.count <= 0) {
+      this.inventory.splice(this.selectedInventory, 1);
+      this.selectedInventory = Math.max(0, Math.min(this.selectedInventory, this.inventory.length - 1));
+    }
+  }
+
+  private personUseTarget(): Station | null {
+    const focused = this.stations[this.focusIndex];
+    if (focused?.kind === "person") return focused;
+    let best: Station | null = null;
+    let bestD = 999;
+    for (const st of this.people) {
+      const d = Math.hypot(this.px - st.x, this.py - st.y);
+      if (d < 56 && d < bestD) {
+        best = st;
+        bestD = d;
+      }
+    }
+    return best;
+  }
+
+  private inventoryReactionEffects(item: LifeOption, person: LifeOption): Partial<Stats> {
+    const effects: Partial<Stats> = { happiness: this.isFamilyOption(person) ? 4 : 3 };
+    if (item.category === "fun") effects.fun = 3;
+    else if (item.category === "food") effects.health = 1;
+    else if (item.category === "health") effects.health = 2;
+    else if (item.category === "rest") effects.health = 1;
+    else if (item.category === "smarts") effects.smarts = 1;
+    else if (item.category === "social") effects.happiness = (effects.happiness ?? 0) + 2;
+    return effects;
+  }
+
+  private useSelectedInventoryItem(): void {
+    if (this.mode !== "playing" || this.cooldown > 0) return;
+    const slot = this.inventory[this.selectedInventory];
+    if (!slot) {
+      this.hint("Collect green items first.");
+      return;
+    }
+    const person = this.personUseTarget();
+    if (!person) {
+      this.hint(`Move close to a person, then swipe up to use ${slot.opt.icon}.`);
+      return;
+    }
+
+    this.cooldown = 0.22;
+    this.markGuideSeen();
+    const effects = this.inventoryReactionEffects(slot.opt, person.opt);
+    this.applyEff(effects, "mental");
+    this.connections += this.isFamilyOption(person.opt) ? 1 : 3;
+    if (this.isFamilyOption(person.opt)) this.familyBond += 1;
+    this.consumeSelectedInventoryItem();
+    this.floats.push({ x: person.x, y: person.y - 92, text: `${slot.opt.icon} + ${person.opt.icon}`, color: "#ffd23f", life: 1.35 });
+    this.spawnFloats(effects);
+    this.hint(`${person.opt.label} liked ${slot.opt.label}.`);
+    this.renderFocusPanel();
+    this.renderInventory();
+  }
+
   /** Common green items collect by touch, then reappear elsewhere in their zone. */
   private checkCommonItemContacts(): void {
     if (this.cooldown > 0) return;
@@ -1600,6 +1727,7 @@ export class Game {
       st.contactCd = 0.45;
       this.cooldown = 0.1;
       this.markGuideSeen();
+      this.addInventoryItem(st.opt);
       this.applyOption(st.opt);
       if (this.mode !== "playing") return;
       this.respawnCommonItem(st);
@@ -1809,10 +1937,10 @@ export class Game {
     const panel = this.ui.focusPanel;
     if (this.focusIndex < 0) {
       if (!this.guideSeen) {
-        panel.innerHTML = `<span class="plj-focus-title">How to play</span><span class="plj-focus-desc">🟢 Touch common good items to collect them. 🔴 Bad things chase YOU — do the matching good thing and they freeze & fade (eat well → junk stops; sport or family time → screen-time stops). Press SPACE for people, surprise rewards, and special choices. Reach the right-center gate ➜ to grow up.</span>`;
+        panel.innerHTML = `<span class="plj-focus-title">How to play</span><span class="plj-focus-desc">🟢 Touch green items to collect them into the tray. Swipe the tray left/right to select, then swipe up near a person to use one. 🔴 Bad things chase YOU. Reach the right-center gate ➜ to grow up.</span>`;
       } else {
         // tucked away during the game — just a tiny reminder
-        panel.innerHTML = `<span class="plj-focus-title">🟢 touch to collect&nbsp;&nbsp;·&nbsp;&nbsp;🔴 dodge&nbsp;&nbsp;·&nbsp;&nbsp;center gate</span>`;
+        panel.innerHTML = `<span class="plj-focus-title">🟢 collect tray items&nbsp;&nbsp;·&nbsp;&nbsp;swipe ↑ near people&nbsp;&nbsp;·&nbsp;&nbsp;🔴 dodge</span>`;
       }
       return;
     }
@@ -1847,11 +1975,28 @@ export class Game {
     const broke = price > 0 && this.money < price;
     const press = broke
       ? `<b class="plj-press" style="background:#5a2a33;color:#ffc4c4">💸 can't afford</b>`
-      : `<b class="plj-press">SPACE</b>`;
+      : `<b class="plj-press">${opt.person ? "SPACE / ITEM↑" : "SPACE"}</b>`;
     panel.innerHTML =
       `<span class="plj-focus-title">${esc(opt.icon)} ${esc(opt.label)}</span>` +
       `<span class="plj-focus-desc">${esc(opt.desc)}</span>` +
       `<span class="plj-chips">${effectChips(opt.effects)}${extra.join("")}${press}</span>`;
+  }
+
+  private renderInventory(): void {
+    const wrap = this.ui.inventoryWrap;
+    const track = this.ui.inventoryTrack;
+    const usable = this.mode === "playing" && !!this.personUseTarget() && this.inventory.length > 0;
+    wrap.classList.toggle("is-empty", this.inventory.length === 0);
+    wrap.classList.toggle("can-use", usable);
+    if (this.inventory.length === 0) {
+      track.innerHTML = `<span class="plj-inventory-empty">collect green items<br>swipe up near people</span>`;
+      return;
+    }
+    track.innerHTML = this.inventory.map((slot, i) => {
+      const selected = i === this.selectedInventory ? " is-selected" : "";
+      const count = slot.count > 1 ? `<span class="plj-inv-count">${slot.count}</span>` : "";
+      return `<button class="plj-inv-item${selected}" data-inv-index="${i}" title="${esc(slot.opt.label)}"><span class="plj-inv-emoji">${esc(slot.opt.icon)}</span>${count}</button>`;
+    }).join("");
   }
 
   private hint(text: string): void {
@@ -1933,7 +2078,7 @@ export class Game {
           <button class="plj-btn plj-btn-ghost" id="plj-bio-write">✍️ Write a biography</button>
           <button class="plj-btn plj-btn-ghost" id="plj-bio-list">📖 Biographies${bioCount ? ` (${bioCount})` : ""}</button>
         </div>
-        <p class="plj-foot">Arrows / WASD to move · touch green items · SPACE for people and special choices</p>
+        <p class="plj-foot">Arrows / WASD to move · touch green items · swipe tray ↑ near people</p>
       </div>`;
     this.ui.overlay.classList.add("show");
     this.ui.overlay.querySelector<HTMLButtonElement>("#plj-start")!.onclick = () => this.showSetup();
@@ -2615,9 +2760,44 @@ export class Game {
     bindHold(this.ui.touch.right, "right");
     bindHold(this.ui.touch.up, "up");
     bindHold(this.ui.touch.down, "down");
-    this.ui.touch.act.addEventListener("pointerdown", (e) => {
+
+    let inventoryDrag: { x: number; y: number; index: number | null; pointerId: number } | null = null;
+    const inventoryIndexFrom = (target: EventTarget | null): number | null => {
+      const item = target instanceof HTMLElement ? target.closest<HTMLElement>("[data-inv-index]") : null;
+      if (!item?.dataset.invIndex) return null;
+      const index = Number(item.dataset.invIndex);
+      return Number.isFinite(index) ? index : null;
+    };
+    this.ui.inventoryWrap.addEventListener("pointerdown", (e) => {
       e.preventDefault();
-      this.actQueued = true;
+      inventoryDrag = { x: e.clientX, y: e.clientY, index: inventoryIndexFrom(e.target), pointerId: e.pointerId };
+      this.ui.inventoryWrap.setPointerCapture?.(e.pointerId);
+    });
+    this.ui.inventoryWrap.addEventListener("pointerup", (e) => {
+      e.preventDefault();
+      if (!inventoryDrag || inventoryDrag.pointerId !== e.pointerId) return;
+      const dx = e.clientX - inventoryDrag.x;
+      const dy = e.clientY - inventoryDrag.y;
+      const index = inventoryIndexFrom(e.target) ?? inventoryDrag.index;
+      inventoryDrag = null;
+      if (dy < -28 && Math.abs(dy) > Math.abs(dx) * 0.7) {
+        this.useSelectedInventoryItem();
+      } else if (dx < -24) {
+        this.stepInventorySelection(1);
+      } else if (dx > 24) {
+        this.stepInventorySelection(-1);
+      } else if (index !== null) {
+        this.setInventorySelection(index);
+      }
+    });
+    this.ui.inventoryWrap.addEventListener("pointercancel", () => {
+      inventoryDrag = null;
+    });
+    this.ui.inventoryWrap.addEventListener("wheel", (e) => {
+      const delta = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
+      if (Math.abs(delta) < 10) return;
+      e.preventDefault();
+      this.stepInventorySelection(delta > 0 ? 1 : -1);
     });
     this.ui.timeTravel.addEventListener("click", () => this.showTimeTravel());
     this.ui.profileBtn.addEventListener("click", () => this.showProfile());

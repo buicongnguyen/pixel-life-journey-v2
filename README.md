@@ -66,9 +66,11 @@ them in balance, and at the very end the game writes the **story of the life you
   your headline, seniority, current salary, lifetime earnings, connections and a full
   job-history timeline. Then pick **how you commute to work** — walk free, or unlock the
   bus, a car or a chauffeured luxury car as your net worth grows.
-- **🟢🔴 Touch the good, dodge the bad** — it plays like an arcade game. Common good things drift
-  **away**; catch them by touching them, and they respawn somewhere else. Bad things
-  (junk food, all-night gaming) chase **you** and apply on contact. Do the **matching good thing** and the bad one **freezes
+- **🟢🔴 Touch the good, use the tray, dodge the bad** — it plays like an arcade game. Common good things drift
+  **away**; catch them by touching them, and they respawn somewhere else. Collected
+  items also stack in the bottom tray: swipe left/right to pick one and swipe up near
+  a person to use it as a social reaction. Bad things (junk food, all-night gaming)
+  chase **you** and apply on contact. Do the **matching good thing** and the bad one **freezes
   and fades away** for a while — eat well and junk food stops; play sport *or* spend time
   with family and screen-time stops. People stand still and **block** a bad thing's path,
   and a higher **IQ makes you faster** so you can dodge more easily.
