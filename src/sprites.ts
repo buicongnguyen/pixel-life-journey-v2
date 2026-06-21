@@ -302,6 +302,7 @@ export interface AvatarMotion {
   moving: boolean;
   facing: AvatarFacing;
   verticalBias: number;
+  pose?: "stand" | "sit";
 }
 
 const IDLE_MOTION: AvatarMotion = { moving: false, facing: "front", verticalBias: 0 };
@@ -424,6 +425,7 @@ export function personLook(kind: PersonKind, playerGender: Gender, stageIndex?: 
 export function drawCharacter(ctx: CanvasRenderingContext2D, cx: number, footY: number, look: AvatarLook, walkPhase: number, motionInput: AvatarMotion | boolean): void {
   const motion = motionFrom(motionInput);
   if (look.baby) drawBaby(ctx, cx, footY, look, walkPhase, motion);
+  else if (motion.pose === "sit") drawSeated(ctx, cx, footY, look, walkPhase);
   else drawStanding(ctx, cx, footY, look, walkPhase, motion);
 }
 
@@ -548,6 +550,79 @@ function drawStanding(ctx: CanvasRenderingContext2D, cx: number, footY: number, 
     // cane
     limb(ctx, rightHandX, handY, cx + shoulderW * 0.64, footY, legW * 0.5, "#7a5a36");
   }
+}
+
+function drawSeated(ctx: CanvasRenderingContext2D, cx: number, footY: number, look: AvatarLook, walkPhase: number): void {
+  const H = look.heightPx;
+  const female = look.gender === "female";
+  const bob = Math.sin(walkPhase * 0.7) * H * 0.004;
+  const baseY = footY - bob;
+
+  const headH = H * look.headRatio;
+  const headW = headH * (look.child ? 0.82 : 0.76) * (1 + look.chub * 0.05);
+  const neckH = headH * (look.child ? 0.2 : 0.25);
+  const torsoH = H * (look.child ? 0.27 : 0.29);
+  const shoulderW = headW * (female ? 1.16 : 1.26) + look.chub * headW * 0.08;
+  const waistW = shoulderW * (female ? 0.7 : 0.76);
+  const hipW = shoulderW * (female ? 1.05 : 0.9);
+  const legW = H * (0.052 + look.chub * 0.016);
+  const armW = H * (0.039 + look.chub * 0.01);
+  const skin = look.skin;
+  const skinD = shade(skin, 20);
+
+  const seatY = baseY - H * 0.18;
+  const lapY = baseY - H * 0.13;
+  const torsoTopY = seatY - torsoH;
+  const neckTopY = torsoTopY - neckH + H * 0.012;
+  const headCx = cx;
+  const headCy = neckTopY - headH / 2 + headH * 0.075;
+
+  groundShadow(ctx, cx, footY, shoulderW * 0.62);
+  ellipse(ctx, cx, baseY - H * 0.035, hipW * 0.78, H * 0.045, "rgba(48,34,42,0.18)");
+
+  // Folded legs: thighs sit sideways, calves bend down, feet stay grounded.
+  const kneeY = baseY - H * 0.105;
+  const footBaseY = baseY - H * 0.025;
+  for (const side of [-1, 1] as const) {
+    const hipX = cx + side * hipW * 0.18;
+    const kneeX = cx + side * hipW * 0.68;
+    const footX = cx + side * hipW * 0.54;
+    limb(ctx, hipX, seatY + H * 0.025, kneeX, kneeY, legW, shade(look.pants, side < 0 ? 8 : 2));
+    limb(ctx, kneeX, kneeY, footX, footBaseY, legW * 0.92, look.pants);
+    ellipse(ctx, footX + side * legW * 0.18, footBaseY + H * 0.014, legW * 1.55, H * 0.033, hgrad(ctx, footX - legW, legW * 2, look.shoes));
+  }
+
+  if (look.skirt) {
+    taper(ctx, cx, torsoTopY + torsoH * 0.63, waistW * 0.95, lapY + H * 0.03, hipW * 1.35, hgrad(ctx, cx - hipW * 0.68, hipW * 1.36, look.pants));
+  } else {
+    taper(ctx, cx, torsoTopY + torsoH * 0.66, waistW, lapY + H * 0.02, hipW * 1.05, hgrad(ctx, cx - hipW * 0.52, hipW * 1.04, look.pants));
+  }
+
+  drawBackHair(ctx, headCx, headCy, headW, headH, look);
+  taper(ctx, cx, torsoTopY, shoulderW, torsoTopY + torsoH * 0.72, waistW, hgrad(ctx, cx - shoulderW / 2, shoulderW, look.shirt, 22, 22));
+  drawOutfitDetails(ctx, cx, torsoTopY, torsoH, shoulderW, waistW, hipW, headH, look);
+  ellipse(ctx, cx, torsoTopY + headH * 0.07, headW * 0.3, headH * 0.11, skinD);
+
+  // Relaxed arms and open palms on knees/floor, as if the adult came down to the baby.
+  const shoulderY = torsoTopY + headH * 0.13;
+  const elbowY = torsoTopY + torsoH * 0.6;
+  const handY = baseY - H * 0.135;
+  for (const side of [-1, 1] as const) {
+    const shoulderX = cx + side * shoulderW * 0.35;
+    const elbowX = cx + side * shoulderW * 0.48;
+    const handX = cx + side * hipW * 0.46;
+    limb(ctx, shoulderX, shoulderY, elbowX, elbowY, armW, shade(look.shirt, 8));
+    limb(ctx, elbowX, elbowY, handX, handY, armW * 0.9, look.shirt);
+    drawHand(ctx, handX, handY + H * 0.004, armW * 0.8, armW * 0.68, skin, side, side * 0.15);
+  }
+
+  ctx.fillStyle = skinD;
+  ctx.fillRect(cx - neckH * 0.38, torsoTopY - neckH + 1, neckH * 0.76, neckH + headH * 0.1);
+  ellipse(ctx, cx, neckTopY + neckH * 0.28, neckH * 0.48, neckH * 0.36, skin);
+
+  drawFrontHeadShape(ctx, headCx, headCy, headW, headH, skin, look.child);
+  drawHair(ctx, headCx, headCy, headW, headH, look);
+  drawFace(ctx, headCx, headCy, headW, headH, look);
 }
 
 function drawOutfitDetails(
@@ -1422,11 +1497,23 @@ const PERSON_LABEL: Record<PersonKind, string> = {
   gymBuddy: "Gym buddy", spouse: "Spouse", child: "Your child", grandkid: "Grandkid", oldFriend: "Old friend",
 };
 
-export function drawPerson(ctx: CanvasRenderingContext2D, cx: number, footY: number, kind: PersonKind, playerGender: Gender, label: string, focused: boolean, used: boolean, t: number, stageIndex?: number): void {
+export interface PersonDrawOptions {
+  seated?: boolean;
+}
+
+export function drawPerson(ctx: CanvasRenderingContext2D, cx: number, footY: number, kind: PersonKind, playerGender: Gender, label: string, focused: boolean, used: boolean, t: number, stageIndex?: number, options: PersonDrawOptions = {}): void {
   const look = personLook(kind, playerGender, stageIndex);
+  const seated = !!options.seated && !look.baby;
   ctx.save();
   if (used) ctx.globalAlpha = 0.5;
-  drawCharacter(ctx, cx, footY - (focused ? 1 : 0), look, t * 1.4, focused);
+  drawCharacter(
+    ctx,
+    cx,
+    footY - (focused ? 1 : 0),
+    look,
+    t * 1.4,
+    seated ? { moving: false, facing: "front", verticalBias: 0, pose: "sit" } : focused
+  );
   ctx.restore();
   const name = label || PERSON_LABEL[kind];
   if (focused) {
@@ -1435,7 +1522,7 @@ export function drawPerson(ctx: CanvasRenderingContext2D, cx: number, footY: num
     ctx.ellipse(cx, footY + 1, look.heightPx * 0.32, 5, 0, 0, Math.PI * 2);
     ctx.fill();
   }
-  const labelY = Math.max(14, footY - look.heightPx - 10);
+  const labelY = Math.max(14, footY - look.heightPx * (seated ? 0.72 : 1) - 10);
   drawNamePlate(ctx, cx, labelY, name, focused ? "#ffe9a8" : "rgba(255,255,255,0.9)");
   if (used) {
     ctx.fillStyle = "#3ddc84";

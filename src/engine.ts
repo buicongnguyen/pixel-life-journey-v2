@@ -78,6 +78,7 @@ const BAD_EVENT_ALERT_R = 185; // bad-luck hazards wake up only when you get clo
 const ITEM_R = 26; // contact / collect radius
 const BLOCK_R = 30; // an NPC standing in the path blocks a bad item
 const SATIATE_TIME = 9; // seconds a bad item stays frozen/faded after you do its good counterpart
+const BABY_FAMILY_SIT_R = 172; // newborn family lowers themselves when the baby crawls close
 const INVENTORY_MAX_SLOTS = 8;
 const INVENTORY_MAX_COUNT = 9;
 const FOOD_USE_COOLDOWN = 5;
@@ -615,6 +616,17 @@ export class Game {
     if (opt.person && familyPeople.includes(opt.person)) return true;
     const tag = opt.storyTag ?? "";
     return tag === "family" || tag === "family_love" || tag === "grandkids" || tag === "toy_doll" || opt.id === "baby";
+  }
+
+  private shouldSitWithNewborn(st: Station): boolean {
+    const dx = Math.abs(this.px - st.x);
+    const dy = Math.abs((this.py - 32) - st.y);
+    return this.stageIndex === 0 &&
+      st.kind === "person" &&
+      !!st.opt.person &&
+      this.isFamilyOption(st.opt) &&
+      dx <= BABY_FAMILY_SIT_R &&
+      dy <= BABY_FAMILY_SIT_R;
   }
 
   private zoneRows(zone: StationZone): number[] {
@@ -1913,7 +1925,9 @@ export class Game {
         if (st.kind === "event" && st.event) {
           drawEventItem(ctx, st.x, st.y, st.event.id, st.event.emoji, st.event.title, st.event.good !== false, focused, t);
         } else if (st.opt.person) {
-          drawPerson(ctx, st.x, st.y, st.opt.person, this.gender, st.opt.label, focused, used, t, this.stageIndex);
+          drawPerson(ctx, st.x, st.y, st.opt.person, this.gender, st.opt.label, focused, used, t, this.stageIndex, {
+            seated: this.shouldSitWithNewborn(st),
+          });
         } else {
           drawStation(ctx, st.x, st.y, st.opt.icon, st.opt.label, st.opt.category, focused, used, t);
         }
