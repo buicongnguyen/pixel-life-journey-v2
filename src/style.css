@@ -408,6 +408,9 @@ body {
   .plj-setup-grid {
     grid-template-columns: 1fr;
   }
+  .plj-heritage-grid {
+    grid-template-columns: 1fr 1fr;
+  }
   .plj-genders {
     gap: 10px;
   }
@@ -805,6 +808,42 @@ body {
   gap: 10px;
   margin: 10px 0 12px;
   text-align: left;
+}
+.plj-heritage-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin: 8px 0 12px;
+}
+.plj-heritage {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.18);
+  color: var(--ink);
+  cursor: pointer;
+  font: inherit;
+  font-size: 12px;
+  line-height: 1.25;
+  padding: 8px 10px;
+  text-align: left;
+  transition: border-color 0.1s, transform 0.1s, background 0.1s;
+}
+.plj-heritage:hover,
+.plj-heritage.is-selected {
+  border-color: var(--pink);
+  background: rgba(255, 143, 208, 0.14);
+}
+.plj-heritage:hover {
+  transform: translateY(-1px);
+}
+.plj-heritage-icon {
+  flex: 0 0 auto;
+  font-size: 17px;
+  line-height: 1;
 }
 .plj-setup-field {
   display: flex;

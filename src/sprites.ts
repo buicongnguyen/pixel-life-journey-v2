@@ -1,4 +1,4 @@
-import type { Gender, HouseTier, PersonKind, RoomTheme, SceneKind, UpperSceneKind, VehicleTier } from "./types";
+import type { Gender, HeritageStyle, HouseTier, PersonKind, RoomTheme, SceneKind, UpperSceneKind, VehicleTier } from "./types";
 
 // ---------------------------------------------------------------------------
 // All drawing. The canvas is supersampled (see ui.ts) and rendered smoothly, so
@@ -289,10 +289,13 @@ export interface AvatarLook {
   skin: string;
   hair: string;
   hairStyle: "short" | "long" | "bun";
+  hairTexture: "straight" | "wavy" | "coily";
   shirt: string;
   pants: string;
   shoes: string;
   gender: Gender;
+  heritage: HeritageStyle;
+  outfitStyle: "western" | "asian" | "middleEastern" | "africanDiaspora";
   skirt: boolean;
   mature: boolean;
 }
@@ -339,26 +342,107 @@ const STAGE_PROFILES: BodyProfile[] = [
   { heightPx: 150, headRatio: 0.258, chub: 0.32, baby: false, child: false, elder: true }, // retirement
 ];
 
-const SKIN = "#ffd0a8";
-const SHIRTS_M = ["#4aa3ff", "#45c46a", "#ffb934", "#6d7dff", "#1fc7b6", "#ff7f50", "#2d95ff", "#42c98f"];
-const SHIRTS_F = ["#ff6eb5", "#ff8cd3", "#ad7cff", "#ff6f91", "#79a6ff", "#ff70c7", "#e56bd6", "#ff7aa8"];
+interface HeritagePalette {
+  skin: string;
+  hair: string;
+  elderHair: string;
+  texture: AvatarLook["hairTexture"];
+  shirtsM: string[];
+  shirtsF: string[];
+  skirts: string[];
+  pants: string[];
+  shoes: string;
+  outfitStyle: AvatarLook["outfitStyle"];
+}
+
+const HERITAGE_PALETTES: Record<HeritageStyle, HeritagePalette> = {
+  western: {
+    skin: "#ffd0a8",
+    hair: "#3a2a1e",
+    elderHair: "#e4e4ec",
+    texture: "wavy",
+    shirtsM: ["#4aa3ff", "#45c46a", "#ffb934", "#6d7dff", "#1fc7b6", "#ff7f50", "#2d95ff", "#42c98f"],
+    shirtsF: ["#ff6eb5", "#ff8cd3", "#ad7cff", "#ff6f91", "#79a6ff", "#ff70c7", "#e56bd6", "#ff7aa8"],
+    skirts: ["#f7f2ff", "#ff9ec0", "#8cc9ff", "#ffd36e", "#9a6ac4", "#f07ca8", "#b7e28a", "#ffffff"],
+    pants: ["#2d4f9c", "#243d68", "#33405a"],
+    shoes: "#3a2a35",
+    outfitStyle: "western",
+  },
+  asian: {
+    skin: "#f1bd8e",
+    hair: "#221916",
+    elderHair: "#d7d8dc",
+    texture: "straight",
+    shirtsM: ["#d83b3b", "#1f9aa0", "#274f8f", "#f0b540", "#46a86b", "#6f63c7", "#d86b3d", "#2d95ff"],
+    shirtsF: ["#e84c65", "#ff9f43", "#16a6a0", "#b75adf", "#f6c85f", "#ef7b95", "#4da3ff", "#8acb88"],
+    skirts: ["#fff0c9", "#e84c65", "#86d6d2", "#f7d76b", "#6f63c7", "#ffffff", "#ffb6a8", "#2f8a70"],
+    pants: ["#20385f", "#31496f", "#27384a"],
+    shoes: "#24242f",
+    outfitStyle: "asian",
+  },
+  middleEastern: {
+    skin: "#d39a70",
+    hair: "#241914",
+    elderHair: "#d0d0d2",
+    texture: "wavy",
+    shirtsM: ["#f7ead2", "#f2f2e8", "#1f6f75", "#d9a441", "#5b6db5", "#6c4a2e", "#2f8a7c", "#d8c090"],
+    shirtsF: ["#1d2b45", "#2c7a79", "#6b4ea0", "#d7a84c", "#8f2f52", "#f4dfc5", "#446b8e", "#b85c38"],
+    skirts: ["#1d2b45", "#2c7a79", "#6b4ea0", "#f4dfc5", "#8f2f52", "#d7a84c", "#446b8e", "#ffffff"],
+    pants: ["#32283f", "#243642", "#f2eadc"],
+    shoes: "#2a2022",
+    outfitStyle: "middleEastern",
+  },
+  black: {
+    skin: "#7a4a32",
+    hair: "#17120f",
+    elderHair: "#c8c8c5",
+    texture: "coily",
+    shirtsM: ["#ffcf33", "#e63946", "#118a5b", "#2760a8", "#f47c20", "#8a4bd6", "#13b5b1", "#f2efe4"],
+    shirtsF: ["#f25f5c", "#ffcf33", "#18a999", "#7b4dff", "#f77f00", "#2ec4b6", "#e94f8a", "#fff2a8"],
+    skirts: ["#ffcf33", "#e63946", "#118a5b", "#2760a8", "#f47c20", "#7b4dff", "#ffffff", "#2ec4b6"],
+    pants: ["#1d2d50", "#2c2a3d", "#173b34"],
+    shoes: "#1d1720",
+    outfitStyle: "africanDiaspora",
+  },
+};
+
 const SKIRTS_F = ["#f7f2ff", "#ff9ec0", "#8cc9ff", "#ffd36e", "#9a6ac4", "#f07ca8", "#b7e28a", "#ffffff"];
 
-export function avatarLook(stageIndex: number, gender: Gender = "male"): AvatarLook {
+function heritagePalette(heritage: HeritageStyle = "western"): HeritagePalette {
+  return HERITAGE_PALETTES[heritage] ?? HERITAGE_PALETTES.western;
+}
+
+function pick<T>(items: T[], i: number): T {
+  return items[Math.abs(i) % items.length];
+}
+
+export function avatarLook(stageIndex: number, gender: Gender = "male", heritage: HeritageStyle = "western"): AvatarLook {
   const i = Math.max(0, Math.min(STAGE_PROFILES.length - 1, stageIndex));
   const p = STAGE_PROFILES[i];
   const female = gender === "female";
-  const hair = p.elder ? "#e4e4ec" : p.child ? "#824d22" : female ? "#5e3a1e" : "#3a2a1e";
-  const shirts = female ? SHIRTS_F : SHIRTS_M;
+  const palette = heritagePalette(heritage);
+  const hair = p.elder
+    ? palette.elderHair
+    : p.child
+      ? tint(palette.hair, heritage === "western" ? 54 : heritage === "asian" ? 20 : 34)
+      : female
+        ? tint(palette.hair, heritage === "black" ? 10 : 28)
+        : palette.hair;
+  const shirts = female ? palette.shirtsF : palette.shirtsM;
+  const skirtSet = heritage === "western" ? SKIRTS_F : palette.skirts;
+  const pantsSet = heritage === "western" ? ["#2d4f9c", "#243d68", "#33405a"] : palette.pants;
   return {
     ...p,
-    skin: SKIN,
+    skin: palette.skin,
     hair,
+    hairTexture: palette.texture,
     hairStyle: female ? (p.elder ? "bun" : "long") : "short",
-    shirt: shirts[i % shirts.length],
-    pants: female ? SKIRTS_F[i % SKIRTS_F.length] : i >= 7 ? "#243d68" : "#2d4f9c",
-    shoes: female ? "#f04d8e" : "#3a2a35",
+    shirt: pick(shirts, i),
+    pants: female ? pick(skirtSet, i) : pick(pantsSet, i + (i >= 7 ? 1 : 0)),
+    shoes: female ? (heritage === "western" ? "#f04d8e" : palette.shoes) : palette.shoes,
     gender,
+    heritage,
+    outfitStyle: palette.outfitStyle,
     skirt: female && i >= 3 && !p.baby,
     mature: female && i >= 6,
   };
@@ -373,7 +457,7 @@ const PERSON_PROFILE: Record<"newborn" | "toddler" | "child" | "teen" | "adult" 
   elder: 11,
 };
 
-export function personLook(kind: PersonKind, playerGender: Gender, stageIndex?: number): AvatarLook {
+export function personLook(kind: PersonKind, playerGender: Gender, stageIndex?: number, heritage: HeritageStyle = "western"): AvatarLook {
   const opp: Gender = playerGender === "female" ? "male" : "female";
   type Spec = { g: Gender; age: keyof typeof PERSON_PROFILE; hair: string; shirt: string };
   const map: Record<PersonKind, Spec> = {
@@ -402,6 +486,7 @@ export function personLook(kind: PersonKind, playerGender: Gender, stageIndex?: 
   };
   const s = map[kind];
   const female = s.g === "female";
+  const palette = heritagePalette(heritage);
   let profileIndex = PERSON_PROFILE[s.age];
   if (stageIndex !== undefined) {
     if (kind === "sibling") {
@@ -417,19 +502,33 @@ export function personLook(kind: PersonKind, playerGender: Gender, stageIndex?: 
   }
   const p = STAGE_PROFILES[profileIndex];
   const ageAwareHair = kind === "spouse" && p.elder
-    ? "#e4e4ec"
+    ? palette.elderHair
     : kind === "child" || kind === "grandkid"
-      ? "#824d22"
-      : s.hair;
+      ? tint(palette.hair, heritage === "asian" ? 20 : 34)
+      : p.elder
+        ? palette.elderHair
+        : kind === "smokerFriend" || kind === "gangster" || kind === "playboy"
+          ? shade(palette.hair, 4)
+          : palette.hair;
+  const localShirt = kind === "smokerFriend" || kind === "gangster" || kind === "playboy"
+    ? s.shirt
+    : female
+      ? pick(palette.shirtsF, profileIndex + kind.length)
+      : pick(palette.shirtsM, profileIndex + kind.length);
+  const skirtSet = heritage === "western" ? SKIRTS_F : palette.skirts;
+  const pantsSet = heritage === "western" ? ["#33405a", "#243d68", "#2d4f9c"] : palette.pants;
   return {
     ...p,
-    skin: SKIN,
+    skin: palette.skin,
     hair: ageAwareHair,
+    hairTexture: palette.texture,
     hairStyle: female ? (p.elder ? "bun" : "long") : "short",
-    shirt: s.shirt,
-    pants: female ? SKIRTS_F[(profileIndex + kind.length) % SKIRTS_F.length] : "#33405a",
-    shoes: female ? "#c25b8e" : "#33293f",
+    shirt: localShirt,
+    pants: female ? pick(skirtSet, profileIndex + kind.length) : pick(pantsSet, profileIndex + kind.length),
+    shoes: female ? (heritage === "western" ? "#c25b8e" : palette.shoes) : palette.shoes,
     gender: s.g,
+    heritage,
+    outfitStyle: palette.outfitStyle,
     skirt: female && !p.baby,
     mature: female && profileIndex >= 6,
   };
@@ -697,6 +796,8 @@ function drawOutfitDetails(
     ellipse(ctx, cx, chestY + torsoH * 0.18, shoulderW * 0.09, shoulderW * 0.09, "#ffe867");
   }
 
+  drawHeritageOutfitDetails(ctx, cx, torsoTopY, torsoH, shoulderW, waistW, hipW, headH, look);
+
   if (look.gender === "female" && look.mature) {
     const bustY = torsoTopY + torsoH * (look.elder ? 0.36 : 0.32);
     const bustRx = shoulderW * (look.elder ? 0.105 : 0.13);
@@ -731,6 +832,96 @@ function drawOutfitDetails(
   ctx.moveTo(cx - hipW * 0.42, hemY + 1);
   ctx.lineTo(cx + hipW * 0.42, hemY + 1);
   ctx.stroke();
+}
+
+function drawHeritageOutfitDetails(
+  ctx: CanvasRenderingContext2D,
+  cx: number,
+  torsoTopY: number,
+  torsoH: number,
+  shoulderW: number,
+  waistW: number,
+  hipW: number,
+  headH: number,
+  look: AvatarLook
+): void {
+  if (look.outfitStyle === "western") return;
+
+  const top = torsoTopY + headH * 0.06;
+  const hem = torsoTopY + torsoH * 0.66;
+  ctx.save();
+  ctx.lineCap = "round";
+
+  if (look.outfitStyle === "asian") {
+    const trim = "#ffd85f";
+    ctx.strokeStyle = trim;
+    ctx.lineWidth = Math.max(1, shoulderW * 0.035);
+    ctx.beginPath();
+    ctx.moveTo(cx - shoulderW * 0.2, top);
+    ctx.quadraticCurveTo(cx - shoulderW * 0.06, torsoTopY + torsoH * 0.22, cx - waistW * 0.18, hem - 2);
+    ctx.moveTo(cx + shoulderW * 0.2, top);
+    ctx.quadraticCurveTo(cx + shoulderW * 0.06, torsoTopY + torsoH * 0.22, cx + waistW * 0.18, hem - 2);
+    ctx.stroke();
+    ctx.fillStyle = "rgba(255,216,95,0.75)";
+    for (let i = 0; i < 3; i++) {
+      ellipse(ctx, cx, torsoTopY + torsoH * (0.24 + i * 0.13), shoulderW * 0.025, shoulderW * 0.025, trim);
+    }
+  } else if (look.outfitStyle === "middleEastern") {
+    const trim = "#f2cf7a";
+    ctx.strokeStyle = trim;
+    ctx.lineWidth = Math.max(1.2, shoulderW * 0.04);
+    ctx.beginPath();
+    ctx.moveTo(cx, top);
+    ctx.lineTo(cx, hem - 1);
+    ctx.moveTo(cx - shoulderW * 0.2, top + torsoH * 0.02);
+    ctx.quadraticCurveTo(cx, top + torsoH * 0.18, cx + shoulderW * 0.2, top + torsoH * 0.02);
+    ctx.stroke();
+    ctx.strokeStyle = "rgba(242,207,122,0.55)";
+    ctx.lineWidth = Math.max(0.9, shoulderW * 0.02);
+    for (const side of [-1, 1]) {
+      ctx.beginPath();
+      ctx.moveTo(cx + side * shoulderW * 0.34, torsoTopY + torsoH * 0.14);
+      ctx.lineTo(cx + side * waistW * 0.34, hem - 1);
+      ctx.stroke();
+    }
+  } else if (look.outfitStyle === "africanDiaspora") {
+    const colors = ["#ffcf33", "#e63946", "#118a5b", "#2ec4b6"];
+    for (let i = 0; i < 4; i++) {
+      ctx.fillStyle = colors[i % colors.length];
+      const y = torsoTopY + torsoH * (0.18 + i * 0.115);
+      ctx.fillRect(cx - shoulderW * 0.34 + i * shoulderW * 0.035, y, shoulderW * 0.68, Math.max(1.2, torsoH * 0.018));
+    }
+    for (let i = 0; i < 5; i++) {
+      const x = cx - shoulderW * 0.26 + i * shoulderW * 0.13;
+      const y = torsoTopY + torsoH * (0.28 + (i % 2) * 0.18);
+      ctx.fillStyle = colors[(i + 1) % colors.length];
+      ctx.beginPath();
+      ctx.moveTo(x, y - torsoH * 0.035);
+      ctx.lineTo(x + shoulderW * 0.045, y + torsoH * 0.035);
+      ctx.lineTo(x - shoulderW * 0.045, y + torsoH * 0.035);
+      ctx.closePath();
+      ctx.fill();
+    }
+  }
+
+  ctx.restore();
+  if (look.outfitStyle === "middleEastern" && !look.child && !look.baby) {
+    ctx.save();
+    ctx.globalAlpha = 0.28;
+    ctx.fillStyle = tint(look.shirt, 20);
+    ctx.fillRect(cx - waistW * 0.44, hem - 1, waistW * 0.88, Math.max(2, torsoH * 0.06));
+    ctx.restore();
+  } else if (look.outfitStyle === "africanDiaspora" && look.skirt) {
+    ctx.save();
+    ctx.globalAlpha = 0.75;
+    ctx.strokeStyle = "#ffcf33";
+    ctx.lineWidth = Math.max(1, hipW * 0.022);
+    ctx.beginPath();
+    ctx.moveTo(cx - hipW * 0.42, hem + torsoH * 0.03);
+    ctx.lineTo(cx + hipW * 0.42, hem + torsoH * 0.03);
+    ctx.stroke();
+    ctx.restore();
+  }
 }
 
 function drawSideStanding(ctx: CanvasRenderingContext2D, cx: number, footY: number, look: AvatarLook, walkPhase: number, motion: AvatarMotion): void {
@@ -816,6 +1007,7 @@ function drawSideStanding(ctx: CanvasRenderingContext2D, cx: number, footY: numb
     ctx.closePath();
     ctx.fill();
   }
+  drawSideHeritageOutfitDetails(ctx, torsoCx, torsoTopY, torsoH, sideShoulderW, sideWaistW, headH, look, dir);
   const neckTopX = headCx - dir * headW * 0.16;
   const neckBottomX = torsoCx + dir * sideShoulderW * 0.08;
   const neckBottomY = torsoTopY + headH * 0.1;
@@ -850,6 +1042,47 @@ function drawSideStanding(ctx: CanvasRenderingContext2D, cx: number, footY: numb
   if (look.elder) {
     limb(ctx, nearHandX, handY, cx + dir * shoulderW * 0.48, footY, legW * 0.45, "#7a5a36");
   }
+}
+
+function drawSideHeritageOutfitDetails(
+  ctx: CanvasRenderingContext2D,
+  torsoCx: number,
+  torsoTopY: number,
+  torsoH: number,
+  sideShoulderW: number,
+  sideWaistW: number,
+  headH: number,
+  look: AvatarLook,
+  dir: number
+): void {
+  if (look.outfitStyle === "western") return;
+  const top = torsoTopY + headH * 0.08;
+  const hem = torsoTopY + torsoH * 0.66;
+  ctx.save();
+  ctx.lineCap = "round";
+  if (look.outfitStyle === "asian") {
+    ctx.strokeStyle = "#ffd85f";
+    ctx.lineWidth = Math.max(1, sideShoulderW * 0.06);
+    ctx.beginPath();
+    ctx.moveTo(torsoCx + dir * sideShoulderW * 0.18, top);
+    ctx.quadraticCurveTo(torsoCx + dir * sideWaistW * 0.24, torsoTopY + torsoH * 0.33, torsoCx + dir * sideWaistW * 0.1, hem - 2);
+    ctx.stroke();
+  } else if (look.outfitStyle === "middleEastern") {
+    ctx.strokeStyle = "#f2cf7a";
+    ctx.lineWidth = Math.max(1, sideShoulderW * 0.065);
+    ctx.beginPath();
+    ctx.moveTo(torsoCx + dir * sideShoulderW * 0.04, top);
+    ctx.lineTo(torsoCx + dir * sideWaistW * 0.04, hem - 1);
+    ctx.stroke();
+  } else if (look.outfitStyle === "africanDiaspora") {
+    const colors = ["#ffcf33", "#e63946", "#118a5b"];
+    for (let i = 0; i < 3; i++) {
+      ctx.fillStyle = colors[i];
+      const y = torsoTopY + torsoH * (0.22 + i * 0.14);
+      ctx.fillRect(torsoCx - sideShoulderW * 0.22, y, sideShoulderW * 0.44, Math.max(1.1, torsoH * 0.018));
+    }
+  }
+  ctx.restore();
 }
 
 function drawBackStanding(ctx: CanvasRenderingContext2D, cx: number, footY: number, look: AvatarLook, walkPhase: number, motion: AvatarMotion): void {
@@ -980,6 +1213,7 @@ function drawBackHead(ctx: CanvasRenderingContext2D, hcx: number, hcy: number, h
     ellipse(ctx, hcx - hw * 0.1, top + hh * 0.03, hw * 0.28, hh * 0.065, hairL);
     ctx.restore();
   }
+  drawHairTexture(ctx, hcx, hcy, hw, hh, look);
 
   if (look.hairStyle === "bun") {
     ellipse(ctx, hcx, top - hh * 0.12, hw * 0.27, hh * 0.22, hair);
@@ -1004,6 +1238,58 @@ function drawSideBackHair(ctx: CanvasRenderingContext2D, hcx: number, hcy: numbe
   ctx.strokeStyle = OUTLINE;
   ctx.lineWidth = OUTLINE_W;
   ctx.stroke();
+}
+
+function drawHairTexture(ctx: CanvasRenderingContext2D, hcx: number, hcy: number, hw: number, hh: number, look: AvatarLook, dir = 0): void {
+  if (look.elder) return;
+  const top = hcy - hh / 2;
+  if (look.hairTexture === "straight") {
+    ctx.save();
+    ctx.globalAlpha = 0.38;
+    ctx.strokeStyle = tint(look.hair, 24);
+    ctx.lineWidth = Math.max(0.8, hw * 0.018);
+    ctx.lineCap = "round";
+    for (const x of [-0.22, 0, 0.22]) {
+      ctx.beginPath();
+      ctx.moveTo(hcx + hw * x, top + hh * 0.05);
+      ctx.lineTo(hcx + hw * (x * 0.85), top + hh * 0.38);
+      ctx.stroke();
+    }
+    ctx.restore();
+    return;
+  }
+  if (look.hairTexture === "wavy") {
+    ctx.save();
+    ctx.globalAlpha = 0.36;
+    ctx.strokeStyle = tint(look.hair, 22);
+    ctx.lineWidth = Math.max(0.9, hw * 0.02);
+    ctx.lineCap = "round";
+    for (const x of [-0.28, -0.08, 0.12, 0.3]) {
+      ctx.beginPath();
+      ctx.moveTo(hcx + hw * x, top + hh * 0.08);
+      ctx.quadraticCurveTo(hcx + hw * (x + 0.06), top + hh * 0.2, hcx + hw * (x - 0.02), top + hh * 0.34);
+      ctx.stroke();
+    }
+    ctx.restore();
+    return;
+  }
+  if (look.hairTexture !== "coily") return;
+
+  const points = [
+    [-0.42, 0.24], [-0.32, 0.08], [-0.18, -0.02], [0, -0.04], [0.18, -0.02], [0.32, 0.08], [0.42, 0.24],
+    [-0.36, 0.36], [-0.12, 0.18], [0.12, 0.18], [0.36, 0.36],
+  ];
+  ctx.save();
+  ctx.globalAlpha = 0.9;
+  for (let i = 0; i < points.length; i++) {
+    const [px0, py0] = points[i];
+    const sideShift = dir ? dir * Math.abs(px0) * 0.32 : 0;
+    const x = hcx + hw * (px0 + sideShift);
+    const y = top + hh * py0;
+    const fill = i % 3 === 0 ? tint(look.hair, 12) : i % 2 === 0 ? look.hair : shade(look.hair, 8);
+    ellipse(ctx, x, y, hw * 0.095, hh * 0.07, fill);
+  }
+  ctx.restore();
 }
 
 function drawSideHead(ctx: CanvasRenderingContext2D, hcx: number, hcy: number, hw: number, hh: number, look: AvatarLook, dir: number): void {
@@ -1079,6 +1365,7 @@ function drawSideHead(ctx: CanvasRenderingContext2D, hcx: number, hcy: number, h
     ellipse(ctx, hcx - dir * hw * 0.03, top + hh * 0.01, hw * 0.22, hh * 0.055, hairL);
     ctx.restore();
   }
+  drawHairTexture(ctx, hcx - dir * hw * 0.04, hcy, hw * 0.92, hh, look, dir);
   if (look.hairStyle === "bun") {
     ellipse(ctx, hcx - dir * hw * 0.38, top - hh * 0.06, hw * 0.22, hh * 0.18, hair);
     ctx.beginPath();
@@ -1224,6 +1511,7 @@ function drawHair(ctx: CanvasRenderingContext2D, hcx: number, hcy: number, hw: n
     ctx.fill();
     ctx.restore();
   }
+  drawHairTexture(ctx, hcx, hcy, hw, hh, look);
 
   if (look.hairStyle === "bun") {
     ellipse(ctx, hcx, top - hh * 0.16, hw * 0.27, hh * 0.23, hair);
@@ -1352,7 +1640,7 @@ function drawCrawlingBaby(ctx: CanvasRenderingContext2D, cx: number, footY: numb
   const bob = Math.abs(counter) * H * 0.012;
   const skin = look.skin;
   const skinD = shade(skin, 16);
-  const onesie = look.gender === "female" ? "#ff9fc8" : "#78baff";
+  const onesie = look.shirt;
   const bodyCx = cx - dir * H * 0.04;
   const bodyCy = footY - H * 0.19 - bob;
   const bodyRx = H * 0.3;
@@ -1423,6 +1711,7 @@ function drawCrawlingBaby(ctx: CanvasRenderingContext2D, cx: number, footY: numb
   ctx.ellipse(headCx - dir * headR * 0.04, headCy - headR * 0.72, headR * 0.48, headR * 0.2, 0, Math.PI, 0);
   ctx.fill();
   ellipse(ctx, headCx + dir * headR * 0.05, headCy - headR * 0.86, headR * 0.16, headR * 0.13, look.hair);
+  drawHairTexture(ctx, headCx, headCy - headR * 0.18, headR * 1.25, headR * 1.1, look, dir);
   if (look.gender === "female") ellipse(ctx, headCx + dir * headR * 0.54, headCy - headR * 0.5, headR * 0.14, headR * 0.1, "#ff7ab0");
 
   const eyeR = headR * 0.18;
@@ -1455,7 +1744,7 @@ function drawCrawlingBabyBack(ctx: CanvasRenderingContext2D, cx: number, footY: 
   const H = look.heightPx;
   const step = Math.sin(walkPhase);
   const bob = Math.abs(Math.cos(walkPhase)) * H * 0.01;
-  const onesie = look.gender === "female" ? "#ff9fc8" : "#78baff";
+  const onesie = look.shirt;
   const skin = look.skin;
   const bodyCx = cx;
   const bodyCy = footY - H * 0.11 - bob;
@@ -1521,6 +1810,7 @@ function drawCrawlingBabyBack(ctx: CanvasRenderingContext2D, cx: number, footY: 
   ctx.moveTo(headCx + headR * 0.18, headCy - headR * 0.74);
   ctx.quadraticCurveTo(headCx + headR * 0.1, headCy - headR * 0.24, headCx + headR * 0.24, headCy + headR * 0.08);
   ctx.stroke();
+  drawHairTexture(ctx, headCx, headCy - headR * 0.16, headR * 1.28, headR * 1.1, look);
   ellipse(ctx, headCx, headCy - headR * 0.86, headR * 0.16, headR * 0.13, look.hair);
 }
 
@@ -1540,8 +1830,8 @@ export interface PersonDrawOptions {
   seated?: boolean;
 }
 
-export function drawPerson(ctx: CanvasRenderingContext2D, cx: number, footY: number, kind: PersonKind, playerGender: Gender, label: string, focused: boolean, used: boolean, t: number, stageIndex?: number, options: PersonDrawOptions = {}): void {
-  const look = personLook(kind, playerGender, stageIndex);
+export function drawPerson(ctx: CanvasRenderingContext2D, cx: number, footY: number, kind: PersonKind, playerGender: Gender, label: string, focused: boolean, used: boolean, t: number, stageIndex?: number, heritage: HeritageStyle = "western", options: PersonDrawOptions = {}): void {
+  const look = personLook(kind, playerGender, stageIndex, heritage);
   const seated = !!options.seated && !look.baby;
   ctx.save();
   if (used) ctx.globalAlpha = 0.5;

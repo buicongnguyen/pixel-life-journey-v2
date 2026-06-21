@@ -1,5 +1,6 @@
 import type {
   Gender,
+  HeritageStyle,
   HistoryEntry,
   HouseTier,
   LifeOption,
@@ -98,6 +99,12 @@ const PARENT_INCOME_SHIFT_MAX = 0.5;
 const LIFE_SPEED_MIN = 0.5;
 const LIFE_SPEED_MAX = 2;
 const LIFE_SPEED_STEP = 0.25;
+const HERITAGE_OPTIONS: { id: HeritageStyle; label: string; icon: string }[] = [
+  { id: "western", label: "Western / current", icon: "🌎" },
+  { id: "asian", label: "Asian", icon: "🏮" },
+  { id: "middleEastern", label: "Middle Eastern", icon: "🕌" },
+  { id: "black", label: "Black / African diaspora", icon: "🌍" },
+];
 
 type Mode =
   | "title"
@@ -146,6 +153,7 @@ interface Snapshot {
   stageIndex: number;
   age: number;
   gender: Gender;
+  heritage: HeritageStyle;
   stats: Stats;
   money: number;
   weight: number;
@@ -200,6 +208,7 @@ export class Game {
   private stats: Stats = { ...START_STATS };
   private age = 0;
   private gender: Gender = "male";
+  private heritage: HeritageStyle = "western";
   private lifeSpeed = 1;
   private weight = START_WEIGHT;
   private money = START_MONEY; // real dollars (bank balance), can grow large
@@ -303,6 +312,7 @@ export class Game {
       focus: this.focusIndex >= 0 ? this.stations[this.focusIndex]?.opt.id : null,
       partner: this.partner?.id ?? null,
       gender: this.gender,
+      heritage: this.heritage,
       facing: this.facing,
       weight: Math.round(this.weight),
       health: Math.round(this.stats.health),
@@ -460,8 +470,8 @@ export class Game {
     const start = STAGES[startIndex];
     const familyText = `Family fund: ${formatMoney(this.familyFund)}. Mommy & Daddy: ~${formatMoney(this.parentAnnualSupport)}/yr.`;
     this.hint(startIndex === 0
-      ? `👪 ${familyText} Life speed: ${this.lifeSpeedLabel()}.`
-      : `${start.emoji} Started at ${start.name} (age ${start.ageStart}). ${familyText} Speed: ${this.lifeSpeedLabel()}.`);
+      ? `👪 ${familyText} Style: ${this.heritageLabel()}. Speed: ${this.lifeSpeedLabel()}.`
+      : `${start.emoji} Started at ${start.name} (age ${start.ageStart}). Style: ${this.heritageLabel()}. Speed: ${this.lifeSpeedLabel()}.`);
   }
 
   private loadStage(i: number, restoring = false): void {
@@ -500,6 +510,7 @@ export class Game {
       stageIndex: this.stageIndex,
       age: this.age,
       gender: this.gender,
+      heritage: this.heritage,
       stats: { ...this.stats },
       money: this.money,
       weight: this.weight,
@@ -757,6 +768,15 @@ export class Game {
 
   private normalizeStageIndex(i: number): number {
     return Math.max(0, Math.min(STAGES.length - 1, Math.round(Number.isFinite(i) ? i : 0)));
+  }
+
+  private normalizeHeritage(value: string | null | undefined): HeritageStyle {
+    const found = HERITAGE_OPTIONS.find((o) => o.id === value);
+    return found?.id ?? "western";
+  }
+
+  private heritageLabel(): string {
+    return HERITAGE_OPTIONS.find((o) => o.id === this.heritage)?.label ?? "Western / current";
   }
 
   /** The chapter gate is open once you're old enough — or always, when replaying
@@ -1568,6 +1588,7 @@ export class Game {
     const snap = this.timeline[stageIndex];
     if (!snap) return;
     this.gender = snap.gender;
+    this.heritage = snap.heritage ?? "western";
     this.stats = { ...snap.stats };
     this.money = snap.money;
     this.weight = snap.weight;
@@ -2036,7 +2057,7 @@ export class Game {
       drawables.sort((a, b) => a.y - b.y);
       for (const d of drawables) {
         if (!d.station) {
-          drawAvatar(ctx, this.px, this.py, avatarLook(this.stageIndex, this.gender), this.walkPhase, {
+          drawAvatar(ctx, this.px, this.py, avatarLook(this.stageIndex, this.gender, this.heritage), this.walkPhase, {
             moving: this.moving,
             facing: this.facing,
             verticalBias: this.verticalBias,
@@ -2066,7 +2087,7 @@ export class Game {
         if (st.kind === "event" && st.event) {
           drawEventItem(ctx, st.x, st.y, st.event.id, st.event.emoji, st.event.title, st.event.good !== false, focused, t);
         } else if (st.opt.person) {
-          drawPerson(ctx, st.x, st.y, st.opt.person, this.gender, st.opt.label, focused, used, t, this.stageIndex, {
+          drawPerson(ctx, st.x, st.y, st.opt.person, this.gender, st.opt.label, focused, used, t, this.stageIndex, this.heritage, {
             seated: this.shouldSitWithNewborn(st),
           });
         } else {
@@ -2328,11 +2349,18 @@ export class Game {
     const stageOptions = STAGES.map((s, i) =>
       `<option value="${i}">${s.emoji} ${esc(s.name)} · age ${s.ageStart}-${s.ageEnd}</option>`
     ).join("");
+    const heritageCards = HERITAGE_OPTIONS.map((h) => `
+      <button class="plj-heritage${h.id === this.heritage ? " is-selected" : ""}" data-heritage="${h.id}">
+        <span class="plj-heritage-icon">${h.icon}</span>
+        <span>${esc(h.label)}</span>
+      </button>`).join("");
     this.ui.overlay.innerHTML = `
       <div class="plj-card plj-title">
         <h2>A new life begins…</h2>
         <p class="plj-sub">Name your character (optional) — it shows on your career profile.</p>
         <div class="plj-bio-head"><input id="plj-setup-name" placeholder="Name (optional)" maxlength="40"></div>
+        <p class="plj-sub">Choose the baby's heritage style.</p>
+        <div class="plj-heritage-grid">${heritageCards}</div>
         <div class="plj-setup-grid">
           <label class="plj-setup-field">
             <span>Start stage</span>
@@ -2358,10 +2386,17 @@ export class Game {
       speedInput.value = String(this.lifeSpeed);
       speedReadout.textContent = this.lifeSpeedLabel();
     };
+    this.ui.overlay.querySelectorAll<HTMLButtonElement>(".plj-heritage").forEach((btn) => {
+      btn.onclick = () => {
+        this.ui.overlay.querySelectorAll<HTMLButtonElement>(".plj-heritage").forEach((b) => b.classList.remove("is-selected"));
+        btn.classList.add("is-selected");
+      };
+    });
     this.ui.overlay.querySelectorAll<HTMLButtonElement>(".plj-gender").forEach((btn) => {
       btn.onclick = () => {
         this.playerName = (this.ui.overlay.querySelector<HTMLInputElement>("#plj-setup-name")?.value ?? "").slice(0, 40);
         this.gender = btn.dataset.g === "female" ? "female" : "male";
+        this.heritage = this.normalizeHeritage(this.ui.overlay.querySelector<HTMLButtonElement>(".plj-heritage.is-selected")?.dataset.heritage);
         const startIndex = this.normalizeStageIndex(Number(this.ui.overlay.querySelector<HTMLSelectElement>("#plj-start-stage")?.value ?? 0));
         this.setLifeSpeed(Number(speedInput.value));
         this.newGame(false, startIndex);
@@ -2375,6 +2410,7 @@ export class Game {
   private startBiographyPlay(bio: Biography): void {
     this.biography = bio;
     this.gender = bio.gender;
+    this.heritage = "western";
     this.newGame(true); // keep the biography; loadStage(0) builds its moments
     this.playerName = bio.name; // the profile shows whose life this is
   }

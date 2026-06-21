@@ -217,6 +217,9 @@ export interface HistoryEntry {
 
 export type Gender = "male" | "female";
 
+/** Visual-only avatar family style chosen on the setup screen. */
+export type HeritageStyle = "western" | "asian" | "middleEastern" | "black";
+
 /** A job chosen at the start of the Career stage. */
 export interface Occupation {
   id: string;
