@@ -141,6 +141,140 @@ function sideShoe(ctx: CanvasRenderingContext2D, x: number, y: number, dir: numb
   ctx.stroke();
 }
 
+function drawHand(ctx: CanvasRenderingContext2D, x: number, y: number, rx: number, ry: number, skin: string, dir = 1, angle = 0): void {
+  const skinD = shade(skin, 18);
+  const skinL = tint(skin, 12);
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.rotate(angle);
+  ctx.scale(dir, 1);
+  ctx.fillStyle = skin;
+  ctx.beginPath();
+  ctx.moveTo(-rx * 0.48, -ry * 0.24);
+  ctx.quadraticCurveTo(-rx * 0.75, -ry * 0.02, -rx * 0.48, ry * 0.28);
+  ctx.quadraticCurveTo(-rx * 0.14, ry * 0.56, rx * 0.3, ry * 0.42);
+  ctx.quadraticCurveTo(rx * 0.64, ry * 0.22, rx * 0.52, -ry * 0.13);
+  ctx.quadraticCurveTo(rx * 0.2, -ry * 0.42, -rx * 0.48, -ry * 0.24);
+  ctx.closePath();
+  ctx.fill();
+  ctx.strokeStyle = OUTLINE;
+  ctx.lineWidth = Math.max(0.8, OUTLINE_W * 0.72);
+  ctx.stroke();
+
+  ellipse(ctx, -rx * 0.58, ry * 0.06, rx * 0.22, ry * 0.17, skinD);
+  ctx.strokeStyle = skinD;
+  ctx.lineWidth = Math.max(0.65, rx * 0.1);
+  ctx.lineCap = "round";
+  for (const fx of [-0.16, 0.07, 0.29]) {
+    ctx.beginPath();
+    ctx.moveTo(rx * fx, ry * 0.2);
+    ctx.lineTo(rx * (fx - 0.03), ry * 0.48);
+    ctx.stroke();
+  }
+  ctx.fillStyle = skinL;
+  ctx.beginPath();
+  ctx.ellipse(rx * 0.14, -ry * 0.1, rx * 0.26, ry * 0.11, -0.25, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+}
+
+function drawEar(ctx: CanvasRenderingContext2D, x: number, y: number, rx: number, ry: number, skin: string, shadeSide = false): void {
+  const fill = shadeSide ? shade(skin, 18) : skin;
+  ellipse(ctx, x, y, rx, ry, fill);
+  ctx.beginPath();
+  ctx.ellipse(x, y, rx, ry, 0, 0, Math.PI * 2);
+  ctx.strokeStyle = OUTLINE;
+  ctx.lineWidth = Math.max(0.8, OUTLINE_W * 0.65);
+  ctx.stroke();
+  ctx.strokeStyle = shade(skin, 26);
+  ctx.lineWidth = Math.max(0.7, rx * 0.22);
+  ctx.lineCap = "round";
+  ctx.beginPath();
+  ctx.moveTo(x - rx * 0.18, y - ry * 0.24);
+  ctx.quadraticCurveTo(x + rx * 0.28, y, x - rx * 0.02, y + ry * 0.32);
+  ctx.stroke();
+}
+
+function drawFrontHeadShape(ctx: CanvasRenderingContext2D, hcx: number, hcy: number, hw: number, hh: number, skin: string, child: boolean): void {
+  const hg = ctx.createRadialGradient(hcx - hw * 0.18, hcy - hh * 0.23, hw * 0.15, hcx, hcy, hw * 0.72);
+  hg.addColorStop(0, tint(skin, 10));
+  hg.addColorStop(0.68, skin);
+  hg.addColorStop(1, shade(skin, 8));
+  drawEar(ctx, hcx - hw * 0.5, hcy + hh * 0.04, hw * 0.095, hh * 0.12, skin);
+  drawEar(ctx, hcx + hw * 0.5, hcy + hh * 0.04, hw * 0.095, hh * 0.12, skin, true);
+  ctx.fillStyle = hg;
+  ctx.beginPath();
+  ctx.moveTo(hcx - hw * 0.47, hcy - hh * 0.09);
+  ctx.quadraticCurveTo(hcx - hw * 0.5, hcy - hh * 0.36, hcx - hw * 0.26, hcy - hh * 0.49);
+  ctx.quadraticCurveTo(hcx, hcy - hh * 0.58, hcx + hw * 0.26, hcy - hh * 0.49);
+  ctx.quadraticCurveTo(hcx + hw * 0.5, hcy - hh * 0.36, hcx + hw * 0.47, hcy - hh * 0.09);
+  ctx.quadraticCurveTo(hcx + hw * 0.48, hcy + hh * 0.24, hcx + hw * 0.27, hcy + hh * 0.42);
+  ctx.quadraticCurveTo(hcx + hw * 0.11, hcy + hh * (child ? 0.52 : 0.49), hcx, hcy + hh * 0.52);
+  ctx.quadraticCurveTo(hcx - hw * 0.11, hcy + hh * (child ? 0.52 : 0.49), hcx - hw * 0.27, hcy + hh * 0.42);
+  ctx.quadraticCurveTo(hcx - hw * 0.48, hcy + hh * 0.24, hcx - hw * 0.47, hcy - hh * 0.09);
+  ctx.closePath();
+  ctx.fill();
+  ctx.strokeStyle = OUTLINE;
+  ctx.lineWidth = OUTLINE_W;
+  ctx.stroke();
+  ctx.strokeStyle = "rgba(120,70,58,0.22)";
+  ctx.lineWidth = Math.max(0.8, hw * 0.018);
+  ctx.lineCap = "round";
+  ctx.beginPath();
+  ctx.moveTo(hcx - hw * 0.26, hcy + hh * 0.36);
+  ctx.quadraticCurveTo(hcx, hcy + hh * 0.5, hcx + hw * 0.26, hcy + hh * 0.36);
+  ctx.stroke();
+}
+
+function drawBabyProfileHeadShape(ctx: CanvasRenderingContext2D, hcx: number, hcy: number, r: number, skin: string, dir: number): void {
+  const hg = ctx.createRadialGradient(hcx - dir * r * 0.25, hcy - r * 0.3, r * 0.18, hcx, hcy, r * 1.05);
+  hg.addColorStop(0, tint(skin, 16));
+  hg.addColorStop(0.65, skin);
+  hg.addColorStop(1, shade(skin, 14));
+  drawEar(ctx, hcx - dir * r * 0.92, hcy + r * 0.08, r * 0.13, r * 0.18, skin, true);
+  ctx.fillStyle = hg;
+  ctx.beginPath();
+  ctx.moveTo(hcx - dir * r * 0.75, hcy + r * 0.06);
+  ctx.quadraticCurveTo(hcx - dir * r * 0.66, hcy - r * 0.76, hcx - dir * r * 0.05, hcy - r * 0.96);
+  ctx.quadraticCurveTo(hcx + dir * r * 0.73, hcy - r * 0.88, hcx + dir * r * 0.88, hcy - r * 0.18);
+  ctx.quadraticCurveTo(hcx + dir * r * 1.12, hcy - r * 0.04, hcx + dir * r * 0.86, hcy + r * 0.14);
+  ctx.quadraticCurveTo(hcx + dir * r * 0.72, hcy + r * 0.48, hcx + dir * r * 0.18, hcy + r * 0.72);
+  ctx.quadraticCurveTo(hcx - dir * r * 0.5, hcy + r * 0.68, hcx - dir * r * 0.75, hcy + r * 0.06);
+  ctx.closePath();
+  ctx.fill();
+  ctx.strokeStyle = OUTLINE;
+  ctx.lineWidth = OUTLINE_W;
+  ctx.stroke();
+}
+
+function drawBabyBackHeadShape(ctx: CanvasRenderingContext2D, hcx: number, hcy: number, r: number, skin: string): void {
+  const hg = ctx.createRadialGradient(hcx - r * 0.18, hcy - r * 0.28, r * 0.18, hcx, hcy, r * 1.05);
+  hg.addColorStop(0, tint(skin, 12));
+  hg.addColorStop(0.65, skin);
+  hg.addColorStop(1, shade(skin, 14));
+  drawEar(ctx, hcx - r * 0.86, hcy + r * 0.04, r * 0.12, r * 0.17, skin, true);
+  drawEar(ctx, hcx + r * 0.86, hcy + r * 0.04, r * 0.12, r * 0.17, skin, true);
+  ctx.fillStyle = hg;
+  ctx.beginPath();
+  ctx.moveTo(hcx - r * 0.78, hcy + r * 0.04);
+  ctx.quadraticCurveTo(hcx - r * 0.72, hcy - r * 0.82, hcx, hcy - r * 0.96);
+  ctx.quadraticCurveTo(hcx + r * 0.72, hcy - r * 0.82, hcx + r * 0.78, hcy + r * 0.04);
+  ctx.quadraticCurveTo(hcx + r * 0.72, hcy + r * 0.58, hcx, hcy + r * 0.74);
+  ctx.quadraticCurveTo(hcx - r * 0.72, hcy + r * 0.58, hcx - r * 0.78, hcy + r * 0.04);
+  ctx.closePath();
+  ctx.fill();
+  ctx.strokeStyle = OUTLINE;
+  ctx.lineWidth = OUTLINE_W;
+  ctx.stroke();
+  ctx.strokeStyle = "rgba(120,70,58,0.2)";
+  ctx.lineWidth = Math.max(0.8, r * 0.035);
+  ctx.lineCap = "round";
+  ctx.beginPath();
+  ctx.moveTo(hcx - r * 0.22, hcy + r * 0.52);
+  ctx.quadraticCurveTo(hcx, hcy + r * 0.64, hcx + r * 0.22, hcy + r * 0.52);
+  ctx.stroke();
+}
+
 // ===========================================================================
 // Look + age profile
 // ===========================================================================
@@ -381,8 +515,8 @@ function drawStanding(ctx: CanvasRenderingContext2D, cx: number, footY: number, 
   limb(ctx, leftElbowX, elbowY, leftHandX, handY, armW * 0.92, look.shirt);
   limb(ctx, rightShoulderX, shoulderY, rightElbowX, elbowY, armW, shade(look.shirt, 6));
   limb(ctx, rightElbowX, elbowY, rightHandX, handY, armW * 0.92, look.shirt);
-  ellipse(ctx, leftHandX, handY, armW * 0.62, armW * 0.56, skin);
-  ellipse(ctx, rightHandX, handY, armW * 0.62, armW * 0.56, skin);
+  drawHand(ctx, leftHandX, handY, armW * 0.78, armW * 0.68, skin, -1, -0.08);
+  drawHand(ctx, rightHandX, handY, armW * 0.78, armW * 0.68, skin, 1, 0.08);
 
   // --- skirt or lower body -------------------------------------------------
   if (look.skirt) {
@@ -402,26 +536,8 @@ function drawStanding(ctx: CanvasRenderingContext2D, cx: number, footY: number, 
   ctx.fillRect(cx - neckH * 0.42, torsoTopY - neckH + 1, neckH * 0.84, neckH + headH * 0.12);
   ellipse(ctx, cx, neckTopY + neckH * 0.3, neckH * 0.5, neckH * 0.4, skin);
 
-  // --- head (anime oval face tapering to a soft chin) ----------------------
-  const hg = ctx.createRadialGradient(headCx - headW * 0.18, headCy - headH * 0.22, headW * 0.15, headCx, headCy, headW * 0.72);
-  hg.addColorStop(0, tint(skin, 8));
-  hg.addColorStop(0.7, skin);
-  hg.addColorStop(1, shade(skin, 6));
-  ctx.fillStyle = hg;
-  ctx.beginPath();
-  ctx.moveTo(headCx - headW / 2, headCy - headH * 0.08);
-  ctx.quadraticCurveTo(headCx - headW / 2, headCy - headH / 2, headCx, headCy - headH / 2);
-  ctx.quadraticCurveTo(headCx + headW / 2, headCy - headH / 2, headCx + headW / 2, headCy - headH * 0.08);
-  ctx.quadraticCurveTo(headCx + headW * 0.44, headCy + headH * 0.4, headCx, headCy + headH / 2);
-  ctx.quadraticCurveTo(headCx - headW * 0.44, headCy + headH * 0.4, headCx - headW / 2, headCy - headH * 0.08);
-  ctx.closePath();
-  ctx.fill();
-  ctx.strokeStyle = OUTLINE;
-  ctx.lineWidth = OUTLINE_W;
-  ctx.stroke();
-  // ears
-  ellipse(ctx, headCx - headW / 2, headCy + headH * 0.04, headW * 0.1, headH * 0.12, skin);
-  ellipse(ctx, headCx + headW / 2, headCy + headH * 0.04, headW * 0.1, headH * 0.12, skinD);
+  // --- head: cheekbones, ears and a small chin instead of a plain oval ------
+  drawFrontHeadShape(ctx, headCx, headCy, headW, headH, skin, look.child);
 
   drawHair(ctx, headCx, headCy, headW, headH, look);
   drawFace(ctx, headCx, headCy, headW, headH, look);
@@ -599,7 +715,7 @@ function drawSideStanding(ctx: CanvasRenderingContext2D, cx: number, footY: numb
   const nearHandX = cx + dir * sideShoulderW * 0.09 + dir * stride * 0.38;
   limb(ctx, cx + dir * sideShoulderW * 0.2, shoulderY, nearElbowX, elbowY, armW, look.shirt);
   limb(ctx, nearElbowX, elbowY, nearHandX, handY, armW * 0.9, look.shirt);
-  ellipse(ctx, nearHandX, handY, armW * 0.6, armW * 0.54, look.skin);
+  drawHand(ctx, nearHandX, handY, armW * 0.76, armW * 0.66, look.skin, dir, dir * 0.12);
 
   drawSideHead(ctx, headCx, headCy, headW, headH, look, dir);
 
@@ -664,6 +780,8 @@ function drawBackStanding(ctx: CanvasRenderingContext2D, cx: number, footY: numb
   limb(ctx, cx - shoulderW * 0.37 + stride * 0.22, elbowY, cx - shoulderW * 0.28 + stride * 0.45, handY, armW * 0.9, look.shirt);
   limb(ctx, cx + shoulderW * 0.35, shoulderY, cx + shoulderW * 0.37 - stride * 0.22, elbowY, armW, shade(look.shirt, 8));
   limb(ctx, cx + shoulderW * 0.37 - stride * 0.22, elbowY, cx + shoulderW * 0.28 - stride * 0.45, handY, armW * 0.9, look.shirt);
+  drawHand(ctx, cx - shoulderW * 0.28 + stride * 0.45, handY, armW * 0.72, armW * 0.62, look.skin, -1, -0.06);
+  drawHand(ctx, cx + shoulderW * 0.28 - stride * 0.45, handY, armW * 0.72, armW * 0.62, look.skin, 1, 0.06);
 
   ctx.fillStyle = shade(look.skin, 20);
   ctx.fillRect(cx - neckH * 0.36, torsoTopY - neckH + 1, neckH * 0.72, neckH + headH * 0.08);
@@ -772,7 +890,7 @@ function drawSideHead(ctx: CanvasRenderingContext2D, hcx: number, hcy: number, h
   hg.addColorStop(0.7, skin);
   hg.addColorStop(1, shade(skin, 8));
 
-  ellipse(ctx, hcx - dir * hw * 0.45, hcy + hh * 0.04, hw * 0.09, hh * 0.12, skinD);
+  drawEar(ctx, hcx - dir * hw * 0.45, hcy + hh * 0.04, hw * 0.09, hh * 0.12, skin, true);
 
   ctx.fillStyle = hg;
   ctx.beginPath();
@@ -787,6 +905,13 @@ function drawSideHead(ctx: CanvasRenderingContext2D, hcx: number, hcy: number, h
   ctx.fill();
   ctx.strokeStyle = OUTLINE;
   ctx.lineWidth = OUTLINE_W;
+  ctx.stroke();
+  ctx.strokeStyle = "rgba(120,70,58,0.24)";
+  ctx.lineWidth = Math.max(0.8, hw * 0.018);
+  ctx.lineCap = "round";
+  ctx.beginPath();
+  ctx.moveTo(hcx + dir * hw * 0.19, hcy + hh * 0.39);
+  ctx.quadraticCurveTo(hcx + dir * hw * 0.36, hcy + hh * 0.52, hcx + dir * hw * 0.1, hcy + hh * 0.68);
   ctx.stroke();
 
   // Compact cap and bangs: enough to show direction without hiding the face.
@@ -1120,12 +1245,12 @@ function drawCrawlingBaby(ctx: CanvasRenderingContext2D, cx: number, footY: numb
   const handY = footY - H * 0.045;
   const kneeY = footY - H * 0.035;
   limb(ctx, bodyCx - dir * bodyRx * 0.35, bodyCy - bodyRy * 0.05, farArmX, handY, limbW * 0.92, shade(onesie, 10));
-  ellipse(ctx, farArmX, handY + H * 0.006, H * 0.04, H * 0.026, skinD);
+  drawHand(ctx, farArmX, handY + H * 0.006, H * 0.048, H * 0.031, skinD, -dir, -dir * 0.05);
   limb(ctx, bodyCx + dir * bodyRx * 0.2, bodyCy + bodyRy * 0.45, farKneeX, kneeY, limbW, shade(onesie, 12));
   ellipse(ctx, farKneeX, kneeY + H * 0.006, H * 0.046, H * 0.028, skinD);
 
   limb(ctx, bodyCx + dir * bodyRx * 0.18, bodyCy - bodyRy * 0.12, nearArmX, handY - Math.max(0, counter) * H * 0.018, limbW, onesie);
-  ellipse(ctx, nearArmX, handY + H * 0.006 - Math.max(0, counter) * H * 0.018, H * 0.043, H * 0.028, skin);
+  drawHand(ctx, nearArmX, handY + H * 0.006 - Math.max(0, counter) * H * 0.018, H * 0.052, H * 0.034, skin, dir, dir * 0.06);
   limb(ctx, bodyCx - dir * bodyRx * 0.12, bodyCy + bodyRy * 0.46, nearKneeX, kneeY - Math.max(0, -counter) * H * 0.018, limbW, onesie);
   ellipse(ctx, nearKneeX, kneeY + H * 0.006 - Math.max(0, -counter) * H * 0.018, H * 0.047, H * 0.029, skin);
 
@@ -1156,23 +1281,13 @@ function drawCrawlingBaby(ctx: CanvasRenderingContext2D, cx: number, footY: numb
   const frontHandX = headCx + dir * headR * 0.36 + dir * step * H * 0.03;
   const frontHandY = handY - Math.max(0, counter) * H * 0.012;
   limb(ctx, bodyCx + dir * bodyRx * 0.42, bodyCy - bodyRy * 0.06, frontHandX, frontHandY, limbW * 0.9, tint(onesie, 4));
-  ellipse(ctx, frontHandX, frontHandY + H * 0.006, H * 0.045, H * 0.028, skin);
+  drawHand(ctx, frontHandX, frontHandY + H * 0.006, H * 0.054, H * 0.034, skin, dir, dir * 0.1);
   const frontKneeX = bodyCx - dir * bodyRx * 0.46 - dir * step * H * 0.028;
   const frontKneeY = kneeY - Math.max(0, -counter) * H * 0.012;
   limb(ctx, bodyCx - dir * bodyRx * 0.18, bodyCy + bodyRy * 0.5, frontKneeX, frontKneeY, limbW * 0.95, shade(onesie, 6));
   ellipse(ctx, frontKneeX - dir * H * 0.018, frontKneeY + H * 0.006, H * 0.047, H * 0.029, skinD);
 
-  const hg = ctx.createRadialGradient(headCx - dir * headR * 0.25, headCy - headR * 0.3, headR * 0.18, headCx, headCy, headR * 1.05);
-  hg.addColorStop(0, tint(skin, 16));
-  hg.addColorStop(0.65, skin);
-  hg.addColorStop(1, shade(skin, 14));
-  ellipse(ctx, headCx, headCy, headR, headR * 0.96, hg);
-  ctx.beginPath();
-  ctx.ellipse(headCx, headCy, headR, headR * 0.96, 0, 0, Math.PI * 2);
-  ctx.strokeStyle = OUTLINE;
-  ctx.lineWidth = OUTLINE_W;
-  ctx.stroke();
-  ellipse(ctx, headCx - dir * headR * 0.92, headCy + headR * 0.08, headR * 0.14, headR * 0.18, skinD);
+  drawBabyProfileHeadShape(ctx, headCx, headCy, headR, skin, dir);
 
   ctx.fillStyle = look.hair;
   ctx.beginPath();
@@ -1230,7 +1345,7 @@ function drawCrawlingBabyBack(ctx: CanvasRenderingContext2D, cx: number, footY: 
     const handX = bodyCx + s * (bodyRx * 0.62 + step * H * 0.035);
     const kneeX = bodyCx + s * (bodyRx * 0.32 - step * H * 0.03);
     limb(ctx, bodyCx + s * bodyRx * 0.28, bodyCy - bodyRy * 0.04, handX, handY, limbW, onesie);
-    ellipse(ctx, handX, handY + H * 0.006, H * 0.04, H * 0.026, skin);
+    drawHand(ctx, handX, handY + H * 0.006, H * 0.048, H * 0.031, skin, s, s * 0.05);
     limb(ctx, bodyCx + s * bodyRx * 0.18, bodyCy + bodyRy * 0.48, kneeX, kneeY, limbW, shade(onesie, 8));
     ellipse(ctx, kneeX, kneeY + H * 0.006, H * 0.044, H * 0.027, skin);
   }
@@ -1251,20 +1366,11 @@ function drawCrawlingBabyBack(ctx: CanvasRenderingContext2D, cx: number, footY: 
   ctx.quadraticCurveTo(bodyCx, bodyCy + bodyRy * 0.24, bodyCx + bodyRx * 0.45, bodyCy + bodyRy * 0.05);
   ctx.stroke();
   for (const s of [-1, 1]) {
-    ellipse(ctx, bodyCx + s * bodyRx * 0.55, handY + H * 0.006, H * 0.039, H * 0.026, skin);
+    drawHand(ctx, bodyCx + s * bodyRx * 0.55, handY + H * 0.006, H * 0.047, H * 0.03, skin, s, s * 0.04);
     ellipse(ctx, bodyCx + s * bodyRx * 0.31, kneeY + H * 0.006, H * 0.043, H * 0.027, shade(skin, 12));
   }
 
-  const hg = ctx.createRadialGradient(headCx - headR * 0.18, headCy - headR * 0.3, headR * 0.18, headCx, headCy, headR * 1.05);
-  hg.addColorStop(0, tint(skin, 12));
-  hg.addColorStop(0.65, skin);
-  hg.addColorStop(1, shade(skin, 14));
-  ellipse(ctx, headCx, headCy, headR, headR * 0.96, hg);
-  ctx.beginPath();
-  ctx.ellipse(headCx, headCy, headR, headR * 0.96, 0, 0, Math.PI * 2);
-  ctx.strokeStyle = OUTLINE;
-  ctx.lineWidth = OUTLINE_W;
-  ctx.stroke();
+  drawBabyBackHeadShape(ctx, headCx, headCy, headR, skin);
 
   ctx.fillStyle = look.hair;
   ctx.beginPath();
