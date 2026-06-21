@@ -95,7 +95,10 @@ const BAD_SOCIAL_TAGS = ["smoker_friend", "gangster_friend", "playboy_friend"];
 const INVENTORY_MAX_SLOTS = 8;
 const INVENTORY_MAX_COUNT = 9;
 const FOOD_USE_COOLDOWN = 5;
+const ELEMENTARY_INDEX = STAGES.findIndex((s) => s.id === "elementary");
+const MIDDLE_INDEX = STAGES.findIndex((s) => s.id === "middle");
 const CAREER_INDEX = STAGES.findIndex((s) => s.id === "career");
+const ELEMENTARY_ASSETS_MONEY = 200000;
 const BAD_FIT_TAGS = ["sedentary", "gaming", "screen", "toy_phone", "cigarette"];
 const BAD_FOCUS_TAGS = ["wine", "whisky"];
 const GOOD_PEER_TAGS = ["study", "sports", "exercise", "friends"];
@@ -335,6 +338,10 @@ export class Game {
       lifeSpeed: this.lifeSpeed,
       familyZoneShare: this.familyZoneShare(),
       zoneSplitY: this.zoneSplitY(),
+      gates: {
+        familyTree: this.canShowFamilyTreeGate(),
+        assets: this.canShowAssetsGate(),
+      },
       lifeExp: this.lifeExp(),
       stats: { ...this.stats },
       px: Math.round(this.px),
@@ -1099,11 +1106,11 @@ export class Game {
 
     // near the open gate? walk through to advance (also handy on touch)
     if (this.focusIndex < 0) {
-      if (this.nearAssetsGate()) {
+      if (this.canShowAssetsGate() && this.nearAssetsGate()) {
         this.showAssets();
         return;
       }
-      if (this.nearFamilyTreeGate()) {
+      if (this.canShowFamilyTreeGate() && this.nearFamilyTreeGate()) {
         this.showFamilyTree();
         return;
       }
@@ -2192,6 +2199,15 @@ export class Game {
     return this.familyTreeGateY() - UTILITY_GATE_GAP;
   }
 
+  private canShowFamilyTreeGate(): boolean {
+    return this.stageIndex >= ELEMENTARY_INDEX;
+  }
+
+  private canShowAssetsGate(): boolean {
+    return this.stageIndex >= MIDDLE_INDEX ||
+      (this.stageIndex >= ELEMENTARY_INDEX && this.money > ELEMENTARY_ASSETS_MONEY);
+  }
+
   private hitCircle(x: number, y: number, cx: number, cy: number, r: number): boolean {
     return Math.hypot(x - cx, y - cy) <= r;
   }
@@ -2213,10 +2229,13 @@ export class Game {
   }
 
   private drawUtilityGates(ctx: CanvasRenderingContext2D, t: number): void {
+    const canFamilyTree = this.canShowFamilyTreeGate();
+    const canAssets = this.canShowAssetsGate();
+    if (!canFamilyTree && !canAssets) return;
     const familyY = this.familyTreeGateY();
     const assetsY = this.assetsGateY();
-    this.drawUtilityGate(ctx, UTILITY_GATE_X, assetsY, ASSETS_GATE_R, "Assets", "💼", "#7ed957", t);
-    this.drawUtilityGate(ctx, UTILITY_GATE_X, familyY, FAMILY_TREE_GATE_R, "Family Tree", "🌳", "#ffd23f", t);
+    if (canAssets) this.drawUtilityGate(ctx, UTILITY_GATE_X, assetsY, ASSETS_GATE_R, "Assets", "💼", "#7ed957", t);
+    if (canFamilyTree) this.drawUtilityGate(ctx, UTILITY_GATE_X, familyY, FAMILY_TREE_GATE_R, "Family Tree", "🌳", "#ffd23f", t);
   }
 
   private drawUtilityGate(
@@ -2610,6 +2629,10 @@ export class Game {
 
   private showFamilyTree(): void {
     if (this.mode !== "playing") return;
+    if (!this.canShowFamilyTreeGate()) {
+      this.hint("Family Tree opens from elementary school.");
+      return;
+    }
     this.mode = "familytree";
     const age = Math.floor(this.age);
     const playerIcon = this.gender === "female" ? "👧" : "👦";
@@ -2636,11 +2659,14 @@ export class Game {
       ? this.familyNode("Little Star", "grandkid", grandkidAge, "👶", "child")
       : `<div class="plj-family-placeholder">Grandkid branch unlocks with family time</div>`;
 
+    const assetsButton = this.canShowAssetsGate()
+      ? `<button class="plj-mini-pill" id="plj-tree-assets">💼 Assets</button>`
+      : "";
     this.ui.overlay.innerHTML = `
       <div class="plj-card plj-family-card">
         <div class="plj-family-head">
           <h2>🌳 Family Tree</h2>
-          <button class="plj-mini-pill" id="plj-tree-assets">💼 Assets</button>
+          ${assetsButton}
         </div>
         <p class="plj-sub">Names sit above each head. Scroll the houses row to browse the family homes.</p>
         <div class="plj-family-map">
@@ -2675,7 +2701,8 @@ export class Game {
       this.mode = "playing";
       this.clearOverlay();
     };
-    this.ui.overlay.querySelector<HTMLButtonElement>("#plj-tree-assets")!.onclick = () => {
+    const assetsLink = this.ui.overlay.querySelector<HTMLButtonElement>("#plj-tree-assets");
+    if (assetsLink) assetsLink.onclick = () => {
       this.mode = "playing";
       this.clearOverlay();
       this.showAssets();
@@ -2722,6 +2749,10 @@ export class Game {
 
   private showAssets(): void {
     if (this.mode !== "playing") return;
+    if (!this.canShowAssetsGate()) {
+      this.hint(`Assets open from middle school, or elementary with over ${formatMoney(ELEMENTARY_ASSETS_MONEY)}.`);
+      return;
+    }
     this.mode = "assets";
     const daddy = Math.round(this.parentAnnualSupport * 0.54);
     const mommy = Math.round(this.parentAnnualSupport * 0.46);
@@ -3522,12 +3553,12 @@ export class Game {
     this.ui.canvas.addEventListener("pointerdown", (e) => {
       if (this.mode !== "playing") return;
       const p = this.canvasPoint(e);
-      if (this.hitCircle(p.x, p.y, UTILITY_GATE_X, this.assetsGateY(), ASSETS_GATE_R + 8)) {
+      if (this.canShowAssetsGate() && this.hitCircle(p.x, p.y, UTILITY_GATE_X, this.assetsGateY(), ASSETS_GATE_R + 8)) {
         e.preventDefault();
         this.showAssets();
         return;
       }
-      if (this.hitCircle(p.x, p.y, UTILITY_GATE_X, this.familyTreeGateY(), FAMILY_TREE_GATE_R + 8)) {
+      if (this.canShowFamilyTreeGate() && this.hitCircle(p.x, p.y, UTILITY_GATE_X, this.familyTreeGateY(), FAMILY_TREE_GATE_R + 8)) {
         e.preventDefault();
         this.showFamilyTree();
       }
