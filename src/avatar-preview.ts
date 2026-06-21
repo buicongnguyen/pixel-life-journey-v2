@@ -15,13 +15,11 @@ if (!maybeCtx) {
 
 const ctx = maybeCtx;
 const width = 1600;
-const height = 1080;
+const height = 1000;
 const dpr = window.devicePixelRatio || 1;
 
 canvas.width = width * dpr;
 canvas.height = height * dpr;
-canvas.style.width = `${width}px`;
-canvas.style.height = `${height}px`;
 ctx.scale(dpr, dpr);
 ctx.imageSmoothingEnabled = true;
 
@@ -39,6 +37,8 @@ const stages = [
   "senior",
   "retirement",
 ];
+const firstColumnX = 162;
+const columnGap = 118;
 
 function label(text: string, x: number, y: number, align: CanvasTextAlign = "center"): void {
   ctx.save();
@@ -54,8 +54,8 @@ function label(text: string, x: number, y: number, align: CanvasTextAlign = "cen
 
 function lane(y: number, title: string): void {
   ctx.fillStyle = "rgba(255,255,255,0.08)";
-  ctx.fillRect(34, y - 152, width - 68, 184);
-  label(title, 50, y - 126, "left");
+  ctx.fillRect(34, y - 132, width - 68, 164);
+  label(title, 50, y - 154, "left");
 }
 
 function drawHeader(): void {
@@ -70,11 +70,11 @@ function drawHeader(): void {
 
 function drawPlayerRow(rowY: number, gender: Gender): void {
   stages.forEach((name, i) => {
-    const x = 98 + i * 122;
-    if (rowY < 340) label(name, x, 102);
+    const x = firstColumnX + i * columnGap;
+    if (rowY < 340) label(name, x, 98);
     drawCharacter(ctx, x, rowY, avatarLook(i, gender), i * 0.68, {
       moving: i > 0,
-      facing: "right",
+      facing: "front",
       verticalBias: 0,
     });
   });
@@ -97,7 +97,7 @@ function drawNpcRow(rowY: number): void {
   ];
 
   people.forEach((kind, i) => {
-    const x = 98 + i * 122;
+    const x = firstColumnX + i * columnGap;
     const stageIndex = kind === "grandma" || kind === "grandpa" || kind === "oldFriend" ? 10 : 7;
     drawCharacter(ctx, x, rowY, personLook(kind, "male", stageIndex), i * 0.7, {
       moving: i % 2 === 0,
@@ -109,14 +109,15 @@ function drawNpcRow(rowY: number): void {
 }
 
 function drawMovementRow(rowY: number): void {
+  const facings: AvatarFacing[] = ["left", "right", "back", "front"];
   stages.slice(1).forEach((name, i) => {
-    const x = 98 + i * 122;
-    const facing: AvatarFacing = i % 2 === 0 ? "left" : "right";
+    const x = firstColumnX + i * columnGap;
+    const facing = facings[i % facings.length];
     const gender: Gender = i % 3 === 0 ? "female" : "male";
     drawCharacter(ctx, x, rowY, avatarLook(i + 1, gender), 1.9 + i * 0.6, {
       moving: true,
       facing,
-      verticalBias: 0,
+      verticalBias: facing === "back" ? -1 : facing === "front" ? 1 : 0,
     });
     label(`${name} ${facing}`, x, rowY + 48);
   });
@@ -127,17 +128,17 @@ function render(): void {
   ctx.fillRect(0, 0, width, height);
   drawHeader();
 
-  lane(290, "Boy / male player");
-  drawPlayerRow(290, "male");
+  lane(280, "Boy / male player");
+  drawPlayerRow(280, "male");
 
-  lane(520, "Girl / female player");
-  drawPlayerRow(520, "female");
+  lane(465, "Girl / female player");
+  drawPlayerRow(465, "female");
 
-  lane(750, "NPC people");
-  drawNpcRow(750);
+  lane(665, "NPC people");
+  drawNpcRow(665);
 
-  lane(980, "Walking left/right");
-  drawMovementRow(980);
+  lane(895, "Movement: left / right / back / front");
+  drawMovementRow(895);
 }
 
 render();

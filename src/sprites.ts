@@ -13,18 +13,43 @@ function px(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: n
   ctx.fillRect(x, y, Math.max(0.5, w), Math.max(0.5, h));
 }
 
-function shade(hex: string, amt = 24): string {
-  const c = hex.replace("#", "");
-  const r = Math.max(0, parseInt(c.slice(0, 2), 16) - amt);
-  const g = Math.max(0, parseInt(c.slice(2, 4), 16) - amt);
-  const b = Math.max(0, parseInt(c.slice(4, 6), 16) - amt);
+function colorParts(color: string): [number, number, number] | null {
+  const c = color.trim();
+  const hex = c.match(/^#([0-9a-f]{6})$/i);
+  if (hex) {
+    return [
+      parseInt(hex[1].slice(0, 2), 16),
+      parseInt(hex[1].slice(2, 4), 16),
+      parseInt(hex[1].slice(4, 6), 16),
+    ];
+  }
+  const rgb = c.match(/^rgb\(\s*(\d{1,3})\s*,\s*(\d{1,3})\s*,\s*(\d{1,3})\s*\)$/i);
+  if (rgb) {
+    return [
+      Math.max(0, Math.min(255, Number(rgb[1]))),
+      Math.max(0, Math.min(255, Number(rgb[2]))),
+      Math.max(0, Math.min(255, Number(rgb[3]))),
+    ];
+  }
+  return null;
+}
+
+function shade(color: string, amt = 24): string {
+  const parts = colorParts(color);
+  if (!parts) return color;
+  const [baseR, baseG, baseB] = parts;
+  const r = Math.max(0, baseR - amt);
+  const g = Math.max(0, baseG - amt);
+  const b = Math.max(0, baseB - amt);
   return `rgb(${r},${g},${b})`;
 }
-function tint(hex: string, amt = 24): string {
-  const c = hex.replace("#", "");
-  const r = Math.min(255, parseInt(c.slice(0, 2), 16) + amt);
-  const g = Math.min(255, parseInt(c.slice(2, 4), 16) + amt);
-  const b = Math.min(255, parseInt(c.slice(4, 6), 16) + amt);
+function tint(color: string, amt = 24): string {
+  const parts = colorParts(color);
+  if (!parts) return color;
+  const [baseR, baseG, baseB] = parts;
+  const r = Math.min(255, baseR + amt);
+  const g = Math.min(255, baseG + amt);
+  const b = Math.min(255, baseB + amt);
   return `rgb(${r},${g},${b})`;
 }
 
@@ -120,7 +145,7 @@ export interface AvatarLook {
   skirt: boolean;
 }
 
-export type AvatarFacing = "front" | "left" | "right";
+export type AvatarFacing = "front" | "left" | "right" | "back";
 
 export interface AvatarMotion {
   moving: boolean;
@@ -147,7 +172,7 @@ interface BodyProfile {
 // bodies and small clean faces; kids are stockier with bigger heads; the
 // newborn is a special tiny baby. Proportions mature gradually with age.
 const STAGE_PROFILES: BodyProfile[] = [
-  { heightPx: 78, headRatio: 0.46, chub: 1.0, baby: true, child: true, elder: false }, // newborn
+  { heightPx: 86, headRatio: 0.46, chub: 1.0, baby: true, child: true, elder: false }, // newborn
   { heightPx: 96, headRatio: 0.35, chub: 0.5, baby: false, child: true, elder: false }, // toddler
   { heightPx: 112, headRatio: 0.32, chub: 0.42, baby: false, child: true, elder: false }, // early
   { heightPx: 128, headRatio: 0.295, chub: 0.32, baby: false, child: true, elder: false }, // elementary
@@ -256,6 +281,10 @@ function groundShadow(_ctx: CanvasRenderingContext2D, _cx: number, _footY: numbe
 
 function drawStanding(ctx: CanvasRenderingContext2D, cx: number, footY: number, look: AvatarLook, walkPhase: number, motion: AvatarMotion): void {
   const H = look.heightPx;
+  if (motion.facing === "back") {
+    drawBackStanding(ctx, cx, footY, look, walkPhase, motion);
+    return;
+  }
   if (motion.facing !== "front") {
     drawSideStanding(ctx, cx, footY, look, walkPhase, motion);
     return;
@@ -272,11 +301,11 @@ function drawStanding(ctx: CanvasRenderingContext2D, cx: number, footY: number, 
   const neckH = headH * (look.child ? 0.22 : 0.3);
   const torsoH = (H - headH - neckH) * (look.child ? 0.42 : 0.38);
   const legH = Math.max(H * 0.22, H - headH - neckH - torsoH);
-  const shoulderW = headW * (female ? 1.4 : 1.56) + look.chub * headW * 0.16;
-  const waistW = shoulderW * (female ? 0.64 : 0.7);
-  const hipW = shoulderW * (female ? 1.08 : 0.88);
-  const legW = H * (0.056 + look.chub * 0.018);
-  const armW = H * (0.041 + look.chub * 0.012);
+  const shoulderW = headW * (female ? 1.2 : 1.3) + look.chub * headW * 0.08;
+  const waistW = shoulderW * (female ? 0.68 : 0.74);
+  const hipW = shoulderW * (female ? 1.0 : 0.82);
+  const legW = H * (0.052 + look.chub * 0.016);
+  const armW = H * (0.039 + look.chub * 0.01);
 
   const hipY = baseY - legH;
   const torsoTopY = hipY - torsoH + stoop;
@@ -295,20 +324,20 @@ function drawStanding(ctx: CanvasRenderingContext2D, cx: number, footY: number, 
   drawBackHair(ctx, headCx, headCy, headW, headH, look);
 
   // --- legs ----------------------------------------------------------------
-  const stride = swing * H * 0.074;
-  const lift = Math.abs(swing) * H * 0.03;
+  const stride = swing * H * 0.064;
+  const lift = Math.abs(swing) * H * 0.027;
   const drawLegPair = (): void => {
     const shoeH = H * 0.03;
     const ly = baseY - shoeH;
     const kneeY = hipY + legH * 0.48;
     const leftLift = swing > 0 ? lift : 0;
     const rightLift = swing < 0 ? lift : 0;
-    const leftHipX = cx - hipW * 0.2;
-    const rightHipX = cx + hipW * 0.2;
-    const leftKneeX = cx - hipW * 0.18 - stride * 0.42;
-    const rightKneeX = cx + hipW * 0.18 + stride * 0.42;
-    const leftFootX = cx - hipW * 0.23 - stride;
-    const rightFootX = cx + hipW * 0.23 + stride;
+    const leftHipX = cx - hipW * 0.1;
+    const rightHipX = cx + hipW * 0.1;
+    const leftKneeX = cx - hipW * 0.085 - stride * 0.34;
+    const rightKneeX = cx + hipW * 0.085 + stride * 0.34;
+    const leftFootX = cx - hipW * 0.11 - stride;
+    const rightFootX = cx + hipW * 0.11 + stride;
 
     limb(ctx, leftHipX, hipY, leftKneeX, kneeY - leftLift * 0.38, legW, shade(look.pants, 4));
     limb(ctx, leftKneeX, kneeY - leftLift * 0.38, leftFootX, ly - leftLift, legW * 0.94, look.pants);
@@ -325,12 +354,12 @@ function drawStanding(ctx: CanvasRenderingContext2D, cx: number, footY: number, 
   const shoulderY = torsoTopY + headH * 0.14;
   const handY = torsoTopY + torsoH * 0.96;
   const elbowY = torsoTopY + torsoH * 0.55;
-  const leftShoulderX = cx - shoulderW * 0.42;
-  const rightShoulderX = cx + shoulderW * 0.42;
-  const leftElbowX = cx - shoulderW * 0.5 + aSwing * 0.54;
-  const rightElbowX = cx + shoulderW * 0.5 - aSwing * 0.54;
-  const leftHandX = cx - shoulderW * 0.34 + aSwing;
-  const rightHandX = cx + shoulderW * 0.34 - aSwing;
+  const leftShoulderX = cx - shoulderW * 0.34;
+  const rightShoulderX = cx + shoulderW * 0.34;
+  const leftElbowX = cx - shoulderW * 0.39 + aSwing * 0.5;
+  const rightElbowX = cx + shoulderW * 0.39 - aSwing * 0.5;
+  const leftHandX = cx - shoulderW * 0.27 + aSwing;
+  const rightHandX = cx + shoulderW * 0.27 - aSwing;
   limb(ctx, leftShoulderX, shoulderY, leftElbowX, elbowY, armW, shade(look.shirt, 6));
   limb(ctx, leftElbowX, elbowY, leftHandX, handY, armW * 0.92, look.shirt);
   limb(ctx, rightShoulderX, shoulderY, rightElbowX, elbowY, armW, shade(look.shirt, 6));
@@ -459,16 +488,176 @@ function drawOutfitDetails(
 function drawSideStanding(ctx: CanvasRenderingContext2D, cx: number, footY: number, look: AvatarLook, walkPhase: number, motion: AvatarMotion): void {
   const H = look.heightPx;
   const dir = motion.facing === "left" ? -1 : 1;
+  const female = look.gender === "female";
+  const swing = motion.moving ? Math.sin(walkPhase) : 0;
+  const bob = motion.moving ? Math.abs(Math.sin(walkPhase)) * H * 0.012 : Math.sin(walkPhase * 0.5) * H * 0.006;
   const lean = motion.moving ? dir * H * 0.018 : 0;
+  const stoop = look.elder ? H * 0.045 : 0;
+  const baseY = footY - bob;
 
-  // A three-quarter side walk keeps the richer face/body details visible at the
-  // game's small scale while still showing clear left/right direction.
-  ctx.save();
-  ctx.translate(cx, footY);
-  ctx.transform(0.82, 0, dir * -0.07, 1, 0, 0);
-  ctx.translate(-cx + dir * H * 0.025 + lean, -footY);
-  drawStanding(ctx, cx, footY, look, walkPhase, { ...motion, facing: "front" });
-  ctx.restore();
+  const headH = H * look.headRatio;
+  const headW = headH * (look.child ? 0.82 : 0.76) * (1 + look.chub * 0.05);
+  const neckH = headH * (look.child ? 0.22 : 0.3);
+  const torsoH = (H - headH - neckH) * (look.child ? 0.42 : 0.38);
+  const legH = Math.max(H * 0.22, H - headH - neckH - torsoH);
+  const shoulderW = headW * (female ? 1.2 : 1.3) + look.chub * headW * 0.08;
+  const waistW = shoulderW * (female ? 0.68 : 0.74);
+  const hipW = shoulderW * (female ? 1.0 : 0.82);
+  const sideShoulderW = shoulderW * 0.76;
+  const sideWaistW = waistW * 0.78;
+  const sideHipW = hipW * 0.74;
+  const legW = H * (0.052 + look.chub * 0.016);
+  const armW = H * (0.039 + look.chub * 0.01);
+  const hipY = baseY - legH;
+  const torsoTopY = hipY - torsoH + stoop;
+  const neckTopY = torsoTopY - neckH + stoop * 0.5;
+  const headCx = cx + dir * H * 0.055 + lean + stoop * 0.5;
+  const headCy = neckTopY - headH / 2;
+  const shoulderY = torsoTopY + headH * 0.14;
+  const handY = torsoTopY + torsoH * 0.94;
+  const elbowY = torsoTopY + torsoH * 0.55;
+  const stride = swing * H * 0.066;
+  const lift = Math.abs(swing) * H * 0.026;
+  const footBaseY = baseY - H * 0.03;
+
+  groundShadow(ctx, cx, footY, shoulderW * 0.42);
+  drawSideBackHair(ctx, headCx, headCy, headW, headH, look, dir);
+
+  const farFootX = cx - dir * (sideHipW * 0.18 + stride * 0.5);
+  const nearFootX = cx + dir * (sideHipW * 0.18 + stride);
+  const farLift = swing * dir > 0 ? lift : 0;
+  const nearLift = swing * dir < 0 ? lift : 0;
+  const kneeY = hipY + legH * 0.5;
+  limb(ctx, cx - dir * sideHipW * 0.08, hipY, cx - dir * sideHipW * 0.13 - dir * stride * 0.2, kneeY - farLift * 0.25, legW * 0.92, shade(look.pants, 10));
+  limb(ctx, cx - dir * sideHipW * 0.13 - dir * stride * 0.2, kneeY - farLift * 0.25, farFootX, footBaseY - farLift, legW * 0.86, shade(look.pants, 4));
+  ellipse(ctx, farFootX + dir * legW * 0.2, footBaseY - farLift + H * 0.015, legW * 1.05, H * 0.029, hgrad(ctx, farFootX - legW, legW * 2, shade(look.shoes, 8)));
+
+  if (look.skirt) {
+    taper(ctx, cx, torsoTopY + torsoH * 0.64, sideWaistW * 1.1, hipY + H * 0.07, sideHipW * 1.42, hgrad(ctx, cx - sideHipW * 0.7, sideHipW * 1.4, look.pants));
+  } else {
+    taper(ctx, cx, torsoTopY + torsoH * 0.66, sideWaistW, hipY + H * 0.01, sideHipW, hgrad(ctx, cx - sideHipW / 2, sideHipW, look.pants));
+  }
+  taper(ctx, cx + dir * H * 0.005, torsoTopY, sideShoulderW, torsoTopY + torsoH * 0.66, sideWaistW, hgrad(ctx, cx - sideShoulderW / 2, sideShoulderW, look.shirt, 22, 22));
+  ctx.fillStyle = shade(look.skin, 20);
+  ctx.fillRect(cx - neckH * 0.28, torsoTopY - neckH + 1, neckH * 0.56, neckH + headH * 0.08);
+
+  limb(ctx, cx - dir * sideShoulderW * 0.08, shoulderY, cx - dir * sideShoulderW * 0.16 - dir * stride * 0.15, elbowY, armW * 0.88, shade(look.shirt, 12));
+  limb(ctx, cx - dir * sideShoulderW * 0.16 - dir * stride * 0.15, elbowY, cx - dir * sideShoulderW * 0.05 - dir * stride * 0.25, handY, armW * 0.8, shade(look.shirt, 6));
+
+  limb(ctx, cx + dir * sideHipW * 0.07, hipY, cx + dir * sideHipW * 0.16 + dir * stride * 0.28, kneeY - nearLift * 0.28, legW, look.pants);
+  limb(ctx, cx + dir * sideHipW * 0.16 + dir * stride * 0.28, kneeY - nearLift * 0.28, nearFootX, footBaseY - nearLift, legW * 0.92, look.pants);
+  ellipse(ctx, nearFootX + dir * legW * 0.32, footBaseY - nearLift + H * 0.015, legW * 1.2, H * 0.031, hgrad(ctx, nearFootX - legW, legW * 2, look.shoes));
+
+  const nearElbowX = cx + dir * sideShoulderW * 0.18 + dir * stride * 0.22;
+  const nearHandX = cx + dir * sideShoulderW * 0.09 + dir * stride * 0.38;
+  limb(ctx, cx + dir * sideShoulderW * 0.2, shoulderY, nearElbowX, elbowY, armW, look.shirt);
+  limb(ctx, nearElbowX, elbowY, nearHandX, handY, armW * 0.9, look.shirt);
+  ellipse(ctx, nearHandX, handY, armW * 0.6, armW * 0.54, look.skin);
+
+  drawSideHead(ctx, headCx, headCy, headW, headH, look, dir);
+
+  if (look.elder) {
+    limb(ctx, nearHandX, handY, cx + dir * shoulderW * 0.48, footY, legW * 0.45, "#7a5a36");
+  }
+}
+
+function drawBackStanding(ctx: CanvasRenderingContext2D, cx: number, footY: number, look: AvatarLook, walkPhase: number, motion: AvatarMotion): void {
+  const H = look.heightPx;
+  const female = look.gender === "female";
+  const swing = motion.moving ? Math.sin(walkPhase) : 0;
+  const bob = motion.moving ? Math.abs(Math.sin(walkPhase)) * H * 0.012 : Math.sin(walkPhase * 0.5) * H * 0.006;
+  const stoop = look.elder ? H * 0.035 : 0;
+  const baseY = footY - bob;
+  const headH = H * look.headRatio;
+  const headW = headH * (look.child ? 0.82 : 0.76) * (1 + look.chub * 0.05);
+  const neckH = headH * (look.child ? 0.22 : 0.3);
+  const torsoH = (H - headH - neckH) * (look.child ? 0.42 : 0.38);
+  const legH = Math.max(H * 0.22, H - headH - neckH - torsoH);
+  const shoulderW = headW * (female ? 1.18 : 1.28) + look.chub * headW * 0.08;
+  const waistW = shoulderW * (female ? 0.68 : 0.74);
+  const hipW = shoulderW * (female ? 0.98 : 0.82);
+  const legW = H * (0.052 + look.chub * 0.016);
+  const armW = H * (0.039 + look.chub * 0.01);
+  const hipY = baseY - legH;
+  const torsoTopY = hipY - torsoH + stoop;
+  const neckTopY = torsoTopY - neckH + stoop * 0.5;
+  const headCx = cx;
+  const headCy = neckTopY - headH / 2;
+  const stride = swing * H * 0.048;
+  const lift = Math.abs(swing) * H * 0.024;
+  const shoeY = baseY - H * 0.03;
+  const kneeY = hipY + legH * 0.5;
+
+  groundShadow(ctx, cx, footY, shoulderW * 0.48);
+
+  const leftHipX = cx - hipW * 0.1;
+  const rightHipX = cx + hipW * 0.1;
+  const leftKneeX = cx - hipW * 0.08 - stride * 0.22;
+  const rightKneeX = cx + hipW * 0.08 + stride * 0.22;
+  const leftFootX = cx - hipW * 0.1 - stride * 0.62;
+  const rightFootX = cx + hipW * 0.1 + stride * 0.62;
+  limb(ctx, leftHipX, hipY, leftKneeX, kneeY - (swing > 0 ? lift * 0.3 : 0), legW, shade(look.pants, 5));
+  limb(ctx, leftKneeX, kneeY - (swing > 0 ? lift * 0.3 : 0), leftFootX, shoeY - (swing > 0 ? lift : 0), legW * 0.92, look.pants);
+  limb(ctx, rightHipX, hipY, rightKneeX, kneeY - (swing < 0 ? lift * 0.3 : 0), legW, shade(look.pants, 5));
+  limb(ctx, rightKneeX, kneeY - (swing < 0 ? lift * 0.3 : 0), rightFootX, shoeY - (swing < 0 ? lift : 0), legW * 0.92, look.pants);
+  ellipse(ctx, leftFootX, shoeY + H * 0.016 - (swing > 0 ? lift : 0), legW * 1.05, H * 0.028, hgrad(ctx, leftFootX - legW, legW * 2, look.shoes));
+  ellipse(ctx, rightFootX, shoeY + H * 0.016 - (swing < 0 ? lift : 0), legW * 1.05, H * 0.028, hgrad(ctx, rightFootX - legW, legW * 2, look.shoes));
+
+  if (look.skirt) {
+    taper(ctx, cx, torsoTopY + torsoH * 0.64, waistW * 0.95, hipY + H * 0.07, hipW * 1.14, hgrad(ctx, cx - hipW * 0.57, hipW * 1.14, look.pants));
+  } else {
+    taper(ctx, cx, torsoTopY + torsoH * 0.66, waistW, hipY + H * 0.01, hipW, hgrad(ctx, cx - hipW / 2, hipW, look.pants));
+  }
+  taper(ctx, cx, torsoTopY, shoulderW, torsoTopY + torsoH * 0.66, waistW, hgrad(ctx, cx - shoulderW / 2, shoulderW, look.shirt, 20, 24));
+
+  const shoulderY = torsoTopY + headH * 0.14;
+  const elbowY = torsoTopY + torsoH * 0.56;
+  const handY = torsoTopY + torsoH * 0.96;
+  limb(ctx, cx - shoulderW * 0.35, shoulderY, cx - shoulderW * 0.37 + stride * 0.22, elbowY, armW, shade(look.shirt, 8));
+  limb(ctx, cx - shoulderW * 0.37 + stride * 0.22, elbowY, cx - shoulderW * 0.28 + stride * 0.45, handY, armW * 0.9, look.shirt);
+  limb(ctx, cx + shoulderW * 0.35, shoulderY, cx + shoulderW * 0.37 - stride * 0.22, elbowY, armW, shade(look.shirt, 8));
+  limb(ctx, cx + shoulderW * 0.37 - stride * 0.22, elbowY, cx + shoulderW * 0.28 - stride * 0.45, handY, armW * 0.9, look.shirt);
+
+  ctx.fillStyle = shade(look.skin, 20);
+  ctx.fillRect(cx - neckH * 0.36, torsoTopY - neckH + 1, neckH * 0.72, neckH + headH * 0.08);
+
+  if (look.hairStyle === "long") drawBackHair(ctx, headCx, headCy, headW, headH, look);
+
+  const headBack = ctx.createRadialGradient(headCx - headW * 0.1, headCy - headH * 0.2, headW * 0.12, headCx, headCy, headW * 0.7);
+  headBack.addColorStop(0, tint(look.skin, 8));
+  headBack.addColorStop(1, shade(look.skin, 8));
+  ellipse(ctx, headCx, headCy, headW * 0.48, headH * 0.5, headBack);
+  ctx.beginPath();
+  ctx.ellipse(headCx, headCy, headW * 0.48, headH * 0.5, 0, 0, Math.PI * 2);
+  ctx.strokeStyle = OUTLINE;
+  ctx.lineWidth = OUTLINE_W;
+  ctx.stroke();
+
+  ctx.fillStyle = look.hair;
+  ctx.beginPath();
+  ctx.moveTo(headCx - headW * 0.48, headCy + headH * 0.02);
+  ctx.quadraticCurveTo(headCx - headW * 0.48, headCy - headH * 0.55, headCx, headCy - headH * 0.55);
+  ctx.quadraticCurveTo(headCx + headW * 0.48, headCy - headH * 0.55, headCx + headW * 0.48, headCy + headH * 0.02);
+  ctx.quadraticCurveTo(headCx + headW * 0.22, headCy - headH * 0.08, headCx, headCy - headH * 0.06);
+  ctx.quadraticCurveTo(headCx - headW * 0.22, headCy - headH * 0.08, headCx - headW * 0.48, headCy + headH * 0.02);
+  ctx.closePath();
+  ctx.fill();
+  ctx.strokeStyle = OUTLINE;
+  ctx.lineWidth = OUTLINE_W;
+  ctx.stroke();
+
+  if (look.hairStyle === "bun") {
+    ellipse(ctx, headCx, headCy - headH * 0.55, headW * 0.27, headH * 0.22, look.hair);
+    ctx.beginPath();
+    ctx.ellipse(headCx, headCy - headH * 0.55, headW * 0.27, headH * 0.22, 0, 0, Math.PI * 2);
+    ctx.strokeStyle = OUTLINE;
+    ctx.lineWidth = OUTLINE_W;
+    ctx.stroke();
+  }
+
+  if (look.elder) {
+    limb(ctx, cx + shoulderW * 0.28 - stride * 0.45, handY, cx + shoulderW * 0.56, footY, legW * 0.45, "#7a5a36");
+  }
 }
 
 function drawSideBackHair(ctx: CanvasRenderingContext2D, hcx: number, hcy: number, hw: number, hh: number, look: AvatarLook, dir: number): void {
@@ -579,8 +768,8 @@ function drawSideHead(ctx: CanvasRenderingContext2D, hcx: number, hcy: number, h
   ctx.strokeStyle = look.gender === "female" ? "#d9707f" : "#bb6a62";
   ctx.lineWidth = hw * (look.child ? 0.06 : 0.048);
   ctx.beginPath();
-  ctx.moveTo(hcx + dir * hw * 0.18, eyeY + hh * 0.24);
-  ctx.quadraticCurveTo(hcx + dir * hw * 0.31, eyeY + hh * 0.3, hcx + dir * hw * 0.45, eyeY + hh * 0.23);
+  ctx.moveTo(hcx + dir * hw * 0.18, eyeY + hh * 0.13);
+  ctx.quadraticCurveTo(hcx + dir * hw * 0.31, eyeY + hh * 0.18, hcx + dir * hw * 0.45, eyeY + hh * 0.12);
   ctx.stroke();
 
   ctx.fillStyle = "rgba(255,140,160,0.28)";
@@ -752,15 +941,22 @@ function drawFace(ctx: CanvasRenderingContext2D, hcx: number, hcy: number, hw: n
   ctx.strokeStyle = lip;
   ctx.lineWidth = hw * (big ? 0.06 : 0.046);
   ctx.lineCap = "round";
+  const mouthY = eyeY + hh * (big ? 0.14 : 0.155);
   ctx.beginPath();
-  ctx.arc(hcx, eyeY + hh * (big ? 0.22 : 0.25), hw * 0.2, 0.18 * Math.PI, 0.82 * Math.PI);
+  ctx.arc(hcx, mouthY, hw * 0.2, 0.18 * Math.PI, 0.82 * Math.PI);
+  ctx.stroke();
+  ctx.strokeStyle = "rgba(85,45,48,0.35)";
+  ctx.lineWidth = Math.max(0.8, hw * 0.014);
+  ctx.beginPath();
+  ctx.moveTo(hcx - hw * 0.12, mouthY - hh * 0.018);
+  ctx.quadraticCurveTo(hcx, mouthY - hh * 0.005, hcx + hw * 0.12, mouthY - hh * 0.018);
   ctx.stroke();
   if (look.gender === "female" || big) {
     ctx.strokeStyle = "rgba(255,255,255,0.45)";
     ctx.lineWidth = Math.max(0.8, hw * 0.014);
     ctx.beginPath();
-    ctx.moveTo(hcx - hw * 0.06, eyeY + hh * (big ? 0.25 : 0.28));
-    ctx.lineTo(hcx + hw * 0.06, eyeY + hh * (big ? 0.25 : 0.28));
+    ctx.moveTo(hcx - hw * 0.06, mouthY + hh * 0.02);
+    ctx.lineTo(hcx + hw * 0.06, mouthY + hh * 0.02);
     ctx.stroke();
   }
   // blush
@@ -795,116 +991,42 @@ function drawFace(ctx: CanvasRenderingContext2D, hcx: number, hcy: number, hw: n
 }
 
 function drawBaby(ctx: CanvasRenderingContext2D, cx: number, footY: number, look: AvatarLook, walkPhase: number, motion: AvatarMotion): void {
+  if (motion.facing === "back") {
+    drawCrawlingBabyBack(ctx, cx, footY, look, walkPhase);
+    return;
+  }
   drawCrawlingBaby(ctx, cx, footY, look, walkPhase, motion);
-  return;
-
-  // a chubby seated newborn: huge round head, tiny round body, stubby limbs
-  const H = look.heightPx;
-  const sway = Math.sin(walkPhase * 0.5) * H * 0.01;
-  const headR = H * 0.34;
-  const bodyR = H * 0.26;
-  const bodyCy = footY - bodyR * 0.9;
-  const headCy = bodyCy - bodyR * 0.7 - headR * 0.85 + sway;
-  const headCx = cx + sway;
-  const skin = look.skin;
-  const onesie = look.gender === "female" ? "#ffc1dd" : "#bfe0ff";
-
-  groundShadow(ctx, cx, footY, bodyR * 1.5);
-
-  // legs (stubby, splayed) + booties
-  for (const s of [-1, 1]) {
-    limb(ctx, cx + s * bodyR * 0.35, bodyCy + bodyR * 0.4, cx + s * bodyR * 0.95, footY - H * 0.02, H * 0.075, onesie);
-    ellipse(ctx, cx + s * bodyR * 0.95, footY - H * 0.02, H * 0.05, H * 0.035, skin);
-  }
-  // arms (stubby)
-  for (const s of [-1, 1]) {
-    limb(ctx, cx + s * bodyR * 0.55, bodyCy - bodyR * 0.1, cx + s * bodyR * 1.15, bodyCy + bodyR * 0.5, H * 0.07, onesie);
-    ellipse(ctx, cx + s * bodyR * 1.15, bodyCy + bodyR * 0.5, H * 0.045, H * 0.045, skin);
-  }
-  // body (onesie)
-  const bg = ctx.createRadialGradient(cx - bodyR * 0.3, bodyCy - bodyR * 0.3, bodyR * 0.2, cx, bodyCy, bodyR * 1.1);
-  bg.addColorStop(0, tint(onesie, 18));
-  bg.addColorStop(1, shade(onesie, 16));
-  ellipse(ctx, cx, bodyCy, bodyR, bodyR * 1.05, bg);
-  ctx.beginPath();
-  ctx.ellipse(cx, bodyCy, bodyR, bodyR * 1.05, 0, 0, Math.PI * 2);
-  ctx.strokeStyle = OUTLINE;
-  ctx.lineWidth = OUTLINE_W;
-  ctx.stroke();
-
-  // head
-  const hg = ctx.createRadialGradient(headCx - headR * 0.3, headCy - headR * 0.35, headR * 0.2, headCx, headCy, headR * 1.05);
-  hg.addColorStop(0, tint(skin, 16));
-  hg.addColorStop(0.65, skin);
-  hg.addColorStop(1, shade(skin, 14));
-  ellipse(ctx, headCx, headCy, headR, headR, hg);
-  ctx.beginPath();
-  ctx.ellipse(headCx, headCy, headR, headR, 0, 0, Math.PI * 2);
-  ctx.strokeStyle = OUTLINE;
-  ctx.lineWidth = OUTLINE_W;
-  ctx.stroke();
-  // ears
-  ellipse(ctx, headCx - headR, headCy + headR * 0.1, headR * 0.16, headR * 0.2, skin);
-  ellipse(ctx, headCx + headR, headCy + headR * 0.1, headR * 0.16, headR * 0.2, shade(skin, 12));
-  // a little curl of hair
-  ellipse(ctx, headCx, headCy - headR * 0.82, headR * 0.18, headR * 0.16, look.hair);
-  ctx.fillStyle = look.hair;
-  ctx.beginPath();
-  ctx.ellipse(headCx, headCy - headR * 0.7, headR * 0.5, headR * 0.22, 0, Math.PI, 0);
-  ctx.fill();
-  if (look.gender === "female") ellipse(ctx, headCx + headR * 0.55, headCy - headR * 0.55, headR * 0.16, headR * 0.12, "#ff7ab0"); // bow
-
-  // big baby eyes + tiny features
-  const eyeR = headR * 0.2;
-  const eyeY = headCy + headR * 0.1;
-  for (const s of [-1, 1]) {
-    const ex = headCx + s * headR * 0.36;
-    ellipse(ctx, ex, eyeY, eyeR, eyeR * 1.15, "#ffffff");
-    ellipse(ctx, ex, eyeY + eyeR * 0.18, eyeR * 0.66, eyeR * 0.8, "#3a2a22");
-    ellipse(ctx, ex - eyeR * 0.28, eyeY - eyeR * 0.28, eyeR * 0.3, eyeR * 0.3, "#ffffff");
-  }
-  ctx.fillStyle = "rgba(255,140,160,0.4)";
-  ctx.beginPath();
-  ctx.ellipse(headCx - headR * 0.5, eyeY + headR * 0.28, headR * 0.16, headR * 0.11, 0, 0, Math.PI * 2);
-  ctx.ellipse(headCx + headR * 0.5, eyeY + headR * 0.28, headR * 0.16, headR * 0.11, 0, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.strokeStyle = "#cc7a72";
-  ctx.lineWidth = headR * 0.07;
-  ctx.lineCap = "round";
-  ctx.beginPath();
-  ctx.arc(headCx, eyeY + headR * 0.5, headR * 0.16, 0.15 * Math.PI, 0.85 * Math.PI);
-  ctx.stroke();
 }
 
 function drawCrawlingBaby(ctx: CanvasRenderingContext2D, cx: number, footY: number, look: AvatarLook, walkPhase: number, motion: AvatarMotion): void {
   const H = look.heightPx;
-  const dir = motion.facing === "left" ? -1 : motion.facing === "right" ? 1 : motion.verticalBias < -0.15 ? -1 : 1;
+  const dir = motion.facing === "left" ? -1 : motion.facing === "right" ? 1 : 1;
   const step = Math.sin(walkPhase);
   const counter = Math.cos(walkPhase);
-  const bob = Math.abs(counter) * H * 0.018;
+  const bob = Math.abs(counter) * H * 0.012;
   const skin = look.skin;
   const skinD = shade(skin, 16);
-  const onesie = look.gender === "female" ? "#ffc1dd" : "#bfe0ff";
-  const bodyCx = cx - dir * H * 0.08;
-  const bodyCy = footY - H * 0.22 - bob;
-  const bodyRx = H * 0.34;
-  const bodyRy = H * 0.19;
-  const headR = H * 0.25;
-  const headCx = cx + dir * H * 0.25;
-  const headCy = footY - H * 0.45 - bob * 0.45;
-  const limbW = H * 0.065;
+  const onesie = look.gender === "female" ? "#ff9fc8" : "#78baff";
+  const bodyCx = cx - dir * H * 0.04;
+  const bodyCy = footY - H * 0.19 - bob;
+  const bodyRx = H * 0.3;
+  const bodyRy = H * 0.16;
+  const headR = H * 0.255;
+  const headCx = cx + dir * H * 0.22;
+  const headCy = footY - H * 0.39 - bob * 0.35;
+  const limbW = H * 0.052;
 
   groundShadow(ctx, cx, footY, bodyRx * 1.15);
 
   // Alternating far/near crawl limbs. Hands and knees touch the floor in turn.
-  const handReach = H * 0.16;
-  const kneeReach = H * 0.13;
+  const handReach = H * 0.13;
+  const kneeReach = H * 0.11;
   const farArmX = bodyCx - dir * bodyRx * 0.15 - dir * step * handReach * 0.55;
   const nearArmX = bodyCx + dir * bodyRx * 0.28 + dir * step * handReach;
   const farKneeX = bodyCx - dir * bodyRx * 0.42 + dir * step * kneeReach;
   const nearKneeX = bodyCx + dir * bodyRx * 0.08 - dir * step * kneeReach * 0.8;
-  const handY = footY - H * 0.055;
-  const kneeY = footY - H * 0.04;
+  const handY = footY - H * 0.045;
+  const kneeY = footY - H * 0.035;
   limb(ctx, bodyCx - dir * bodyRx * 0.35, bodyCy - bodyRy * 0.05, farArmX, handY, limbW * 0.92, shade(onesie, 10));
   ellipse(ctx, farArmX, handY + H * 0.006, H * 0.04, H * 0.026, skinD);
   limb(ctx, bodyCx + dir * bodyRx * 0.2, bodyCy + bodyRy * 0.45, farKneeX, kneeY, limbW, shade(onesie, 12));
@@ -924,6 +1046,29 @@ function drawCrawlingBaby(ctx: CanvasRenderingContext2D, cx: number, footY: numb
   ctx.strokeStyle = OUTLINE;
   ctx.lineWidth = OUTLINE_W;
   ctx.stroke();
+  ctx.strokeStyle = "rgba(255,255,255,0.45)";
+  ctx.lineWidth = H * 0.014;
+  ctx.beginPath();
+  ctx.moveTo(bodyCx - dir * bodyRx * 0.45, bodyCy + bodyRy * 0.1);
+  ctx.quadraticCurveTo(bodyCx, bodyCy + bodyRy * 0.28, bodyCx + dir * bodyRx * 0.42, bodyCy + bodyRy * 0.06);
+  ctx.stroke();
+  ctx.strokeStyle = "rgba(255,255,255,0.55)";
+  ctx.lineWidth = H * 0.011;
+  ctx.beginPath();
+  ctx.moveTo(bodyCx - dir * bodyRx * 0.18, bodyCy - bodyRy * 0.78);
+  ctx.quadraticCurveTo(bodyCx + dir * bodyRx * 0.12, bodyCy - bodyRy * 0.52, bodyCx + dir * bodyRx * 0.42, bodyCy - bodyRy * 0.28);
+  ctx.stroke();
+
+  ellipse(ctx, bodyCx + dir * bodyRx * 0.55, bodyCy - bodyRy * 0.22, H * 0.055, H * 0.05, skinD);
+
+  const frontHandX = headCx + dir * headR * 0.36 + dir * step * H * 0.03;
+  const frontHandY = handY - Math.max(0, counter) * H * 0.012;
+  limb(ctx, bodyCx + dir * bodyRx * 0.42, bodyCy - bodyRy * 0.06, frontHandX, frontHandY, limbW * 0.9, tint(onesie, 4));
+  ellipse(ctx, frontHandX, frontHandY + H * 0.006, H * 0.045, H * 0.028, skin);
+  const frontKneeX = bodyCx - dir * bodyRx * 0.46 - dir * step * H * 0.028;
+  const frontKneeY = kneeY - Math.max(0, -counter) * H * 0.012;
+  limb(ctx, bodyCx - dir * bodyRx * 0.18, bodyCy + bodyRy * 0.5, frontKneeX, frontKneeY, limbW * 0.95, shade(onesie, 6));
+  ellipse(ctx, frontKneeX - dir * H * 0.018, frontKneeY + H * 0.006, H * 0.047, H * 0.029, skinD);
 
   const hg = ctx.createRadialGradient(headCx - dir * headR * 0.25, headCy - headR * 0.3, headR * 0.18, headCx, headCy, headR * 1.05);
   hg.addColorStop(0, tint(skin, 16));
@@ -946,21 +1091,94 @@ function drawCrawlingBaby(ctx: CanvasRenderingContext2D, cx: number, footY: numb
 
   const eyeR = headR * 0.18;
   const eyeX = headCx + dir * headR * 0.28;
-  const eyeY = headCy + headR * 0.06;
+  const eyeY = headCy + headR * 0.04;
   ellipse(ctx, eyeX, eyeY, eyeR, eyeR * 1.12, "#ffffff");
   ellipse(ctx, eyeX + dir * eyeR * 0.08, eyeY + eyeR * 0.18, eyeR * 0.62, eyeR * 0.78, "#3a2a22");
   ellipse(ctx, eyeX - dir * eyeR * 0.24, eyeY - eyeR * 0.28, eyeR * 0.26, eyeR * 0.26, "#ffffff");
-  ctx.fillStyle = "rgba(255,140,160,0.38)";
-  ctx.beginPath();
-  ctx.ellipse(headCx + dir * headR * 0.48, eyeY + headR * 0.22, headR * 0.14, headR * 0.09, 0, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.strokeStyle = "#cc7a72";
-  ctx.lineWidth = headR * 0.055;
+  ctx.strokeStyle = skinD;
+  ctx.lineWidth = headR * 0.045;
   ctx.lineCap = "round";
   ctx.beginPath();
-  ctx.moveTo(headCx + dir * headR * 0.18, eyeY + headR * 0.42);
-  ctx.quadraticCurveTo(headCx + dir * headR * 0.31, eyeY + headR * 0.52, headCx + dir * headR * 0.45, eyeY + headR * 0.42);
+  ctx.moveTo(headCx + dir * headR * 0.45, eyeY + headR * 0.12);
+  ctx.lineTo(headCx + dir * headR * 0.55, eyeY + headR * 0.18);
   ctx.stroke();
+  ctx.fillStyle = "rgba(255,140,160,0.38)";
+  ctx.beginPath();
+  ctx.ellipse(headCx + dir * headR * 0.45, eyeY + headR * 0.2, headR * 0.14, headR * 0.09, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = "#cc7a72";
+  ctx.lineWidth = headR * 0.06;
+  ctx.lineCap = "round";
+  ctx.beginPath();
+  ctx.moveTo(headCx + dir * headR * 0.16, eyeY + headR * 0.27);
+  ctx.quadraticCurveTo(headCx + dir * headR * 0.3, eyeY + headR * 0.35, headCx + dir * headR * 0.44, eyeY + headR * 0.26);
+  ctx.stroke();
+}
+
+function drawCrawlingBabyBack(ctx: CanvasRenderingContext2D, cx: number, footY: number, look: AvatarLook, walkPhase: number): void {
+  const H = look.heightPx;
+  const step = Math.sin(walkPhase);
+  const bob = Math.abs(Math.cos(walkPhase)) * H * 0.01;
+  const onesie = look.gender === "female" ? "#ff9fc8" : "#78baff";
+  const skin = look.skin;
+  const bodyCx = cx;
+  const bodyCy = footY - H * 0.11 - bob;
+  const bodyRx = H * 0.32;
+  const bodyRy = H * 0.17;
+  const headR = H * 0.25;
+  const headCx = cx;
+  const headCy = footY - H * 0.37 - bob * 0.35;
+  const limbW = H * 0.056;
+  const handY = footY - H * 0.045;
+  const kneeY = footY - H * 0.035;
+
+  groundShadow(ctx, cx, footY, bodyRx * 1.1);
+
+  for (const s of [-1, 1]) {
+    const handX = bodyCx + s * (bodyRx * 0.62 + step * H * 0.035);
+    const kneeX = bodyCx + s * (bodyRx * 0.32 - step * H * 0.03);
+    limb(ctx, bodyCx + s * bodyRx * 0.28, bodyCy - bodyRy * 0.04, handX, handY, limbW, onesie);
+    ellipse(ctx, handX, handY + H * 0.006, H * 0.04, H * 0.026, skin);
+    limb(ctx, bodyCx + s * bodyRx * 0.18, bodyCy + bodyRy * 0.48, kneeX, kneeY, limbW, shade(onesie, 8));
+    ellipse(ctx, kneeX, kneeY + H * 0.006, H * 0.044, H * 0.027, skin);
+  }
+
+  const bg = ctx.createRadialGradient(bodyCx - bodyRx * 0.2, bodyCy - bodyRy * 0.55, bodyRx * 0.16, bodyCx, bodyCy, bodyRx * 1.1);
+  bg.addColorStop(0, tint(onesie, 18));
+  bg.addColorStop(1, shade(onesie, 16));
+  ellipse(ctx, bodyCx, bodyCy, bodyRx, bodyRy, bg);
+  ctx.beginPath();
+  ctx.ellipse(bodyCx, bodyCy, bodyRx, bodyRy, 0, 0, Math.PI * 2);
+  ctx.strokeStyle = OUTLINE;
+  ctx.lineWidth = OUTLINE_W;
+  ctx.stroke();
+  ctx.strokeStyle = "rgba(255,255,255,0.55)";
+  ctx.lineWidth = H * 0.011;
+  ctx.beginPath();
+  ctx.moveTo(bodyCx - bodyRx * 0.45, bodyCy + bodyRy * 0.05);
+  ctx.quadraticCurveTo(bodyCx, bodyCy + bodyRy * 0.24, bodyCx + bodyRx * 0.45, bodyCy + bodyRy * 0.05);
+  ctx.stroke();
+  for (const s of [-1, 1]) {
+    ellipse(ctx, bodyCx + s * bodyRx * 0.55, handY + H * 0.006, H * 0.039, H * 0.026, skin);
+    ellipse(ctx, bodyCx + s * bodyRx * 0.31, kneeY + H * 0.006, H * 0.043, H * 0.027, shade(skin, 12));
+  }
+
+  const hg = ctx.createRadialGradient(headCx - headR * 0.18, headCy - headR * 0.3, headR * 0.18, headCx, headCy, headR * 1.05);
+  hg.addColorStop(0, tint(skin, 12));
+  hg.addColorStop(0.65, skin);
+  hg.addColorStop(1, shade(skin, 14));
+  ellipse(ctx, headCx, headCy, headR, headR * 0.96, hg);
+  ctx.beginPath();
+  ctx.ellipse(headCx, headCy, headR, headR * 0.96, 0, 0, Math.PI * 2);
+  ctx.strokeStyle = OUTLINE;
+  ctx.lineWidth = OUTLINE_W;
+  ctx.stroke();
+
+  ctx.fillStyle = look.hair;
+  ctx.beginPath();
+  ctx.ellipse(headCx, headCy - headR * 0.72, headR * 0.48, headR * 0.2, 0, Math.PI, 0);
+  ctx.fill();
+  ellipse(ctx, headCx, headCy - headR * 0.86, headR * 0.16, headR * 0.13, look.hair);
 }
 
 export function drawAvatar(ctx: CanvasRenderingContext2D, cx: number, footY: number, look: AvatarLook, walkPhase: number, motion: AvatarMotion): void {

@@ -1313,7 +1313,7 @@ export class Game {
       const ny = dy / len;
       this.verticalBias = ny;
       if (Math.abs(nx) > 0.15) this.facing = nx < 0 ? "left" : "right";
-      else this.facing = "front";
+      else this.facing = ny < -0.15 ? "back" : "front";
       const sp = SPEED * this.speedFactor(); // study & smarts make you nimbler
       this.px += nx * sp * dt;
       this.py += ny * sp * dt;
