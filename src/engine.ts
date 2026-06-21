@@ -130,6 +130,43 @@ const TRAINING_LINKS = {
   family: "https://www.youtube.com/results?search_query=how+to+treat+family+members+well+mental+health",
 } as const;
 type TrainingKind = keyof typeof TRAINING_LINKS;
+type TrainingCategory = "iq" | "eq" | "strategy";
+type TrainingLevel = "starter" | "practice" | "advanced";
+
+interface TrainingQuestion {
+  q: string;
+  answers: readonly string[];
+  correct: number;
+  win: string;
+}
+
+const TRAINING_LEVELS: { id: TrainingLevel; label: string }[] = [
+  { id: "starter", label: "Lv 1" },
+  { id: "practice", label: "Lv 2" },
+  { id: "advanced", label: "Lv 3" },
+];
+const TRAINING_IQ_RANGES: Record<TrainingLevel, readonly [number, number]> = {
+  starter: [0, 14],
+  practice: [14, 28],
+  advanced: [28, 40],
+};
+const TRAINING_CATEGORY_META: Record<TrainingCategory, { icon: string; title: string; summary: string }> = {
+  iq: {
+    icon: "🧩",
+    title: "Tricky IQ Game",
+    summary: "Logic, pattern, and careful-reading traps.",
+  },
+  eq: {
+    icon: "💛",
+    title: "EQ Questions",
+    summary: "Feelings, empathy, conflict, and family care.",
+  },
+  strategy: {
+    icon: "📈",
+    title: "Strategy Questions",
+    summary: "Money, career, risk, and long-term planning.",
+  },
+};
 const TRAINING_PUZZLES = [
   {
     q: "A clock shows 3:15. What is the angle between the hour and minute hands?",
@@ -372,6 +409,384 @@ const TRAINING_PUZZLES = [
     win: "Anagram flexibility. +2 IQ.",
   },
 ] as const;
+const TRAINING_BANKS: Record<Exclude<TrainingCategory, "iq">, Record<TrainingLevel, TrainingQuestion[]>> = {
+  eq: {
+    starter: [
+      {
+        q: "A friend gets quiet after your joke. What is the best first move?",
+        answers: ["tease them more", "ask privately if they are okay", "ignore it"],
+        correct: 1,
+        win: "Empathy noticed the signal. +EQ.",
+      },
+      {
+        q: "You receive an angry message from a sibling. What should you do before replying?",
+        answers: ["pause and breathe", "send a bigger message", "block them forever"],
+        correct: 0,
+        win: "Self-control kept the bridge open. +EQ.",
+      },
+      {
+        q: "A classmate wins an award you wanted. Which response shows strong EQ?",
+        answers: ["congratulate and learn", "say it was luck", "stop talking to them"],
+        correct: 0,
+        win: "You turned jealousy into growth. +EQ.",
+      },
+      {
+        q: "A parent says they are disappointed. What helps most?",
+        answers: ["listen and ask how to improve", "walk away mid-sentence", "blame someone else"],
+        correct: 0,
+        win: "Repair starts with listening. +EQ.",
+      },
+      {
+        q: "You feel nervous before a test. Which choice is healthiest?",
+        answers: ["name the feeling and plan", "pretend nothing exists", "panic-scroll"],
+        correct: 0,
+        win: "Naming emotions makes them easier to guide. +EQ.",
+      },
+      {
+        q: "A friend shares a private worry. What should you do?",
+        answers: ["share it for gossip", "keep it private unless safety is at risk", "laugh it off"],
+        correct: 1,
+        win: "Trust is protected. +EQ.",
+      },
+      {
+        q: "A new student sits alone at lunch. What is a kind move?",
+        answers: ["invite them with no pressure", "stare at them", "make a joke about it"],
+        correct: 0,
+        win: "Social awareness found a gentle opening. +EQ.",
+      },
+      {
+        q: "You made a mistake that hurt someone. What apology works best?",
+        answers: ["I am sorry for what I did", "sorry you feel that way", "everyone makes mistakes"],
+        correct: 0,
+        win: "A clear apology repairs faster. +EQ.",
+      },
+      {
+        q: "An argument is getting louder. What lowers the heat?",
+        answers: ["speak slower and quieter", "interrupt faster", "win by volume"],
+        correct: 0,
+        win: "Calm tone changed the room. +EQ.",
+      },
+      {
+        q: "Someone celebrates a tradition you do not know. What shows respect?",
+        answers: ["ask kindly if they want to share", "call it strange", "copy it as a joke"],
+        correct: 0,
+        win: "Curiosity stayed respectful. +EQ.",
+      },
+    ],
+    practice: [
+      {
+        q: "A friend cancels plans twice. What is the most emotionally smart response?",
+        answers: ["accuse them", "check in and ask what is happening", "ghost them"],
+        correct: 1,
+        win: "You checked the story before judging. +EQ.",
+      },
+      {
+        q: "Someone says, 'You never listen.' What should you try first?",
+        answers: ["repeat their main point", "explain why they are wrong", "change the subject"],
+        correct: 0,
+        win: "Reflection showed you heard them. +EQ.",
+      },
+      {
+        q: "A bad friend pressures you to do something risky. What is strongest?",
+        answers: ["set a boundary and leave", "prove you are brave", "say yes to fit in"],
+        correct: 0,
+        win: "Boundaries protected your future. +EQ.",
+      },
+      {
+        q: "Two relatives fight about shared money. What helps the conversation?",
+        answers: ["write facts and needs first", "pick a side instantly", "raise old grudges"],
+        correct: 0,
+        win: "You separated facts from heat. +EQ.",
+      },
+      {
+        q: "You feel jealous when a sibling is praised. What is the best inner move?",
+        answers: ["notice jealousy and choose a goal", "attack the sibling", "pretend you feel nothing"],
+        correct: 0,
+        win: "You converted emotion into direction. +EQ.",
+      },
+      {
+        q: "A teammate is late twice. What is a fair first step?",
+        answers: ["talk privately about impact", "mock them in public", "do nothing forever"],
+        correct: 0,
+        win: "Private repair beats public shame. +EQ.",
+      },
+      {
+        q: "A customer or teacher is angry. What response usually de-escalates?",
+        answers: ["acknowledge feeling, then solve", "match their anger", "say calm down"],
+        correct: 0,
+        win: "You handled emotion before solution. +EQ.",
+      },
+      {
+        q: "A family member is grieving. What helps most early on?",
+        answers: ["listen and stay present", "force them to cheer up", "rank whose pain is worse"],
+        correct: 0,
+        win: "Presence can be powerful. +EQ.",
+      },
+      {
+        q: "An online comment insults you. What protects your mental health?",
+        answers: ["pause before responding", "fight all night", "post their private info"],
+        correct: 0,
+        win: "Impulse control saved energy. +EQ.",
+      },
+      {
+        q: "In a group choice, one quiet person is affected most. What should you do?",
+        answers: ["invite their view", "decide without them", "speak over them"],
+        correct: 0,
+        win: "Inclusive decisions are stronger. +EQ.",
+      },
+    ],
+    advanced: [
+      {
+        q: "You are leading while stressed. What builds trust?",
+        answers: ["name the pressure and clarify next steps", "hide everything", "snap at people"],
+        correct: 0,
+        win: "Honest leadership steadied the group. +EQ.",
+      },
+      {
+        q: "A friend asks for a loan you cannot afford. What is healthiest?",
+        answers: ["empathize and set a clear no", "lend rent money", "shame them"],
+        correct: 0,
+        win: "Kind boundaries are still kind. +EQ.",
+      },
+      {
+        q: "You need to describe hurt without attacking. Which opener is best?",
+        answers: ["I felt hurt when...", "You always ruin things", "Everyone agrees with me"],
+        correct: 0,
+        win: "An I-statement kept the door open. +EQ.",
+      },
+      {
+        q: "Someone says 'I'm fine' but looks tense. What is a good response?",
+        answers: ["gently ask once, then respect space", "demand a confession", "ignore all signals"],
+        correct: 0,
+        win: "You balanced care with respect. +EQ.",
+      },
+      {
+        q: "Your feedback hurt someone more than expected. What should come first?",
+        answers: ["listen and repair impact", "defend your intent only", "say they are too sensitive"],
+        correct: 0,
+        win: "Impact got attention. +EQ.",
+      },
+      {
+        q: "A partner keeps interrupting. What is a mature request?",
+        answers: ["Can we take turns finishing?", "You never care", "silent treatment"],
+        correct: 0,
+        win: "Specific requests beat global blame. +EQ.",
+      },
+      {
+        q: "A child is melting down in public. What helps most?",
+        answers: ["stay calm and name the feeling", "shout louder", "mock the crying"],
+        correct: 0,
+        win: "Co-regulation helped the child settle. +EQ.",
+      },
+      {
+        q: "A coworker takes credit for your work. What is strategic and fair?",
+        answers: ["document and discuss calmly", "explode in the meeting", "quit instantly"],
+        correct: 0,
+        win: "You protected truth without losing control. +EQ.",
+      },
+      {
+        q: "Someone gives criticism that is partly wrong. What is the best response?",
+        answers: ["find the useful part first", "reject all of it", "attack their character"],
+        correct: 0,
+        win: "You extracted value from discomfort. +EQ.",
+      },
+      {
+        q: "Two people want opposite outcomes. What creates a better chance of agreement?",
+        answers: ["ask the need behind each position", "vote before listening", "repeat your demand"],
+        correct: 0,
+        win: "Needs revealed room for compromise. +EQ.",
+      },
+    ],
+  },
+  strategy: {
+    starter: [
+      {
+        q: "What is the main job of a budget?",
+        answers: ["match income to plans", "hide spending", "make money disappear"],
+        correct: 0,
+        win: "Budget thinking sharpened. +Strategy.",
+      },
+      {
+        q: "What should usually come before risky investing?",
+        answers: ["emergency savings", "a bigger phone", "guessing stocks"],
+        correct: 0,
+        win: "Risk order improved. +Strategy.",
+      },
+      {
+        q: "Which debt is usually best to attack first?",
+        answers: ["highest interest debt", "smallest font debt", "oldest-looking bill"],
+        correct: 0,
+        win: "Interest-cost strategy improved. +Strategy.",
+      },
+      {
+        q: "Why is starting to save early powerful?",
+        answers: ["compound growth has more time", "banks give magic gifts", "prices stop changing"],
+        correct: 0,
+        win: "Compounding clicked. +Strategy.",
+      },
+      {
+        q: "What grows career value fastest?",
+        answers: ["useful skills plus proof", "only wishing", "changing titles daily"],
+        correct: 0,
+        win: "Skill-building plan improved. +Strategy.",
+      },
+      {
+        q: "What is networking in a healthy career?",
+        answers: ["building helpful relationships", "begging strangers", "collecting business cards only"],
+        correct: 0,
+        win: "Career relationships got clearer. +Strategy.",
+      },
+      {
+        q: "Before an interview, what should you prepare?",
+        answers: ["role research and examples", "only your outfit", "nothing"],
+        correct: 0,
+        win: "Preparation raised your odds. +Strategy.",
+      },
+      {
+        q: "Which is closest to wealth?",
+        answers: ["assets minus debts", "monthly salary only", "shopping bags"],
+        correct: 0,
+        win: "Net-worth thinking unlocked. +Strategy.",
+      },
+      {
+        q: "What is diversification?",
+        answers: ["spreading risk across assets", "buying one rumor", "hiding cash randomly"],
+        correct: 0,
+        win: "Portfolio risk improved. +Strategy.",
+      },
+      {
+        q: "A normal car loses value over time. What is this called?",
+        answers: ["depreciation", "appreciation", "promotion"],
+        correct: 0,
+        win: "Asset behavior learned. +Strategy.",
+      },
+    ],
+    practice: [
+      {
+        q: "You can work overtime or study a valuable skill. What should you compare?",
+        answers: ["opportunity cost", "shoe size", "weather only"],
+        correct: 0,
+        win: "Trade-off thinking improved. +Strategy.",
+      },
+      {
+        q: "A job offer is lower than expected. What helps negotiation most?",
+        answers: ["market data and value proof", "anger only", "accept silently always"],
+        correct: 0,
+        win: "Negotiation got more grounded. +Strategy.",
+      },
+      {
+        q: "Why can one single stock be risky?",
+        answers: ["one company can fail", "markets close forever", "shares weigh too much"],
+        correct: 0,
+        win: "Concentration risk spotted. +Strategy.",
+      },
+      {
+        q: "Paying bills on time usually helps what?",
+        answers: ["credit strength", "height", "shoe quality"],
+        correct: 0,
+        win: "Credit habits improved. +Strategy.",
+      },
+      {
+        q: "The debt avalanche method pays which debt first?",
+        answers: ["highest interest rate", "prettiest logo", "newest envelope"],
+        correct: 0,
+        win: "Debt payoff strategy improved. +Strategy.",
+      },
+      {
+        q: "Why find a mentor?",
+        answers: ["learn from experience faster", "copy their life exactly", "avoid all work"],
+        correct: 0,
+        win: "Mentor strategy unlocked. +Strategy.",
+      },
+      {
+        q: "A stronger resume usually shows what?",
+        answers: ["measured results", "only duties", "favorite snacks"],
+        correct: 0,
+        win: "Career evidence improved. +Strategy.",
+      },
+      {
+        q: "Before changing careers, what should you test?",
+        answers: ["skills, market, and fit", "only the logo", "random luck"],
+        correct: 0,
+        win: "Career pivot got safer. +Strategy.",
+      },
+      {
+        q: "What is insurance mainly for?",
+        answers: ["protecting against big losses", "guaranteed profit", "avoiding budgets"],
+        correct: 0,
+        win: "Risk protection clicked. +Strategy.",
+      },
+      {
+        q: "A side hustle earns money. What grows it best long-term?",
+        answers: ["reinvest in what works", "spend all instantly", "never track results"],
+        correct: 0,
+        win: "Growth loop identified. +Strategy.",
+      },
+    ],
+    advanced: [
+      {
+        q: "As you get older, why might your investments become less risky?",
+        answers: ["less time to recover losses", "risk disappears", "cash turns into houses"],
+        correct: 0,
+        win: "Life-stage investing improved. +Strategy.",
+      },
+      {
+        q: "During a recession, what is often wise if your job is uncertain?",
+        answers: ["increase cash cushion", "take bigger random risks", "ignore expenses"],
+        correct: 0,
+        win: "Downside planning improved. +Strategy.",
+      },
+      {
+        q: "When comparing two job offers, salary is not enough. What else matters?",
+        answers: ["benefits, growth, risk, fit", "desk color only", "company logo size"],
+        correct: 0,
+        win: "Offer comparison leveled up. +Strategy.",
+      },
+      {
+        q: "What is a BATNA in negotiation?",
+        answers: ["best alternative if no deal", "a bank code", "a tax penalty"],
+        correct: 0,
+        win: "Negotiation fallback identified. +Strategy.",
+      },
+      {
+        q: "A business is profitable on paper but has no cash to pay bills. What failed?",
+        answers: ["cash-flow planning", "font choice", "office decoration"],
+        correct: 0,
+        win: "Cash flow became visible. +Strategy.",
+      },
+      {
+        q: "A house can rise 4% yearly but has upkeep. What should you compare?",
+        answers: ["total return after costs", "wall color only", "door count"],
+        correct: 0,
+        win: "Real asset return improved. +Strategy.",
+      },
+      {
+        q: "Why can a small early investment beat a larger late one?",
+        answers: ["more compounding years", "older money is heavier", "late money is illegal"],
+        correct: 0,
+        win: "Time horizon strategy clicked. +Strategy.",
+      },
+      {
+        q: "What is risk-adjusted return?",
+        answers: ["reward compared with risk taken", "return after lunch", "a guaranteed win"],
+        correct: 0,
+        win: "Smarter return comparison unlocked. +Strategy.",
+      },
+      {
+        q: "You are offered a promotion with burnout risk. What should you evaluate?",
+        answers: ["pay, learning, health cost", "title only", "office chair color"],
+        correct: 0,
+        win: "Career strategy included health. +Strategy.",
+      },
+      {
+        q: "A market trend is popular. What should you check before investing?",
+        answers: ["evidence, valuation, and risk", "how loud people are", "only the logo"],
+        correct: 0,
+        win: "Hype filter upgraded. +Strategy.",
+      },
+    ],
+  },
+};
 
 type Mode =
   | "title"
@@ -503,6 +918,18 @@ interface FloatText {
   life: number;
 }
 
+function stableAnswerOrder(seed: string, count: number): number[] {
+  const score = (text: string): number => {
+    let h = 2166136261;
+    for (let i = 0; i < text.length; i++) {
+      h ^= text.charCodeAt(i);
+      h = Math.imul(h, 16777619);
+    }
+    return h >>> 0;
+  };
+  return Array.from({ length: count }, (_, i) => i).sort((a, b) => score(`${seed}:${a}`) - score(`${seed}:${b}`));
+}
+
 export class Game {
   private ui: UIRefs;
   private mode: Mode = "title";
@@ -550,7 +977,8 @@ export class Game {
   private petHappyCd = 0;
   private spouseDeceased = false;
   private habitCount = 0;
-  private trainingPuzzleIndex = 0;
+  private trainingQuestionIndex: Record<TrainingCategory, number> = { iq: 0, eq: 0, strategy: 0 };
+  private trainingLevel: Record<TrainingCategory, TrainingLevel> = { iq: "starter", eq: "starter", strategy: "starter" };
   private eventCooldown = 2;
   private usedEvents = new Set<string>();
   private eventsLog: string[] = [];
@@ -3413,20 +3841,71 @@ export class Game {
     this.renderHud();
   }
 
-  private solveTrainingPuzzle(answer: number): void {
-    const puzzle = TRAINING_PUZZLES[this.trainingPuzzleIndex % TRAINING_PUZZLES.length];
-    if (answer === puzzle.correct) {
+  private trainingQuestions(category: TrainingCategory): readonly TrainingQuestion[] {
+    const level = this.trainingLevel[category];
+    if (category === "iq") {
+      const [from, to] = TRAINING_IQ_RANGES[level];
+      return TRAINING_PUZZLES.slice(from, Math.min(to, TRAINING_PUZZLES.length));
+    }
+    return TRAINING_BANKS[category][level];
+  }
+
+  private trainingTotalQuestions(): number {
+    return TRAINING_PUZZLES.length + Object.values(TRAINING_BANKS).reduce((sum, bank) =>
+      sum + Object.values(bank).reduce((inner, questions) => inner + questions.length, 0), 0);
+  }
+
+  private setTrainingLevel(category: TrainingCategory, level: TrainingLevel): void {
+    this.trainingLevel[category] = level;
+    this.trainingQuestionIndex[category] = 0;
+    this.showTraining();
+  }
+
+  private trainingWin(category: TrainingCategory, win: string): string {
+    if (category === "iq") {
       this.applyEff({ smarts: 2, fun: 1 }, "mental");
-      this.trainingPuzzleIndex = (this.trainingPuzzleIndex + 1) % TRAINING_PUZZLES.length;
+      this.hint("🧠 IQ question solved. +2 IQ.");
+      return win;
+    }
+    if (category === "eq") {
+      this.familyBond += 0.8;
+      this.applyEff({ health: 3, happiness: 2 }, "mental");
+      this.hint("💛 EQ question solved. +Mental health.");
+      return `${win} +Mental health, +Happy, +Family bond.`;
+    }
+    const bonus = Math.round(this.age < 18 ? 150 + this.stats.smarts * 6 : 500 + this.stats.smarts * 14);
+    this.moneyWise = true;
+    this.money += bonus;
+    this.lifetimeEarned += bonus;
+    this.connections += 1;
+    this.applyEff({ smarts: 1, happiness: 0.5 }, "mental");
+    this.hint(`📈 Strategy solved. +${formatMoney(bonus)}.`);
+    return `${win} ${formatMoney(bonus)} earned, +network, moneyWise on.`;
+  }
+
+  private solveTrainingPuzzle(category: TrainingCategory, answer: number): void {
+    const questions = this.trainingQuestions(category);
+    const puzzle = questions[this.trainingQuestionIndex[category] % questions.length];
+    if (answer === puzzle.correct) {
+      const win = this.trainingWin(category, puzzle.win);
+      this.trainingQuestionIndex[category] = (this.trainingQuestionIndex[category] + 1) % questions.length;
       this.spendTrainingMoment();
-      this.hint("🧠 Brain teaser solved. +2 IQ.");
-      this.showTraining(puzzle.win);
+      this.showTraining(win);
       return;
     }
-    this.applyEff({ fun: 1 }, "mental");
+    let miss = "Not quite. The practice still warmed up your brain. +1 Fun.";
+    if (category === "eq") {
+      this.applyEff({ happiness: 1 }, "mental");
+      miss = "Not quite. Reflection still helps emotional balance. +1 Happy.";
+    } else if (category === "strategy") {
+      this.applyEff({ smarts: 0.3, fun: 0.5 }, "mental");
+      miss = "Not quite. Planning practice still helped a little. +Strategy practice.";
+    } else {
+      this.applyEff({ fun: 1 }, "mental");
+    }
     this.spendTrainingMoment();
     this.hint("Close. Try another angle.");
-    this.showTraining("Not quite. The practice still warmed up your brain. +1 Fun.");
+    this.showTraining(miss);
   }
 
   private useTrainingVideo(kind: TrainingKind): void {
@@ -3456,6 +3935,31 @@ export class Game {
     this.showTraining("You studied how to treat family well. +Mental health, +Happy, +Family bond.");
   }
 
+  private trainingQuizRow(category: TrainingCategory): string {
+    const meta = TRAINING_CATEGORY_META[category];
+    const level = this.trainingLevel[category];
+    const questions = this.trainingQuestions(category);
+    const questionNumber = this.trainingQuestionIndex[category] % questions.length;
+    const puzzle = questions[questionNumber];
+    const levels = TRAINING_LEVELS.map((l) => `
+      <button class="plj-training-level${l.id === level ? " is-selected" : ""}" data-training-category="${category}" data-training-level="${l.id}">
+        ${esc(l.label)}
+      </button>`).join("");
+    const answers = stableAnswerOrder(`${category}-${level}-${questionNumber}-${puzzle.q}`, puzzle.answers.length).map((answerIndex) =>
+      `<button class="plj-training-answer" data-training-category="${category}" data-answer="${answerIndex}">${esc(puzzle.answers[answerIndex])}</button>`
+    ).join("");
+    return `
+      <section class="plj-training-puzzle is-${category}">
+        <div class="plj-training-row-head">
+          <h3>${meta.icon} ${esc(meta.title)} <span class="plj-training-count">Question ${questionNumber + 1} / ${questions.length}</span></h3>
+          <div class="plj-training-levels" aria-label="${esc(meta.title)} level">${levels}</div>
+        </div>
+        <p class="plj-training-summary">${esc(meta.summary)}</p>
+        <p>${esc(puzzle.q)}</p>
+        <div class="plj-training-answers">${answers}</div>
+      </section>`;
+  }
+
   private showTraining(message = ""): void {
     if (this.mode !== "playing" && this.mode !== "training") return;
     if (!this.canShowTrainingGate()) {
@@ -3463,11 +3967,7 @@ export class Game {
       return;
     }
     this.mode = "training";
-    const puzzleNumber = this.trainingPuzzleIndex % TRAINING_PUZZLES.length;
-    const puzzle = TRAINING_PUZZLES[puzzleNumber];
-    const answers = puzzle.answers.map((answer, i) =>
-      `<button class="plj-training-answer" data-answer="${i}">${esc(answer)}</button>`
-    ).join("");
+    const quizRows = (["iq", "eq", "strategy"] as TrainingCategory[]).map((category) => this.trainingQuizRow(category)).join("");
     this.ui.overlay.innerHTML = `
       <div class="plj-card plj-training-card">
         <div class="plj-family-head">
@@ -3477,13 +3977,9 @@ export class Game {
             ${this.canShowFamilyTreeGate() ? `<button class="plj-mini-pill" id="plj-training-tree">🌳 Family Tree</button>` : ""}
           </div>
         </div>
-        <p class="plj-sub">Practice thinking, money, and family care. Each session takes a tiny slice of life time.</p>
+        <p class="plj-sub">Practice thinking, EQ, and career strategy. ${this.trainingTotalQuestions()} built-in questions are split across three levels; each session takes a tiny slice of life time.</p>
         ${message ? `<p class="plj-training-result">${esc(message)}</p>` : ""}
-        <section class="plj-training-puzzle">
-          <h3>🧩 Tricky IQ game <span class="plj-training-count">Question ${puzzleNumber + 1} / ${TRAINING_PUZZLES.length}</span></h3>
-          <p>${esc(puzzle.q)}</p>
-          <div class="plj-training-answers">${answers}</div>
-        </section>
+        <div class="plj-training-board">${quizRows}</div>
         <div class="plj-training-grid">
           <button class="plj-training-action" data-train="iq">
             <span>🧠 Smarter habits</span>
@@ -3504,7 +4000,20 @@ export class Game {
       </div>`;
     this.ui.overlay.classList.add("show");
     this.ui.overlay.querySelectorAll<HTMLButtonElement>("[data-answer]").forEach((btn) => {
-      btn.onclick = () => this.solveTrainingPuzzle(Number(btn.dataset.answer));
+      const category = btn.dataset.trainingCategory as TrainingCategory | undefined;
+      btn.onclick = () => {
+        if (category === "iq" || category === "eq" || category === "strategy") this.solveTrainingPuzzle(category, Number(btn.dataset.answer));
+      };
+    });
+    this.ui.overlay.querySelectorAll<HTMLButtonElement>("[data-training-level]").forEach((btn) => {
+      const category = btn.dataset.trainingCategory as TrainingCategory | undefined;
+      const level = btn.dataset.trainingLevel as TrainingLevel | undefined;
+      btn.onclick = () => {
+        if ((category === "iq" || category === "eq" || category === "strategy") &&
+          (level === "starter" || level === "practice" || level === "advanced")) {
+          this.setTrainingLevel(category, level);
+        }
+      };
     });
     this.ui.overlay.querySelectorAll<HTMLButtonElement>("[data-train]").forEach((btn) => {
       btn.onclick = () => {

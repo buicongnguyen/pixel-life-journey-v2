@@ -1183,16 +1183,28 @@ body {
   font-size: 12px;
   line-height: 1.35;
 }
-.plj-training-puzzle {
+.plj-training-board {
+  display: grid;
+  gap: 9px;
   margin: 10px 0;
+}
+.plj-training-puzzle {
+  margin: 0;
   padding: 10px;
   border: 1px solid var(--line);
   border-radius: 10px;
   background: rgba(0, 0, 0, 0.18);
 }
+.plj-training-row-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
 .plj-training-puzzle h3 {
   margin: 0 0 6px;
   font-size: 13px;
+  line-height: 1.25;
 }
 .plj-training-count {
   display: inline-block;
@@ -1204,6 +1216,34 @@ body {
   font-size: 10px;
   font-weight: 700;
   white-space: nowrap;
+}
+.plj-training-levels {
+  display: flex;
+  flex: 0 0 auto;
+  gap: 4px;
+}
+.plj-training-level {
+  min-width: 36px;
+  min-height: 24px;
+  padding: 3px 6px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--muted);
+  font: inherit;
+  font-size: 10px;
+  font-weight: 800;
+  cursor: pointer;
+}
+.plj-training-level.is-selected {
+  border-color: #ffcf4a;
+  background: rgba(255, 207, 74, 0.18);
+  color: #fff1a8;
+}
+.plj-training-summary {
+  margin: -2px 0 7px !important;
+  color: var(--muted) !important;
+  font-size: 10.5px !important;
 }
 .plj-training-puzzle p {
   margin: 0 0 9px;
@@ -1760,6 +1800,16 @@ body {
   }
   .plj-ledger-grid {
     grid-template-columns: 1fr;
+  }
+  .plj-training-row-head {
+    flex-direction: column;
+    gap: 5px;
+  }
+  .plj-training-levels {
+    width: 100%;
+  }
+  .plj-training-level {
+    flex: 1;
   }
   .plj-training-answers {
     grid-template-columns: 1fr;
