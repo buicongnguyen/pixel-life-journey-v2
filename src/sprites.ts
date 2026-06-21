@@ -1549,6 +1549,339 @@ function rrect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h
   else ctx.rect(x, y, w, h);
 }
 
+const EVENT_MONEY_IDS = new Set([
+  "wallet", "refund", "cashback", "redenvelope", "rebate", "coin", "gift",
+  "dividend", "garagesale", "referral", "bonus", "loan", "scholarship",
+  "promo", "lottery", "crypto", "inherit",
+]);
+const EVENT_PRIZE_IDS = new Set(["busk", "contest", "raffle", "viral", "gameshow"]);
+
+export function drawEventItem(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  eventId: string,
+  emoji: string,
+  label: string,
+  good: boolean,
+  focused: boolean,
+  t: number
+): void {
+  const bob = Math.sin(t * 4 + x * 0.025) * (focused ? 4 : 2);
+  const footY = y + bob;
+  ctx.save();
+  ctx.fillStyle = "rgba(0,0,0,0.24)";
+  ctx.beginPath();
+  ctx.ellipse(x, y - 3, focused ? 27 : 22, focused ? 7 : 5, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  if (eventId === "puppy") drawPetEvent(ctx, x, footY, "dog", focused);
+  else if (eventId === "kitten") drawPetEvent(ctx, x, footY, "cat", focused);
+  else if (EVENT_MONEY_IDS.has(eventId)) drawMoneyEvent(ctx, x, footY, eventId, focused);
+  else if (!good) drawBadEvent(ctx, x, footY, eventId, focused);
+  else if (EVENT_PRIZE_IDS.has(eventId)) drawPrizeEvent(ctx, x, footY, eventId, focused);
+  else drawEmojiItem(ctx, x, footY, emoji, good, focused);
+
+  const text = label.length > 18 ? `${label.slice(0, 17)}...` : label;
+  ctx.font = `${focused ? "bold " : ""}10px 'Trebuchet MS', system-ui, sans-serif`;
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  const w = Math.max(54, ctx.measureText(text).width + 12);
+  const ly = footY - 62;
+  ctx.fillStyle = focused ? "rgba(42,22,64,0.96)" : "rgba(18,12,30,0.82)";
+  rrect(ctx, x - w / 2, ly - 8, w, 15, 5);
+  ctx.fill();
+  ctx.strokeStyle = good ? (eventId === "puppy" || eventId === "kitten" ? "#ffd23f" : "#3ddc84") : "#ff5d6c";
+  ctx.lineWidth = focused ? 2 : 1;
+  rrect(ctx, x - w / 2, ly - 8, w, 15, 5);
+  ctx.stroke();
+  ctx.fillStyle = "#fff8df";
+  ctx.fillText(text, x, ly);
+  ctx.restore();
+}
+
+function drawPetEvent(ctx: CanvasRenderingContext2D, x: number, footY: number, kind: "dog" | "cat", focused: boolean): void {
+  const dog = kind === "dog";
+  const fur = dog ? "#c68148" : "#7d8794";
+  const furLight = dog ? "#e6b17a" : "#b8c1cc";
+  const ear = dog ? "#7b4a35" : "#4d5663";
+  const scale = focused ? 1.08 : 1;
+  ctx.save();
+  ctx.scale(scale, scale);
+  const sx = x / scale;
+  const sy = footY / scale;
+  ctx.lineWidth = 2;
+  ctx.strokeStyle = OUTLINE;
+  ellipse(ctx, sx - 7, sy - 24, 21, 12, fur);
+  ctx.stroke();
+  px(ctx, sx - 20, sy - 16, 5, 15, OUTLINE);
+  px(ctx, sx - 18.8, sy - 16, 3, 14, furLight);
+  px(ctx, sx + 2, sy - 16, 5, 15, OUTLINE);
+  px(ctx, sx + 3.2, sy - 16, 3, 14, furLight);
+  ctx.lineWidth = dog ? 3 : 2;
+  ctx.strokeStyle = OUTLINE;
+  ctx.beginPath();
+  if (dog) {
+    ctx.moveTo(sx - 27, sy - 27);
+    ctx.lineTo(sx - 39, sy - 35);
+  } else {
+    ctx.moveTo(sx - 28, sy - 27);
+    ctx.quadraticCurveTo(sx - 43, sy - 44, sx - 27, sy - 50);
+  }
+  ctx.stroke();
+  ctx.strokeStyle = dog ? "#d59d6b" : "#9fa8b2";
+  ctx.beginPath();
+  if (dog) {
+    ctx.moveTo(sx - 26, sy - 27);
+    ctx.lineTo(sx - 37, sy - 34);
+  } else {
+    ctx.moveTo(sx - 27, sy - 28);
+    ctx.quadraticCurveTo(sx - 39, sy - 43, sx - 27, sy - 48);
+  }
+  ctx.stroke();
+  ellipse(ctx, sx + 18, sy - 32, 13, 12, furLight);
+  ctx.strokeStyle = OUTLINE;
+  ctx.stroke();
+  if (dog) {
+    ellipse(ctx, sx + 11, sy - 41, 5, 9, ear);
+    ellipse(ctx, sx + 24, sy - 41, 5, 9, ear);
+  } else {
+    ctx.fillStyle = OUTLINE;
+    ctx.beginPath();
+    ctx.moveTo(sx + 9, sy - 40);
+    ctx.lineTo(sx + 15, sy - 52);
+    ctx.lineTo(sx + 20, sy - 40);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(sx + 21, sy - 40);
+    ctx.lineTo(sx + 28, sy - 52);
+    ctx.lineTo(sx + 31, sy - 39);
+    ctx.fill();
+    ctx.fillStyle = ear;
+    ctx.beginPath();
+    ctx.moveTo(sx + 11, sy - 41);
+    ctx.lineTo(sx + 15, sy - 48);
+    ctx.lineTo(sx + 18, sy - 40);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(sx + 23, sy - 41);
+    ctx.lineTo(sx + 28, sy - 48);
+    ctx.lineTo(sx + 29, sy - 40);
+    ctx.fill();
+  }
+  ellipse(ctx, sx + 14, sy - 33, 1.7, 2.2, "#20161c");
+  ellipse(ctx, sx + 24, sy - 33, 1.7, 2.2, "#20161c");
+  ellipse(ctx, sx + 19, sy - 28, 3.2, 2.2, "#20161c");
+  if (!dog) {
+    ctx.strokeStyle = "#20161c";
+    ctx.lineWidth = 1;
+    for (const side of [-1, 1]) {
+      ctx.beginPath();
+      ctx.moveTo(sx + 19 + side * 3, sy - 28);
+      ctx.lineTo(sx + 19 + side * 12, sy - 31);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(sx + 19 + side * 3, sy - 27);
+      ctx.lineTo(sx + 19 + side * 12, sy - 25);
+      ctx.stroke();
+    }
+  }
+  ctx.restore();
+}
+
+function drawMoneyEvent(ctx: CanvasRenderingContext2D, x: number, footY: number, eventId: string, focused: boolean): void {
+  const coinLike = eventId === "coin" || eventId === "crypto" || eventId === "lottery";
+  const envelopeLike = eventId === "redenvelope" || eventId === "gift" || eventId === "inherit";
+  const lift = focused ? -2 : 0;
+  if (coinLike) {
+    ellipse(ctx, x, footY - 30 + lift, 20, 20, "#c5791e");
+    ellipse(ctx, x, footY - 33 + lift, 18, 18, "#ffd23f");
+    ctx.strokeStyle = OUTLINE;
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    ctx.fillStyle = "#ba6b15";
+    ctx.font = "bold 21px 'Trebuchet MS', system-ui, sans-serif";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText("$", x, footY - 32 + lift);
+    return;
+  }
+  if (envelopeLike) {
+    const c = eventId === "inherit" ? "#f2e8cf" : "#ff5d4f";
+    ctx.fillStyle = OUTLINE;
+    rrect(ctx, x - 24, footY - 49 + lift, 48, 31, 5);
+    ctx.fill();
+    ctx.fillStyle = c;
+    rrect(ctx, x - 22, footY - 51 + lift, 44, 29, 5);
+    ctx.fill();
+    ctx.strokeStyle = eventId === "inherit" ? "#af7a42" : "#ffd23f";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(x - 20, footY - 49 + lift);
+    ctx.lineTo(x, footY - 33 + lift);
+    ctx.lineTo(x + 20, footY - 49 + lift);
+    ctx.stroke();
+    px(ctx, x - 4, footY - 39 + lift, 8, 8, eventId === "inherit" ? "#af7a42" : "#ffd23f");
+    return;
+  }
+  for (let i = 0; i < 3; i++) {
+    const yy = footY - 26 - i * 9 + lift;
+    ctx.fillStyle = OUTLINE;
+    rrect(ctx, x - 26 + i * 2, yy - 16, 46, 20, 4);
+    ctx.fill();
+    ctx.fillStyle = i % 2 ? "#74c989" : "#9ae6aa";
+    rrect(ctx, x - 24 + i * 2, yy - 18, 42, 18, 4);
+    ctx.fill();
+    px(ctx, x - 4 + i * 2, yy - 18, 7, 18, "#f2e8cf");
+    ellipse(ctx, x - 14 + i * 2, yy - 9, 4, 4, "#3a8a55");
+    ellipse(ctx, x + 10 + i * 2, yy - 9, 4, 4, "#3a8a55");
+  }
+}
+
+function drawPrizeEvent(ctx: CanvasRenderingContext2D, x: number, footY: number, eventId: string, focused: boolean): void {
+  const lift = focused ? -2 : 0;
+  if (eventId === "busk") {
+    ctx.strokeStyle = OUTLINE;
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.moveTo(x - 15, footY - 18 + lift);
+    ctx.lineTo(x + 15, footY - 50 + lift);
+    ctx.stroke();
+    ellipse(ctx, x - 9, footY - 26 + lift, 13, 17, "#b86a38");
+    ellipse(ctx, x - 9, footY - 26 + lift, 8, 11, "#ffd38a");
+    return;
+  }
+  if (eventId === "gameshow") {
+    ctx.fillStyle = OUTLINE;
+    rrect(ctx, x - 24, footY - 52 + lift, 48, 34, 4);
+    ctx.fill();
+    ctx.fillStyle = "#5db8ff";
+    rrect(ctx, x - 21, footY - 49 + lift, 42, 25, 3);
+    ctx.fill();
+    px(ctx, x - 15, footY - 43 + lift, 30, 5, "#fff4a8");
+    px(ctx, x - 9, footY - 34 + lift, 18, 5, "#ff5d6c");
+    return;
+  }
+  ctx.fillStyle = OUTLINE;
+  rrect(ctx, x - 18, footY - 44 + lift, 36, 28, 5);
+  ctx.fill();
+  ctx.fillStyle = "#ff5d6c";
+  rrect(ctx, x - 16, footY - 46 + lift, 32, 26, 5);
+  ctx.fill();
+  px(ctx, x - 2, footY - 46 + lift, 4, 26, "#ffd23f");
+  px(ctx, x - 16, footY - 35 + lift, 32, 4, "#ffd23f");
+  ctx.fillStyle = "#ffd23f";
+  ctx.beginPath();
+  ctx.moveTo(x, footY - 58 + lift);
+  ctx.lineTo(x + 5, footY - 48 + lift);
+  ctx.lineTo(x + 16, footY - 47 + lift);
+  ctx.lineTo(x + 8, footY - 40 + lift);
+  ctx.lineTo(x + 10, footY - 29 + lift);
+  ctx.lineTo(x, footY - 35 + lift);
+  ctx.lineTo(x - 10, footY - 29 + lift);
+  ctx.lineTo(x - 8, footY - 40 + lift);
+  ctx.lineTo(x - 16, footY - 47 + lift);
+  ctx.lineTo(x - 5, footY - 48 + lift);
+  ctx.closePath();
+  ctx.fill();
+}
+
+function drawBadEvent(ctx: CanvasRenderingContext2D, x: number, footY: number, eventId: string, focused: boolean): void {
+  const lift = focused ? -2 : 0;
+  if (eventId === "phone") {
+    ctx.fillStyle = OUTLINE;
+    rrect(ctx, x - 14, footY - 55 + lift, 28, 42, 5);
+    ctx.fill();
+    ctx.fillStyle = "#20283c";
+    rrect(ctx, x - 11, footY - 51 + lift, 22, 34, 3);
+    ctx.fill();
+    ctx.strokeStyle = "#ff8a8a";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(x - 7, footY - 47 + lift);
+    ctx.lineTo(x + 1, footY - 37 + lift);
+    ctx.lineTo(x - 4, footY - 31 + lift);
+    ctx.lineTo(x + 8, footY - 20 + lift);
+    ctx.stroke();
+    return;
+  }
+  if (eventId === "carrepair") {
+    ctx.strokeStyle = OUTLINE;
+    ctx.lineWidth = 8;
+    ctx.beginPath();
+    ctx.moveTo(x - 21, footY - 19 + lift);
+    ctx.lineTo(x + 17, footY - 52 + lift);
+    ctx.stroke();
+    ctx.strokeStyle = "#bdc7d2";
+    ctx.lineWidth = 5;
+    ctx.beginPath();
+    ctx.moveTo(x - 20, footY - 20 + lift);
+    ctx.lineTo(x + 16, footY - 51 + lift);
+    ctx.stroke();
+    ellipse(ctx, x + 18, footY - 52 + lift, 8, 8, "#ff8a8a");
+    return;
+  }
+  if (eventId === "medbill") {
+    ctx.fillStyle = OUTLINE;
+    rrect(ctx, x - 20, footY - 55 + lift, 40, 44, 4);
+    ctx.fill();
+    ctx.fillStyle = "#f2e8cf";
+    rrect(ctx, x - 17, footY - 58 + lift, 34, 42, 4);
+    ctx.fill();
+    px(ctx, x - 4, footY - 51 + lift, 8, 22, "#ff5d6c");
+    px(ctx, x - 11, footY - 44 + lift, 22, 8, "#ff5d6c");
+    return;
+  }
+  if (eventId === "crash" || eventId === "scam") {
+    ctx.fillStyle = OUTLINE;
+    rrect(ctx, x - 24, footY - 51 + lift, 48, 33, 5);
+    ctx.fill();
+    ctx.fillStyle = eventId === "crash" ? "#252b3d" : "#5a2a33";
+    rrect(ctx, x - 21, footY - 49 + lift, 42, 27, 4);
+    ctx.fill();
+    ctx.strokeStyle = "#ff5d6c";
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(x - 15, footY - 31 + lift);
+    ctx.lineTo(x - 5, footY - 39 + lift);
+    ctx.lineTo(x + 4, footY - 34 + lift);
+    ctx.lineTo(x + 16, footY - 45 + lift);
+    ctx.stroke();
+    return;
+  }
+  ctx.fillStyle = OUTLINE;
+  ctx.beginPath();
+  ctx.moveTo(x, footY - 58 + lift);
+  ctx.lineTo(x + 27, footY - 14 + lift);
+  ctx.lineTo(x - 27, footY - 14 + lift);
+  ctx.closePath();
+  ctx.fill();
+  ctx.fillStyle = "#ffd23f";
+  ctx.beginPath();
+  ctx.moveTo(x, footY - 54 + lift);
+  ctx.lineTo(x + 22, footY - 17 + lift);
+  ctx.lineTo(x - 22, footY - 17 + lift);
+  ctx.closePath();
+  ctx.fill();
+  px(ctx, x - 2, footY - 43 + lift, 4, 17, "#4c2a20");
+  px(ctx, x - 2, footY - 22 + lift, 4, 4, "#4c2a20");
+}
+
+function drawEmojiItem(ctx: CanvasRenderingContext2D, x: number, footY: number, emoji: string, good: boolean, focused: boolean): void {
+  const lift = focused ? -2 : 0;
+  const fill = good ? "#2e3b49" : "#5a2a33";
+  ctx.fillStyle = OUTLINE;
+  rrect(ctx, x - 23, footY - 56 + lift, 46, 38, 9);
+  ctx.fill();
+  ctx.fillStyle = fill;
+  rrect(ctx, x - 20, footY - 58 + lift, 40, 36, 9);
+  ctx.fill();
+  ctx.font = "28px system-ui, 'Segoe UI Emoji', 'Noto Color Emoji', sans-serif";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText(emoji, x, footY - 40 + lift);
+}
+
 export function drawStation(ctx: CanvasRenderingContext2D, x: number, y: number, icon: string, label: string, category: string, focused: boolean, used: boolean, t: number): void {
   const tintC = CAT_TINT[category] ?? "#ffffff";
   const bob = focused ? Math.sin(t * 6) * 3 : 0;

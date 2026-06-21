@@ -726,54 +726,6 @@ body {
   box-shadow: none;
 }
 
-/* ---- random event popup ------------------------------------------------- */
-.plj-event {
-  max-width: 420px;
-  text-align: center;
-  animation: plj-pop 0.45s ease;
-}
-.plj-event-good {
-  border-color: var(--gold);
-}
-.plj-event-bad {
-  border-color: #ff6b6b;
-}
-.plj-event-emoji {
-  font-size: 56px;
-  line-height: 1;
-  margin-bottom: 6px;
-  animation: plj-pop 0.6s ease;
-}
-.plj-event h2 {
-  margin: 0 0 6px;
-  letter-spacing: 0.5px;
-}
-.plj-event-good h2 {
-  color: var(--gold);
-}
-.plj-event-bad h2 {
-  color: #ff8a8a;
-}
-.plj-event-cash {
-  font-size: 26px;
-  font-weight: 800;
-  margin: 4px 0 8px;
-  color: var(--gold);
-  text-shadow: 0 2px 0 rgba(0, 0, 0, 0.4);
-}
-.plj-event-bad .plj-event-cash {
-  color: #ff8a8a;
-}
-.plj-event-desc {
-  font-size: 13.5px;
-  line-height: 1.5;
-  color: #e7defa;
-  margin: 0 0 12px;
-}
-.plj-event .plj-chips {
-  margin-bottom: 14px;
-}
-
 /* --- biography mode ------------------------------------------------------- */
 .plj-title-row {
   display: flex;

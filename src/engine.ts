@@ -54,7 +54,7 @@ import {
   makeMoment,
   newBiography,
 } from "./biography";
-import { avatarLook, drawAvatar, drawPerson, drawRoom, drawStation, type AvatarFacing } from "./sprites";
+import { avatarLook, drawAvatar, drawEventItem, drawPerson, drawRoom, drawStation, type AvatarFacing } from "./sprites";
 import { createUI, type UIRefs } from "./ui";
 import { generateStory, type CauseOfEnd, type LifeStory } from "./story";
 
@@ -85,7 +85,6 @@ type Mode =
   | "vehicle"
   | "commute"
   | "timetravel"
-  | "event"
   | "transition"
   | "ending"
   | "biolist"
@@ -94,13 +93,15 @@ type Mode =
   | "careermove"
   | "settings";
 
-type StationKind = "good" | "bad" | "person" | "neutral";
+type StationKind = "good" | "bad" | "person" | "neutral" | "event";
 
 interface Station {
   x: number;
   y: number;
   opt: LifeOption;
   kind: StationKind;
+  /** For surprise world pickups/hazards spawned from events.ts. */
+  event?: RandomEvent;
   /** For bad items: which good category satiates it (diet = food, fit = activity). */
   guard?: string;
   /** Seconds before a bad item can catch you again after a contact. */
@@ -281,17 +282,35 @@ export class Game {
       habitCount: this.habitCount,
       caps: { bigFired: this.bigFired, jackpotFired: this.jackpotFired, petAdopted: this.petAdopted },
       events: [...this.eventsLog],
+      eventItems: this.stations
+        .filter((s) => s.kind === "event" && s.event)
+        .map((s) => ({
+          id: s.event!.id,
+          title: s.event!.title,
+          good: s.event!.good !== false,
+          x: Math.round(s.x),
+          y: Math.round(s.y),
+        })),
       timelineLen: this.timeline.filter(Boolean).length,
       historyLen: this.history.length,
     };
   }
 
-  /** Test/debug: force a random event (by id, or a random eligible one). */
+  /** Test/debug: force a random event item (by id, or a default eligible one). */
   debugFireEvent(id?: string): string | null {
     const e = id ? EVENTS.find((x) => x.id === id) : EVENTS[0];
     if (!e || this.mode !== "playing") return null;
-    this.fireEvent(e);
+    this.spawnEventItem(e);
     return e.id;
+  }
+
+  /** Test/debug: collect a visible event item immediately. */
+  debugCollectEvent(id?: string): string | null {
+    const st = this.stations.find((s) => s.kind === "event" && s.event && (!id || s.event.id === id));
+    if (!st || this.mode !== "playing") return null;
+    const eventId = st.event!.id;
+    this.collectEventItem(st);
+    return eventId;
   }
 
   /** Test/debug: choose an option by id in the current stage (ignores position). */
@@ -680,6 +699,11 @@ export class Game {
     }
 
     const st = this.stations[this.focusIndex];
+    if (st.kind === "event") {
+      this.cooldown = 0.2;
+      this.collectEventItem(st);
+      return;
+    }
     if (st.kind === "bad") return; // bad things aren't pressed — they catch you
     const opt = st.opt;
     if (opt.once && this.usedOnce.has(opt.id)) {
@@ -861,6 +885,7 @@ export class Game {
   }
 
   private maybeFireEvent(): void {
+    if (this.stations.some((st) => st.kind === "event")) return;
     if (this.eventCooldown > 0) {
       this.eventCooldown -= 1;
       return;
@@ -871,23 +896,82 @@ export class Game {
     // long, lucky-starved life a real (but still ~once) shot at its one big moment.
     if (!this.jackpotFired && this.stageIndex >= STAGES.length - 3 && Math.random() < 0.25) {
       const jackpots = EVENTS.filter((e) => e.tier === "jackpot" && this.eventEligible(e));
-      if (jackpots.length) return this.fireEvent(weightedPick(jackpots));
+      if (jackpots.length) return this.spawnEventItem(weightedPick(jackpots));
     }
     if (pool.length === 0) return;
-    this.fireEvent(weightedPick(pool));
+    this.spawnEventItem(weightedPick(pool));
   }
 
-  private fireEvent(e: RandomEvent): void {
+  private spawnEventItem(e: RandomEvent): void {
+    const pos = this.eventSpawnPosition();
+    const category: OptionCategory =
+      e.tier === "pet" ? "social" : e.money && e.money > 0 ? "wealth" : "special";
+    this.stations.push({
+      ...pos,
+      opt: {
+        id: `event-${e.id}`,
+        label: e.title,
+        icon: e.emoji,
+        desc: e.desc,
+        category,
+        effects: e.effects,
+        storyTag: "easter_event",
+      },
+      kind: "event",
+      event: e,
+      contactCd: 0,
+      satiated: 0,
+    });
+    this.eventCooldown = 4;
+  }
+
+  private eventSpawnPosition(): { x: number; y: number } {
+    const spawnLeft = this.px > W / 2;
+    const yMid = (PY_MIN + PY_MAX) / 2;
+    for (let tries = 0; tries < 14; tries++) {
+      const x = spawnLeft ? 88 + Math.random() * 120 : W - 210 + Math.random() * 120;
+      const y = PY_MIN + 34 + Math.random() * (PY_MAX - PY_MIN - 68);
+      if (Math.hypot(x - this.px, y - this.py) < 150) continue;
+      if (this.stations.some((st) => Math.hypot(x - st.x, y - st.y) < 58)) continue;
+      return { x, y };
+    }
+    const fallbackY = Math.max(PY_MIN + 34, Math.min(PY_MAX - 34, this.py + (this.py < yMid ? 165 : -165)));
+    return { x: spawnLeft ? 130 : W - 150, y: fallbackY };
+  }
+
+  private collectEventItem(st: Station): void {
+    const e = st.event;
+    if (!e) return;
     if (e.once) this.usedEvents.add(e.id);
     if (e.tier === "big") this.bigFired = true;
     if (e.tier === "jackpot") this.jackpotFired = true;
     if (e.tier === "pet") this.petAdopted = true;
-    this.eventCooldown = 4;
+    const i = this.stations.indexOf(st);
+    if (i >= 0) this.stations.splice(i, 1);
+    this.focusIndex = -1;
+    this.markGuideSeen();
     this.applyEff(e.effects, e.tier === "pet" ? "mental" : "split");
     if (e.money) this.money = Math.max(0, this.money + e.money);
     this.eventsLog.push(e.storyClause);
-    this.mode = "event";
-    this.showEvent(e);
+    this.floats.push({
+      x: st.x,
+      y: st.y - 62,
+      text: e.emoji,
+      color: e.good === false ? "#ff8a8a" : e.tier === "pet" ? "#ffd23f" : "#3ddc84",
+      life: 1.2,
+    });
+    if (e.money) {
+      this.floats.push({
+        x: st.x,
+        y: st.y - 82,
+        text: `${e.money > 0 ? "+" : "−"}${formatMoney(Math.abs(e.money))}`,
+        color: e.money > 0 ? "#3ddc84" : "#ff9f6b",
+        life: 1.45,
+      });
+    }
+    this.spawnFloats(e.effects);
+    this.renderFocusPanel();
+    if (this.stats.health <= 0) this.finishLife("health", Math.round(this.age));
   }
 
   /** Body-weight change implied by an option when it has no explicit `weight`. */
@@ -1329,6 +1413,7 @@ export class Game {
     // thing that catches you applies automatically
     this.moveStations(dt);
     this.checkBadContacts();
+    this.checkEventContacts();
     if (this.mode !== "playing") return;
 
     if (this.actQueued) {
@@ -1362,6 +1447,7 @@ export class Game {
     let bestD = 999;
     this.stations.forEach((st, i) => {
       if (st.kind === "bad") return;
+      if (st.kind === "event" && st.event?.good === false) return;
       const dx = Math.abs(this.px - st.x);
       const dy = Math.abs(this.py - st.y);
       if (dx < 38 && dy < 42 && dx + dy < bestD) {
@@ -1391,15 +1477,16 @@ export class Game {
     for (const st of this.stations) {
       if (st.contactCd > 0) st.contactCd -= dt;
       if (st.kind === "bad" && st.satiated > 0) { st.satiated -= dt; continue; } // satiated → frozen
-      if (st.kind !== "good" && st.kind !== "bad") continue;
+      const badEvent = st.kind === "event" && st.event?.good === false;
+      if (st.kind !== "good" && st.kind !== "bad" && !badEvent) continue;
       const dx = this.px - st.x;
       const dy = this.py - st.y;
       const d = Math.hypot(dx, dy) || 1;
-      const dir = st.kind === "bad" ? 1 : -1; // bad → toward you, good → away
-      const sp = st.kind === "bad" ? BAD_SPEED : GOOD_SPEED;
+      const dir = st.kind === "bad" || badEvent ? 1 : -1; // bad → toward you, good → away
+      const sp = badEvent ? BAD_SPEED * 0.7 : st.kind === "bad" ? BAD_SPEED : GOOD_SPEED;
       let nx = st.x + (dir * dx / d) * sp * dt;
       let ny = st.y + (dir * dy / d) * sp * dt;
-      if (st.kind === "bad") {
+      if (st.kind === "bad" || badEvent) {
         for (const p of people) {
           if (Math.hypot(nx - p.x, ny - p.y) < BLOCK_R) {
             nx = st.x; // an NPC stands in the way — the bad thing can't get past
@@ -1422,6 +1509,16 @@ export class Game {
       this.applyOption(st.opt); // you "just get" the bad thing
       this.respawnBadItem(st); // it circles back for another go
       if (this.mode !== "playing") return; // applyOption may have ended the life
+    }
+  }
+
+  /** Bad-luck event objects are hazards; touching one applies it in-world. */
+  private checkEventContacts(): void {
+    for (const st of [...this.stations]) {
+      if (st.kind !== "event" || !st.event || st.event.good !== false) continue;
+      if (Math.hypot(this.px - st.x, this.py - st.y) > ITEM_R + 4) continue;
+      this.collectEventItem(st);
+      if (this.mode !== "playing") return;
     }
   }
 
@@ -1452,8 +1549,7 @@ export class Game {
       this.mode === "timetravel" ||
       this.mode === "profile" ||
       this.mode === "careermove" ||
-      this.mode === "settings" ||
-      this.mode === "event";
+      this.mode === "settings";
     if (inRoom && this.stageIndex < STAGES.length) {
       const s = STAGES[this.stageIndex];
       const t = this.walkPhase;
@@ -1485,17 +1581,20 @@ export class Game {
         const satiated = st.kind === "bad" && st.satiated > 0;
         // a ground-ring marks moving items: red = a BAD thing chasing you (dodge
         // it!), green = a GOOD thing fleeing (chase it + press SPACE)
-        if (!satiated && (st.kind === "bad" || st.kind === "good")) {
-          const bad = st.kind === "bad";
+        if (!satiated && (st.kind === "bad" || st.kind === "good" || st.kind === "event")) {
+          const bad = st.kind === "bad" || st.event?.good === false;
+          const eventMoney = st.kind === "event" && !!st.event?.money && st.event.money > 0;
           const pulse = 0.5 + 0.3 * Math.sin(t * (bad ? 6 : 3));
           ctx.save();
           ctx.globalAlpha = pulse;
-          ctx.fillStyle = bad ? "#ff5d6c" : "#3ddc84";
+          ctx.fillStyle = bad ? "#ff5d6c" : eventMoney ? "#ffd23f" : "#3ddc84";
           ellipseRing(ctx, st.x, st.y + 16, 22, 7);
           ctx.restore();
         }
         if (satiated) ctx.globalAlpha = 0.18;
-        if (st.opt.person) {
+        if (st.kind === "event" && st.event) {
+          drawEventItem(ctx, st.x, st.y, st.event.id, st.event.emoji, st.event.title, st.event.good !== false, focused, t);
+        } else if (st.opt.person) {
           drawPerson(ctx, st.x, st.y, st.opt.person, this.gender, st.opt.label, focused, used, t, this.stageIndex);
         } else {
           drawStation(ctx, st.x, st.y, st.opt.icon, st.opt.label, st.opt.category, focused, used, t);
@@ -1590,8 +1689,21 @@ export class Game {
       }
       return;
     }
-    const opt = this.stations[this.focusIndex].opt;
+    const st = this.stations[this.focusIndex];
     const mk = (text: string, color: string) => `<span class="plj-chip" style="color:${color}">${text}</span>`;
+    if (st.kind === "event" && st.event) {
+      const e = st.event;
+      const good = e.good !== false;
+      const money = e.money
+        ? mk(`${e.money > 0 ? "+" : "−"}${formatMoney(Math.abs(e.money))}`, e.money > 0 ? "#3ddc84" : "#ff8a8a")
+        : "";
+      panel.innerHTML =
+        `<span class="plj-focus-title">${esc(e.emoji)} ${esc(e.title)}</span>` +
+        `<span class="plj-focus-desc">${esc(e.desc)}</span>` +
+        `<span class="plj-chips">${effectChips(e.effects)}${money}<b class="plj-press">${good ? "SPACE" : "TOUCH"}</b></span>`;
+      return;
+    }
+    const opt = st.opt;
     const extra: string[] = [];
     if (opt.earn) {
       const est = opt.earn * (opt.scalesWithSmarts ? this.incomeMul() * (this.occupation?.salaryMul ?? 1) : 1);
@@ -2279,24 +2391,6 @@ export class Game {
       btn.onclick = () => this.rewind(Number(btn.dataset.i));
     });
     this.ui.overlay.querySelector<HTMLButtonElement>("#plj-tt-cancel")!.onclick = () => {
-      this.mode = "playing";
-      this.clearOverlay();
-    };
-  }
-
-  private showEvent(e: RandomEvent): void {
-    const good = e.good !== false;
-    this.ui.overlay.innerHTML = `
-      <div class="plj-card plj-event ${good ? "plj-event-good" : "plj-event-bad"}">
-        <div class="plj-event-emoji">${e.emoji}</div>
-        <h2>${e.title}</h2>
-        ${e.money ? `<p class="plj-event-cash">${e.money > 0 ? "+ " : "− "}${formatMoney(Math.abs(e.money))}</p>` : ""}
-        <p class="plj-event-desc">${e.desc}</p>
-        <div class="plj-chips" style="justify-content:center">${effectChips(e.effects)}</div>
-        <button class="plj-btn" id="plj-event-ok">${good ? "Lucky me! ✨" : "Ugh… 😅"}</button>
-      </div>`;
-    this.ui.overlay.classList.add("show");
-    this.ui.overlay.querySelector<HTMLButtonElement>("#plj-event-ok")!.onclick = () => {
       this.mode = "playing";
       this.clearOverlay();
     };
