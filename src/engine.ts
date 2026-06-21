@@ -79,6 +79,7 @@ const ITEM_R = 26; // contact / collect radius
 const BLOCK_R = 30; // an NPC standing in the path blocks a bad item
 const SATIATE_TIME = 9; // seconds a bad item stays frozen/faded after you do its good counterpart
 const BABY_FAMILY_SIT_R = 172; // newborn family lowers themselves when the baby crawls close
+const BAD_SOCIAL_TAGS = ["smoker_friend", "gangster_friend", "playboy_friend"];
 const INVENTORY_MAX_SLOTS = 8;
 const INVENTORY_MAX_COUNT = 9;
 const FOOD_USE_COOLDOWN = 5;
@@ -550,6 +551,7 @@ export class Game {
   /** Sort each choice into a kind: people are static, junk/screen-time CHASE you
    *  (bad), pickers are static (neutral), and free beneficial items FLEE (good). */
   private classifyOption(opt: LifeOption): { kind: StationKind; guard?: string } {
+    if (this.isBadSocialOption(opt)) return { kind: "bad", guard: opt.storyTag === "smoker_friend" ? "fit" : "focus" };
     if (opt.person) return { kind: "person" };
     if (opt.opensHousePicker || opt.opensVehiclePicker || opt.opensCareerDesk || opt.gamble || opt.invest || opt.moneyMgmt || opt.category === "special")
       return { kind: "neutral" };
@@ -616,6 +618,10 @@ export class Game {
     if (opt.person && familyPeople.includes(opt.person)) return true;
     const tag = opt.storyTag ?? "";
     return tag === "family" || tag === "family_love" || tag === "grandkids" || tag === "toy_doll" || opt.id === "baby";
+  }
+
+  private isBadSocialOption(opt: LifeOption): boolean {
+    return !!opt.person && !!opt.storyTag && BAD_SOCIAL_TAGS.includes(opt.storyTag);
   }
 
   private shouldSitWithNewborn(st: Station): boolean {
@@ -762,6 +768,7 @@ export class Game {
 
   /** Which health pillar an option's health effect should feed. */
   private healthKindFor(opt: LifeOption): "muscle" | "nutrition" | "mental" | "split" {
+    if (this.isBadSocialOption(opt)) return "split";
     if (opt.person || opt.category === "social") return "mental";
     if (opt.category === "health") return "muscle";
     if (opt.category === "food") return "nutrition";
@@ -883,10 +890,14 @@ export class Game {
     const s = STAGES[this.stageIndex];
     const discount = activityDiscount(this.stats);
     const realCost = opt.cost ? Math.round(opt.cost * discount) : 0;
+    const badSocial = this.isBadSocialOption(opt);
 
     const eff: Partial<Stats> = { ...opt.effects };
-    // IQ never jumps: damp a single action's brain delta to a couple of points
-    if (eff.smarts !== undefined) eff.smarts = dampIqGain(eff.smarts);
+    // IQ never jumps. Risky peer pressure gets a stronger visible penalty than
+    // ordinary distractions, but it is still capped to avoid one-contact ruin.
+    if (eff.smarts !== undefined) {
+      eff.smarts = badSocial && eff.smarts < 0 ? Math.max(-4, eff.smarts * 0.55) : dampIqGain(eff.smarts);
+    }
 
     let moneyDelta = 0;
     // earnings (work, chores) — scaled by IQ × your occupation's pay when relevant
@@ -899,7 +910,7 @@ export class Game {
     }
     // your professional network grows when you spend time with people / network
     if (opt.storyTag === "network") this.connections += 20 + Math.floor(Math.random() * 21);
-    else if (opt.person || opt.category === "social") this.connections += 1 + Math.floor(Math.random() * 3);
+    else if (!badSocial && (opt.person || opt.category === "social")) this.connections += 1 + Math.floor(Math.random() * 3);
     // pay any up-front (already-discounted) cost
     if (realCost) moneyDelta -= realCost;
     // buying stocks moves the stake out of cash and into the market pot
@@ -915,7 +926,8 @@ export class Game {
     // food freezes & fades; play sport OR spend time with family and screen-time
     // / all-night gaming stops chasing you (you're "full" of it for a while).
     if (opt.category === "food" && (opt.effects.health ?? 0) > 0) this.satiateBad("diet");
-    if (opt.category === "health" || opt.person || opt.category === "social") this.satiateBad("fit");
+    if (!badSocial && (opt.category === "health" || opt.person || opt.category === "social")) this.satiateBad("fit");
+    if (!badSocial && (opt.category === "smarts" || opt.storyTag === "study" || opt.storyTag === "friends" || opt.storyTag === "sports")) this.satiateBad("focus");
 
     // try-your-luck: roll the gamble and fold the dollar outcome in
     let gambleClause: string | null = null;
@@ -945,7 +957,7 @@ export class Game {
     this.money = Math.max(0, this.money + moneyDelta);
     this.applyEff(eff, this.healthKindFor(opt));
     // spending real time with people is a direct boost to mental wellbeing
-    if (opt.person) {
+    if (opt.person && !badSocial) {
       this.mental = clampStat(this.mental + 3);
       this.recomputeHealth();
     }
@@ -1609,7 +1621,8 @@ export class Game {
   private satiateBad(guard: string): void {
     for (const st of this.stations) {
       if (st.kind === "bad" && st.guard === guard) {
-        if (st.satiated <= 0) this.floats.push({ x: st.x, y: st.y - 30, text: guard === "diet" ? "🛡️ full!" : "🛡️ not now!", color: "#7fd0a0", life: 1.3 });
+        const text = guard === "diet" ? "🛡️ full!" : guard === "focus" ? "🛡️ focused!" : "🛡️ not now!";
+        if (st.satiated <= 0) this.floats.push({ x: st.x, y: st.y - 30, text, color: "#7fd0a0", life: 1.3 });
         st.satiated = SATIATE_TIME;
       }
     }

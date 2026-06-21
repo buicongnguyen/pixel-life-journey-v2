@@ -382,6 +382,9 @@ export function personLook(kind: PersonKind, playerGender: Gender, stageIndex?: 
     studyFriend: { g: "male", age: "teen", hair: "#3a2a1e", shirt: "#5aa3df" },
     bestFriend: { g: "female", age: "teen", hair: "#6a4327", shirt: "#8fdf6b" },
     crush: { g: opp, age: "teen", hair: opp === "female" ? "#6a4327" : "#3a2a1e", shirt: opp === "female" ? "#ff8fd0" : "#7f9cff" },
+    smokerFriend: { g: "male", age: "teen", hair: "#4a3428", shirt: "#6f7786" },
+    gangster: { g: "male", age: "teen", hair: "#171717", shirt: "#2f2f38" },
+    playboy: { g: "male", age: "teen", hair: "#6d3a1c", shirt: "#d64d7f" },
     roommate: { g: "male", age: "teen", hair: "#2a2a1e", shirt: "#dd865a" },
     coworker: { g: "female", age: "adult", hair: "#3a2a1e", shirt: "#54b3a6" },
     boss: { g: "male", age: "adult", hair: "#2a2a2a", shirt: "#4a5562" },
@@ -398,6 +401,7 @@ export function personLook(kind: PersonKind, playerGender: Gender, stageIndex?: 
     if (kind === "spouse") profileIndex = stageIndex >= 10 ? 10 : 7;
     if (kind === "child") profileIndex = stageIndex >= 9 ? 3 : 2;
     if (kind === "grandkid") profileIndex = stageIndex >= 11 ? 2 : 1;
+    if ((kind === "smokerFriend" || kind === "gangster" || kind === "playboy") && stageIndex >= 6) profileIndex = 6;
   }
   const p = STAGE_PROFILES[profileIndex];
   const ageAwareHair = kind === "spouse" && p.elder
@@ -1493,7 +1497,8 @@ export function drawAvatar(ctx: CanvasRenderingContext2D, cx: number, footY: num
 const PERSON_LABEL: Record<PersonKind, string> = {
   mother: "Mum", father: "Dad", grandma: "Grandma", grandpa: "Grandpa",
   sibling: "Sibling", playmate: "Playmate", studyFriend: "Study pal", bestFriend: "Best friend",
-  crush: "Crush", roommate: "Roommate", coworker: "Coworker", boss: "Boss",
+  crush: "Crush", smokerFriend: "Smoker friend", gangster: "Gangster", playboy: "Playboy",
+  roommate: "Roommate", coworker: "Coworker", boss: "Boss",
   gymBuddy: "Gym buddy", spouse: "Spouse", child: "Your child", grandkid: "Grandkid", oldFriend: "Old friend",
 };
 
