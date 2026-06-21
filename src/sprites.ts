@@ -1491,7 +1491,7 @@ function window2(ctx: CanvasRenderingContext2D, x: number, y: number, w: number,
 }
 
 function drawSocialArea(ctx: CanvasRenderingContext2D, W: number, top: number, bottom: number, t: number): void {
-  const horizon = Math.round(Math.min(top + 86, bottom - 122));
+  const horizon = Math.round(Math.min(top + 48, bottom - 122));
   const sky = ctx.createLinearGradient(0, top, 0, horizon);
   sky.addColorStop(0, "#8fd0ff");
   sky.addColorStop(1, "#d9f4ff");
@@ -1499,13 +1499,13 @@ function drawSocialArea(ctx: CanvasRenderingContext2D, W: number, top: number, b
   ctx.fillRect(0, top, W, horizon - top);
   px(ctx, 0, top, W, 3, "#5ca9d6");
   const cloudShift = (t * 9) % 160;
-  for (const [x0, y, s] of [[42, top + 42, 1], [240, top + 28, 0.75], [410, top + 58, 0.9], [585, top + 36, 0.7]] as const) {
+  for (const [x0, y, s] of [[42, top + 24, 0.82], [240, top + 18, 0.62], [410, top + 34, 0.72], [585, top + 22, 0.58]] as const) {
     const x = ((x0 + cloudShift) % (W + 120)) - 80;
     ellipse(ctx, x, y, 22 * s, 8 * s, "rgba(255,255,255,0.86)");
     ellipse(ctx, x + 20 * s, y + 4 * s, 26 * s, 9 * s, "rgba(255,255,255,0.80)");
     ellipse(ctx, x - 18 * s, y + 5 * s, 16 * s, 6 * s, "rgba(255,255,255,0.76)");
   }
-  ellipse(ctx, W - 70, top + 38, 22, 22, "#ffe27a");
+  ellipse(ctx, W - 70, top + 24, 18, 18, "#ffe27a");
 
   const ground = ctx.createLinearGradient(0, horizon, 0, bottom);
   ground.addColorStop(0, "#a5df86");

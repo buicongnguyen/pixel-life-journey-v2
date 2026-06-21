@@ -64,7 +64,7 @@ const FLOOR_Y = 112; // smaller backdrop, taller playable split-zone room
 const DOOR_X = W - 74;
 const GATE_HALF_H = 86;
 const SPEED = 205; // base move speed (scaled up by your IQ — smart = nimble)
-const PY_MIN = 150;
+const PY_MIN = 196; // keep the sky strip scenic; feet stay on outdoor ground
 const PY_MAX = 782;
 const SOCIAL_Y_MIN = PY_MIN + 58;
 const FAMILY_Y_MAX = PY_MAX - 24;
