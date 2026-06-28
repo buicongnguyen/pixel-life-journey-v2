@@ -28,11 +28,12 @@ export interface UIRefs {
   settingsBtn: HTMLElement;
   skipBtn: HTMLElement;
   touchWrap: HTMLElement;
+  stick: HTMLElement;
+  stickKnob: HTMLElement;
   inventoryWrap: HTMLElement;
   inventoryTrack: HTMLElement;
   collectBtn: HTMLElement;
   overlay: HTMLElement;
-  touch: Record<"up" | "down" | "left" | "right", HTMLElement>;
 }
 
 function el<K extends keyof HTMLElementTagNameMap>(
@@ -151,19 +152,19 @@ export function createUI(mount: HTMLElement): UIRefs {
 
   // --- touch controls -------------------------------------------------------
   const touchWrap = el("div", "plj-touch");
-  const dpad = el("div", "plj-dpad");
-  const up = el("button", "plj-tbtn plj-up", "▲");
-  const left = el("button", "plj-tbtn plj-left", "◀");
-  const right = el("button", "plj-tbtn plj-right", "▶");
-  const down = el("button", "plj-tbtn plj-down", "▼");
-  dpad.append(up, left, right, down);
+  // an analog thumb-stick (drag in any direction) — works with touch AND mouse
+  const stick = el("div", "plj-stick");
+  stick.dataset.engaged = "false";
+  const stickKnob = el("div", "plj-stick-knob");
+  const stickHint = el("span", "plj-stick-hint", "move");
+  stick.append(stickKnob, stickHint);
   const inventoryWrap = el("div", "plj-inventory");
   inventoryWrap.title = "Swipe left/right to select. Swipe up to eat food, or near a person to give.";
   const inventoryTrack = el("div", "plj-inventory-track");
   inventoryWrap.append(inventoryTrack);
   const collectBtn = el("button", "plj-collect-btn", "<span class='plj-collect-ic'>🤝</span><span class='plj-collect-lbl'>Collect</span>");
   collectBtn.title = "Collect / interact (or press SPACE)";
-  touchWrap.append(dpad, inventoryWrap, collectBtn);
+  touchWrap.append(stick, inventoryWrap, collectBtn);
   // the touch controls live INSIDE the stage so they overlay the canvas (thumbs
   // on the game), keeping everything on one mobile screen with no page scroll
   stage.append(touchWrap);
@@ -194,10 +195,11 @@ export function createUI(mount: HTMLElement): UIRefs {
     settingsBtn,
     skipBtn,
     touchWrap,
+    stick,
+    stickKnob,
     inventoryWrap,
     inventoryTrack,
     collectBtn,
     overlay,
-    touch: { up, down, left, right },
   };
 }

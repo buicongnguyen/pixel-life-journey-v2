@@ -60,6 +60,7 @@ import {
 import { avatarLook, drawAvatar, drawEventItem, drawPerson, drawPet, drawRoom, drawStation, type AvatarFacing } from "./sprites";
 import { createUI, type UIRefs } from "./ui";
 import { generateStory, type CauseOfEnd, type LifeStory } from "./story";
+import { linePool } from "./messages";
 
 const W = 640;
 const H = 800; // a tall room with only a thin sky strip above the playfield
@@ -124,7 +125,7 @@ const LIFE_SPEED_DEFAULT_INDEX = LIFE_SPEEDS.indexOf(1);
 const LIFE_SPEED_MIN_INDEX = 0;
 const LIFE_SPEED_MAX_INDEX = LIFE_SPEEDS.length - 1;
 const HERITAGE_OPTIONS: { id: HeritageStyle; label: string; icon: string }[] = [
-  { id: "western", label: "Western / current", icon: "🌎" },
+  { id: "western", label: "Western", icon: "🌎" },
   { id: "asian", label: "Asian", icon: "🏮" },
   { id: "middleEastern", label: "Middle Eastern", icon: "🕌" },
   { id: "black", label: "Black / African diaspora", icon: "🌍" },
@@ -1319,6 +1320,8 @@ export class Game {
   private people: Station[] = []; // cached person stations (block bad items)
   // a transient banner shown in the sky area after you interact with a person
   private skyMessage: { text: string; sub?: string; color: string; timer: number } | null = null;
+  // rotating flavor-line cursor, keyed per person-kind / item-id (cosmetic)
+  private lineIndex: Record<string, number> = {};
   private floats: FloatText[] = [];
   private focusIndex = -1;
 
@@ -1326,6 +1329,11 @@ export class Game {
   private py = 450;
   private walkPhase = 0;
   private moving = false;
+  // analog thumb-stick vector (-1..1); when engaged it overrides the keyboard
+  private joyActive = false;
+  private joyX = 0;
+  private joyY = 0;
+  private joyPointerId: number | null = null;
   private facing: AvatarFacing = "front";
   private verticalBias = 0;
   private cooldown = 0;
@@ -1563,6 +1571,7 @@ export class Game {
 
   private newGame(keepBiography = false, startStageIndex = 0, familyFundOverride?: number): void {
     if (!keepBiography) this.biography = null; // normal play is never a replay
+    this.lineIndex = {}; // restart the rotating greeting / pickup lines
     const startIndex = keepBiography ? 0 : this.normalizeStageIndex(startStageIndex);
     this.stats = { ...START_STATS };
     this.age = 0;
@@ -2032,7 +2041,7 @@ export class Game {
   }
 
   private heritageLabel(): string {
-    return HERITAGE_OPTIONS.find((o) => o.id === this.heritage)?.label ?? "Western / current";
+    return HERITAGE_OPTIONS.find((o) => o.id === this.heritage)?.label ?? "Western";
   }
 
   /** The chapter gate is open once you're old enough — or always, when replaying
@@ -3009,27 +3018,38 @@ export class Game {
       return;
     }
 
-    // movement
+    // movement — an analog thumb-stick (any direction, speed scales with tilt)
+    // takes over when engaged; otherwise the keyboard drives a unit vector.
     let dx = 0;
     let dy = 0;
-    if (this.input.left) dx -= 1;
-    if (this.input.right) dx += 1;
-    if (this.input.up) dy -= 1;
-    if (this.input.down) dy += 1;
-    this.moving = dx !== 0 || dy !== 0;
+    if (this.joyActive) {
+      dx = this.joyX;
+      dy = this.joyY;
+    } else {
+      if (this.input.left) dx -= 1;
+      if (this.input.right) dx += 1;
+      if (this.input.up) dy -= 1;
+      if (this.input.down) dy += 1;
+    }
+    let mag = Math.hypot(dx, dy);
+    if (mag > 1) {
+      dx /= mag;
+      dy /= mag;
+      mag = 1;
+    } // cap keyboard diagonals + stick overshoot at full speed
+    this.moving = mag > 0.12; // a small dead-zone so a resting thumb doesn't drift
     if (this.moving) {
-      const len = Math.hypot(dx, dy) || 1;
-      const nx = dx / len;
-      const ny = dy / len;
+      const nx = dx / mag;
+      const ny = dy / mag;
       this.verticalBias = ny;
       if (Math.abs(nx) > 0.15) this.facing = nx < 0 ? "left" : "right";
       else this.facing = ny < -0.15 ? "back" : "front";
       const sp = SPEED * this.speedFactor(); // study & smarts make you nimbler
-      this.px += nx * sp * dt;
-      this.py += ny * sp * dt;
+      this.px += dx * sp * dt; // dx/dy carry the analog magnitude → variable speed
+      this.py += dy * sp * dt;
       this.px = Math.max(48, Math.min(W - 36, this.px));
       this.py = Math.max(PY_MIN, Math.min(PY_MAX, this.py));
-      this.walkPhase += dt * 10;
+      this.walkPhase += dt * 10 * Math.min(1, mag * 1.5);
     } else {
       this.verticalBias = 0;
       this.walkPhase += dt * 3;
@@ -3298,7 +3318,7 @@ export class Game {
       if (st.opt.category === "food") {
         this.floats.push({ x: st.x, y: st.y - 52, text: `${st.opt.icon} stored`, color: "#9fe870", life: 1.1 });
         this.skyMessage = {
-          text: `${st.opt.icon} ${st.opt.desc || st.opt.label}`,
+          text: `${st.opt.icon} ${this.cycledLine(st.opt)}`,
           sub: "📦 stored · swipe ↑ to eat or give",
           color: "#bfe0ff",
           timer: 3,
@@ -3873,6 +3893,17 @@ export class Game {
   }
 
   /** After interacting with a person, announce who + the point change in the sky. */
+  /** The next rotating flavor line for a person (by kind) or item (by id), looping;
+   *  falls back to the option's own desc when no lines are defined for it. */
+  private cycledLine(opt: LifeOption): string {
+    const pool = linePool(opt.person, opt.id);
+    if (!pool || !pool.length) return (opt.desc || opt.label || "").trim();
+    const key = opt.person ? "p:" + opt.person : "i:" + opt.id;
+    const i = this.lineIndex[key] ?? 0;
+    this.lineIndex[key] = i + 1;
+    return pool[i % pool.length];
+  }
+
   private showOptionSky(opt: LifeOption, before: { health: number; happiness: number; fun: number; smarts: number; money: number }, overrideText?: string): void {
     const parts: string[] = [];
     const add = (now: number, was: number, icon: string): void => {
@@ -3885,7 +3916,7 @@ export class Game {
     add(this.stats.smarts, before.smarts, "🧠");
     const dMoney = Math.round(this.money - before.money);
     if (dMoney !== 0) parts.push(`💰${dMoney > 0 ? "+" : "-"}${formatMoney(Math.abs(dMoney)).replace("$", "")}`);
-    const desc = (opt.desc || opt.label || "Nice to see you.").trim();
+    const desc = overrideText ? "" : this.cycledLine(opt);
     const good = this.stats.happiness - before.happiness + (this.stats.health - before.health) >= 0;
     this.skyMessage = {
       text: overrideText || `${opt.icon} ${desc}`,
@@ -5527,6 +5558,25 @@ export class Game {
 
   // --- input ----------------------------------------------------------------
 
+  /** Map a thumb-stick drag to a normalized (-1..1) vector + move the knob. */
+  private updateStick(e: PointerEvent): void {
+    const rect = this.ui.stick.getBoundingClientRect();
+    const cx = rect.left + rect.width / 2;
+    const cy = rect.top + rect.height / 2;
+    const maxR = Math.min(rect.width, rect.height) * 0.34;
+    let dx = e.clientX - cx;
+    let dy = e.clientY - cy;
+    const dist = Math.hypot(dx, dy);
+    if (dist > maxR && dist > 0) {
+      dx = (dx / dist) * maxR;
+      dy = (dy / dist) * maxR;
+    }
+    this.ui.stickKnob.style.setProperty("--stick-x", `${dx.toFixed(1)}px`);
+    this.ui.stickKnob.style.setProperty("--stick-y", `${dy.toFixed(1)}px`);
+    this.joyX = maxR > 0 ? dx / maxR : 0;
+    this.joyY = maxR > 0 ? dy / maxR : 0;
+  }
+
   private bindInput(): void {
     const setDir = (e: KeyboardEvent, down: boolean): void => {
       switch (e.key) {
@@ -5568,18 +5618,42 @@ export class Game {
       }
     });
 
-    const bindHold = (node: HTMLElement, key: "left" | "right" | "up" | "down"): void => {
-      const on = (e: Event) => { e.preventDefault(); this.input[key] = true; };
-      const off = (e: Event) => { e.preventDefault(); this.input[key] = false; };
-      node.addEventListener("pointerdown", on);
-      node.addEventListener("pointerup", off);
-      node.addEventListener("pointerleave", off);
-      node.addEventListener("pointercancel", off);
+    // --- analog thumb-stick (Rambo-style): drag in any direction; speed scales
+    // with how far you push. Pointer events → works with touch AND mouse. ---
+    const stick = this.ui.stick;
+    const releaseStick = (e?: PointerEvent): void => {
+      if (e && e.pointerId !== this.joyPointerId) return;
+      if (e && this.joyPointerId !== null && stick.hasPointerCapture(this.joyPointerId)) {
+        stick.releasePointerCapture(this.joyPointerId);
+      }
+      this.joyPointerId = null;
+      this.joyActive = false;
+      this.joyX = 0;
+      this.joyY = 0;
+      stick.dataset.engaged = "false";
+      this.ui.stickKnob.style.setProperty("--stick-x", "0px");
+      this.ui.stickKnob.style.setProperty("--stick-y", "0px");
     };
-    bindHold(this.ui.touch.left, "left");
-    bindHold(this.ui.touch.right, "right");
-    bindHold(this.ui.touch.up, "up");
-    bindHold(this.ui.touch.down, "down");
+    stick.addEventListener("pointerdown", (e) => {
+      if (this.joyPointerId !== null) return; // first finger owns the stick
+      e.preventDefault();
+      this.joyPointerId = e.pointerId;
+      this.joyActive = true;
+      stick.dataset.engaged = "true";
+      stick.setPointerCapture(e.pointerId);
+      this.updateStick(e);
+    });
+    stick.addEventListener("pointermove", (e) => {
+      if (e.pointerId !== this.joyPointerId) return;
+      e.preventDefault();
+      this.updateStick(e);
+    });
+    stick.addEventListener("pointerup", releaseStick);
+    stick.addEventListener("pointercancel", releaseStick);
+    stick.addEventListener("lostpointercapture", () => {
+      if (this.joyPointerId !== null) releaseStick();
+    });
+    stick.addEventListener("contextmenu", (e) => e.preventDefault());
 
     let inventoryDrag: { x: number; y: number; index: number | null; pointerId: number } | null = null;
     const inventoryIndexFrom = (target: EventTarget | null): number | null => {

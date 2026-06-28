@@ -327,38 +327,50 @@ body {
   user-select: none;
   z-index: 3;
 }
-.plj-dpad,
+.plj-stick,
 .plj-inventory {
   pointer-events: auto;
 }
-.plj-dpad {
+/* analog thumb-stick: a round zone you drag in any direction (touch or mouse) */
+.plj-stick {
+  position: relative;
+  flex: 0 0 auto;
+  width: 124px;
+  height: 124px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  background:
+    radial-gradient(circle at 50% 38%, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0) 60%),
+    linear-gradient(180deg, rgba(44, 30, 84, 0.6), rgba(17, 27, 52, 0.66));
+  box-shadow: 0 3px 0 rgba(0, 0, 0, 0.4), inset 0 0 0 6px rgba(255, 255, 255, 0.05);
   display: grid;
-  grid-template-columns: repeat(3, 46px);
-  grid-template-rows: repeat(3, 46px);
-  grid-template-areas:
-    ". up ."
-    "left . right"
-    ". down .";
-  gap: 4px;
-}
-.plj-up { grid-area: up; }
-.plj-down { grid-area: down; }
-.plj-left { grid-area: left; }
-.plj-right { grid-area: right; }
-.plj-tbtn {
-  border: 2px solid rgba(255, 255, 255, 0.18);
-  background: rgba(44, 30, 84, 0.62);
-  color: var(--ink);
-  border-radius: 12px;
-  font-size: 18px;
-  font-weight: 700;
+  place-items: center;
   touch-action: none;
-  cursor: pointer;
-  box-shadow: 0 3px 0 rgba(0, 0, 0, 0.4);
+  cursor: grab;
 }
-.plj-tbtn:active {
-  transform: translateY(2px);
-  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.4);
+.plj-stick[data-engaged="true"] {
+  border-color: rgba(255, 255, 255, 0.42);
+  cursor: grabbing;
+}
+.plj-stick-knob {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.32);
+  background: linear-gradient(180deg, var(--pink), #b8407f);
+  box-shadow: 0 2px 0 rgba(0, 0, 0, 0.42);
+  transform: translate(var(--stick-x, 0px), var(--stick-y, 0px));
+  pointer-events: none;
+}
+.plj-stick-hint {
+  position: absolute;
+  bottom: 9px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.5);
+  pointer-events: none;
 }
 .plj-inventory {
   flex: 1 1 0;
@@ -456,10 +468,13 @@ body {
     --plj-control-gap: clamp(6px, 2vw, 12px);
     padding: 0 8px;
   }
-  .plj-dpad {
-    grid-template-columns: repeat(3, 40px);
-    grid-template-rows: repeat(3, 40px);
-    gap: 3px;
+  .plj-stick {
+    width: 104px;
+    height: 104px;
+  }
+  .plj-stick-knob {
+    width: 48px;
+    height: 48px;
   }
   .plj-inventory {
     min-height: 52px;
@@ -1934,14 +1949,13 @@ body {
   .plj-hint {
     bottom: max(156px, calc(env(safe-area-inset-bottom, 0px) + 146px));
   }
-  .plj-dpad {
-    grid-template-columns: repeat(3, 36px);
-    grid-template-rows: repeat(3, 36px);
-    gap: 3px;
+  .plj-stick {
+    width: 96px;
+    height: 96px;
   }
-  .plj-tbtn {
-    border-radius: 10px;
-    font-size: 16px;
+  .plj-stick-knob {
+    width: 44px;
+    height: 44px;
   }
   .plj-inventory {
     min-height: 48px;
@@ -2007,18 +2021,17 @@ body {
     padding: 0;
     pointer-events: none;
   }
-  .plj-dpad {
+  .plj-stick {
     position: absolute;
     left: max(8px, env(safe-area-inset-left, 0px));
     bottom: max(8px, env(safe-area-inset-bottom, 0px));
-    grid-template-columns: repeat(3, 32px);
-    grid-template-rows: repeat(3, 32px);
-    gap: 3px;
+    width: 92px;
+    height: 92px;
     pointer-events: auto;
   }
-  .plj-tbtn {
-    border-radius: 9px;
-    font-size: 14px;
+  .plj-stick-knob {
+    width: 42px;
+    height: 42px;
   }
   .plj-inventory {
     position: absolute;
