@@ -1351,6 +1351,52 @@ body {
   border-radius: 6px;
   vertical-align: middle;
 }
+/* Assets page: the buy/sell market rows */
+.plj-market {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 2px 0 9px;
+}
+.plj-market-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 5px 10px;
+  padding: 7px 9px;
+  border: 1px solid rgba(127, 127, 127, 0.24);
+  border-radius: 10px;
+}
+.plj-market-main {
+  display: flex;
+  flex-direction: column;
+  min-width: 112px;
+  flex: 1 1 auto;
+}
+.plj-market-name {
+  font-weight: 700;
+  font-size: 12px;
+}
+.plj-market-index {
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+.plj-market-index.is-up {
+  color: #4fd08a;
+}
+.plj-market-index.is-down {
+  color: #ff8a8a;
+}
+.plj-market-hold {
+  font-size: 11px;
+  color: var(--muted);
+  min-width: 78px;
+}
+.plj-market-actions {
+  display: flex;
+  gap: 5px;
+  flex-wrap: wrap;
+}
 .plj-training-answers,
 .plj-training-grid {
   display: grid;

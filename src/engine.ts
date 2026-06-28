@@ -1168,6 +1168,17 @@ interface FamilyEdge {
 }
 
 /** A rewindable snapshot of the whole life, captured at each stage's start. */
+type MarketKey = "stock" | "gold" | "property";
+// A tiny tradable market for the Assets page. drift = long-run nominal annual
+// return, vol = a toned-down yearly wiggle — from historical figures (S&P 500
+// ~10%/yr, gold ~7%/yr, US housing ~4–5%/yr). Prices drift up with a little
+// randomness, so it reads as a mostly-up line you can buy low and sell high.
+const MARKET_ASSETS: { key: MarketKey; icon: string; name: string; drift: number; vol: number }[] = [
+  { key: "stock", icon: "📈", name: "Stock index", drift: 0.09, vol: 0.11 },
+  { key: "gold", icon: "🥇", name: "Gold", drift: 0.06, vol: 0.09 },
+  { key: "property", icon: "🏘️", name: "Property fund", drift: 0.05, vol: 0.05 },
+];
+
 interface Snapshot {
   stageIndex: number;
   age: number;
@@ -1194,6 +1205,8 @@ interface Snapshot {
   spouseDeceased: boolean;
   habitCount: number;
   investments: number;
+  market: Record<MarketKey, number>;
+  holdings: Record<MarketKey, number>;
   moneyWise: boolean;
   iqCeiling: number;
   geneBonus: number;
@@ -1322,6 +1335,9 @@ export class Game {
   private skyMessage: { text: string; sub?: string; color: string; timer: number } | null = null;
   // rotating flavor-line cursor, keyed per person-kind / item-id (cosmetic)
   private lineIndex: Record<string, number> = {};
+  // a small buy/sell market shown on the Assets page (price index + units held)
+  private market: Record<MarketKey, number> = { stock: 100, gold: 100, property: 100 };
+  private holdings: Record<MarketKey, number> = { stock: 0, gold: 0, property: 0 };
   private floats: FloatText[] = [];
   private focusIndex = -1;
 
@@ -1591,6 +1607,8 @@ export class Game {
     this.houseUpkeep = 0;
     this.rentalIncome = 0;
     this.investments = 0;
+    this.market = { stock: 100, gold: 100, property: 100 };
+    this.holdings = { stock: 0, gold: 0, property: 0 };
     this.moneyWise = false;
     // roll a lifelong IQ potential (mean 100, sd 15, clamped) + a rare gifted bump
     this.iqCeiling = Math.max(70, Math.min(145, Math.round(gaussian(100, 15))));
@@ -1700,6 +1718,8 @@ export class Game {
       spouseDeceased: this.spouseDeceased,
       habitCount: this.habitCount,
       investments: this.investments,
+      market: { ...this.market },
+      holdings: { ...this.holdings },
       moneyWise: this.moneyWise,
       iqCeiling: this.iqCeiling,
       geneBonus: this.geneBonus,
@@ -2144,6 +2164,7 @@ export class Game {
   /** Net worth in dollars: cash + stocks + appreciated property + depreciated vehicles. */
   private netWorth(): number {
     let nw = this.money + this.investments;
+    for (const a of MARKET_ASSETS) nw += this.holdings[a.key] * this.market[a.key];
     this.homes.forEach((h, i) => { nw += this.houseAssetValue(h, i); });
     for (const v of this.ownedVehicles()) nw += this.vehicleAssetValue(v);
     return nw;
@@ -2685,6 +2706,10 @@ export class Game {
       this.investments = Math.min(this.investments, 50000000); // keep the pot sane
     }
 
+    // the tradable market also drifts forward a chapter's worth of years
+    const marketYears = STAGES[this.stageIndex] ? Math.max(2, Math.min(14, STAGES[this.stageIndex].ageEnd - STAGES[this.stageIndex].ageStart)) : 5;
+    this.stepMarket(marketYears);
+
     // spare properties pay rent every chapter
     if (this.rentalIncome > 0) {
       this.money += this.rentalIncome;
@@ -2931,6 +2956,8 @@ export class Game {
     this.spouseDeceased = snap.spouseDeceased;
     this.habitCount = snap.habitCount;
     this.investments = snap.investments;
+    this.market = snap.market ? { ...snap.market } : { stock: 100, gold: 100, property: 100 };
+    this.holdings = snap.holdings ? { ...snap.holdings } : { stock: 0, gold: 0, property: 0 };
     this.moneyWise = snap.moneyWise;
     this.iqCeiling = snap.iqCeiling;
     this.geneBonus = snap.geneBonus;
@@ -4728,8 +4755,65 @@ export class Game {
     };
   }
 
+  /** Move each market price one chapter forward: drift up with a little randomness. */
+  private stepMarket(years: number): void {
+    const n = Math.max(1, Math.round(years));
+    for (const a of MARKET_ASSETS) {
+      let p = this.market[a.key];
+      for (let y = 0; y < n; y++) {
+        const shock = (Math.random() * 2 - 1) * a.vol;
+        p *= 1 + a.drift + shock;
+      }
+      this.market[a.key] = Math.max(5, Math.round(p * 100) / 100);
+    }
+  }
+
+  /** Buy a $ amount of an asset, or sell a fraction (1 = all) of a holding. */
+  private tradeAsset(key: MarketKey, action: "buy" | "sell", amount: number): void {
+    if (this.mode !== "assets") return;
+    const price = this.market[key];
+    if (action === "buy") {
+      const spend = Math.min(amount, this.money);
+      if (spend < 1) { this.hint("Not enough cash to invest."); return; }
+      this.money -= spend;
+      this.holdings[key] += spend / price;
+    } else {
+      const units = this.holdings[key] * Math.max(0, Math.min(1, amount));
+      if (units <= 0) { this.hint("You don't hold any of that yet."); return; }
+      this.holdings[key] -= units;
+      this.money += units * price;
+    }
+    if (this.timeline[this.stageIndex]) this.timeline[this.stageIndex] = this.snapshot();
+    this.showAssets();
+  }
+
+  /** The buy/sell rows for the Assets market. */
+  private marketRows(): string {
+    return MARKET_ASSETS.map((a) => {
+      const price = this.market[a.key];
+      const value = this.holdings[a.key] * price;
+      const pct = Math.round((price / 100 - 1) * 100);
+      const arrow = pct >= 0 ? "▲" : "▼";
+      const buy10 = Math.max(1, Math.round(this.money * 0.1));
+      const buy50 = Math.max(1, Math.round(this.money * 0.5));
+      return `
+        <div class="plj-market-row">
+          <div class="plj-market-main">
+            <span class="plj-market-name">${a.icon} ${esc(a.name)}</span>
+            <span class="plj-market-index ${pct >= 0 ? "is-up" : "is-down"}">${price.toFixed(0)} <small>${arrow}${Math.abs(pct)}%</small></span>
+          </div>
+          <div class="plj-market-hold">hold ${formatMoney(Math.round(value))}</div>
+          <div class="plj-market-actions">
+            <button class="plj-mini-pill" data-buy="${a.key}" data-amt="${buy10}">Buy ${formatMoney(buy10)}</button>
+            <button class="plj-mini-pill" data-buy="${a.key}" data-amt="${buy50}">Buy ${formatMoney(buy50)}</button>
+            <button class="plj-mini-pill" data-sell="${a.key}">Sell all</button>
+          </div>
+        </div>`;
+    }).join("");
+  }
+
   private showAssets(): void {
-    if (this.mode !== "playing") return;
+    if (this.mode !== "playing" && this.mode !== "assets") return;
     if (!this.canShowAssetsGate()) {
       this.hint(`Assets open from middle school, or elementary with over ${formatMoney(ELEMENTARY_ASSETS_MONEY)}.`);
       return;
@@ -4793,7 +4877,9 @@ export class Game {
             <div class="plj-ledger-total"><span>Total expense</span><strong>${formatMoney(expenseTotal)}</strong></div>
           </section>
         </div>
-        <p class="plj-sub">Houses estimate 3-5% yearly growth by quality. Vehicles lose value over time. Rent appears when you own spare homes.</p>
+        <h3 class="plj-prof-h3">📊 Market — buy &amp; sell</h3>
+        <div class="plj-market">${this.marketRows()}</div>
+        <p class="plj-sub">Prices drift up over the years (stocks, gold, property) with a little wobble, from real long-run averages — buy in a dip, sell in a high. Houses estimate 3-5% yearly growth by quality. Vehicles lose value over time. Rent appears when you own spare homes.</p>
         <div class="plj-title-row">
           <button class="plj-btn plj-btn-ghost" id="plj-assets-close">← Back</button>
         </div>
@@ -4813,6 +4899,12 @@ export class Game {
       this.clearOverlay();
       this.showTraining();
     };
+    this.ui.overlay.querySelectorAll<HTMLButtonElement>("[data-buy]").forEach((b) => {
+      b.onclick = () => this.tradeAsset(b.dataset.buy as MarketKey, "buy", Number(b.dataset.amt));
+    });
+    this.ui.overlay.querySelectorAll<HTMLButtonElement>("[data-sell]").forEach((b) => {
+      b.onclick = () => this.tradeAsset(b.dataset.sell as MarketKey, "sell", 1);
+    });
   }
 
   private showTitle(): void {
