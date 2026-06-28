@@ -1409,6 +1409,7 @@ export class Game {
   private verticalBias = 0;
   private cooldown = 0;
   private foodCooldown = 0;
+  private trayTipShown = false; // the "collect items" guidance shows in the sky once per life, not in the tray
   private hintTimer = 0;
 
   private transitionTimer = 0;
@@ -1690,6 +1691,7 @@ export class Game {
     this.habitCount = 0;
     this.eventCooldown = 2;
     this.foodCooldown = 0;
+    this.trayTipShown = false;
     this.usedEvents = new Set();
     this.inventory = [];
     this.selectedInventory = 0;
@@ -3082,6 +3084,11 @@ export class Game {
     if (this.cooldown > 0) this.cooldown -= dt;
     if (this.foodCooldown > 0) this.foodCooldown = Math.max(0, this.foodCooldown - dt);
     if (this.mode === "playing") this.tickFoodFreshness(dt);
+    if (this.mode === "playing" && !this.trayTipShown && this.inventory.length === 0) {
+      // first playing moment with an empty tray: nudge once — in the sky, not the tray
+      this.showSkyTip("🧺 Collect green items — swipe up to eat, or stand by someone to give");
+      this.trayTipShown = true;
+    }
     if (this.hintTimer > 0) {
       this.hintTimer -= dt;
       if (this.hintTimer <= 0) this.ui.hint.textContent = "";
@@ -3288,7 +3295,7 @@ export class Game {
     if (this.inventory.length === 0) {
       this.selectedInventory = 0;
       this.renderInventory();
-      if (announce) this.hint("Collect green items first.");
+      if (announce) this.showSkyTip("🧺 Collect green items first — walk over them to pick up");
       return;
     }
     const len = this.inventory.length;
@@ -3296,8 +3303,8 @@ export class Game {
     this.renderInventory();
     if (announce) {
       const slot = this.inventory[this.selectedInventory];
-      const useText = slot.opt.category === "food" ? "Swipe up to eat it, or near a person to give it." : "Swipe up near a person to use it.";
-      this.hint(`${slot.opt.icon} ${slot.opt.label} selected. ${useText}`);
+      const useText = slot.opt.category === "food" ? "swipe up to eat, or stand by someone to give" : "stand by someone and swipe up to give";
+      this.showSkyTip(`${slot.opt.icon} ${slot.opt.label} ready — ${useText}`);
     }
   }
 
@@ -3317,11 +3324,11 @@ export class Game {
 
   private eatSelectedFoodItem(slot: InventorySlot): void {
     if (slot.opt.category !== "food") {
-      this.hint(`Move close to a person, then swipe up to use ${slot.opt.icon}.`);
+      this.showSkyTip(`${slot.opt.icon} stand close to a person, then swipe up to give it`);
       return;
     }
     if (this.foodCooldown > 0) {
-      this.hint(`Still full. Eat again in ${Math.ceil(this.foodCooldown)}s.`);
+      this.showSkyTip(`😋 Still full — eat again in ${Math.ceil(this.foodCooldown)}s`);
       return;
     }
 
@@ -3411,7 +3418,7 @@ export class Game {
     if (this.mode !== "playing" || this.cooldown > 0) return;
     const slot = this.inventory[this.selectedInventory];
     if (!slot) {
-      this.hint("Collect green items first.");
+      this.showSkyTip("🧺 Collect green items first — walk over them to pick up");
       return;
     }
     const person = this.personUseTarget();
@@ -4054,7 +4061,9 @@ export class Game {
     wrap.classList.toggle("is-empty", this.inventory.length === 0);
     wrap.classList.toggle("can-use", usable);
     if (this.inventory.length === 0) {
-      track.innerHTML = `<span class="plj-inventory-empty">collect green items<br>swipe up to eat/give</span>`;
+      // the collection area itself stays text-free — a faint basket cue only; all
+      // its guidance goes up to the sky (one-time tip lives in update), never the tray
+      track.innerHTML = `<span class="plj-inventory-empty" aria-hidden="true">🧺</span>`;
       return;
     }
     track.innerHTML = this.inventory.map((slot, i) => {
@@ -4082,6 +4091,12 @@ export class Game {
     const i = this.lineIndex[key] ?? 0;
     this.lineIndex[key] = i + 1;
     return pool[i % pool.length];
+  }
+
+  /** Show a short guidance line in the sky banner (no stat deltas) — used so the
+   *  collection tray carries no text of its own; all its prompts go up to the sky. */
+  private showSkyTip(text: string, color = "#cfe3ff"): void {
+    this.skyMessage = { text, sub: "", color, timer: 2.6 };
   }
 
   private showOptionSky(opt: LifeOption, before: { health: number; happiness: number; fun: number; smarts: number; money: number }, overrideText?: string): void {
