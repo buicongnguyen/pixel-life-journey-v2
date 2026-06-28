@@ -270,7 +270,10 @@ body {
   border-radius: 12px;
   padding: 9px 14px;
   min-height: 64px;
-  display: flex;
+  /* Hidden: meeting a person / focusing a choice now shows its result in the
+     SKY banner. This panel popped in and out of the layout, resizing the canvas
+     (the "GUI shaking"), so it is no longer shown. */
+  display: none;
   flex-direction: column;
   gap: 2px;
   box-shadow: 0 4px 0 rgba(0, 0, 0, 0.35);
