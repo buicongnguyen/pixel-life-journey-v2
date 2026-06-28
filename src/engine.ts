@@ -1191,6 +1191,8 @@ interface Friend {
   iq: number;
   how: string;
   since: string;
+  bond: number; // 0-100 closeness — grows the longer you're friends; some drift apart
+  vibe: string; // a one-word personality flavour
 }
 const FRIEND_CAP = 16;
 const FRIEND_FIRST_M = ["Liam", "Noah", "Ethan", "Mason", "Lucas", "Oliver", "Aiden", "Caleb", "Leo", "Max", "Nathan", "Owen", "Eli", "Theo", "Jude", "Felix", "Marcus", "Hugo", "Andre", "Kai", "Diego", "Omar", "Jonah", "Reza"];
@@ -1206,6 +1208,13 @@ const FRIEND_PLAN: Record<string, { how: string; iqBias?: number; ageSpread?: nu
   midlife: [{ how: "neighbour", ageSpread: 9 }, { how: "coworker", iqBias: 6, ageSpread: 8 }],
   senior: [{ how: "neighbour", ageSpread: 8 }, { how: "club friend", ageSpread: 10 }],
   retirement: [{ how: "old friend", ageSpread: 6 }],
+};
+const FRIEND_VIBES = ["loyal", "funny", "kind", "ambitious", "easy-going", "outgoing", "thoughtful", "adventurous", "caring", "witty", "driven", "gentle", "bold", "creative", "cheerful", "dependable", "curious", "warm"];
+// starting closeness by how you met — best friends start close, coworkers cooler
+const FRIEND_BOND_BASE: Record<string, number> = {
+  "best friend": 70, "old friend": 64, "club friend": 56, "roommate": 56, "couple friend": 52,
+  "study partner": 52, "study buddy": 50, "lab partner": 50, "teammate": 48,
+  "classmate": 42, "schoolmate": 42, "coworker": 38, "neighbour": 36,
 };
 
 interface Snapshot {
@@ -2747,6 +2756,7 @@ export class Game {
     // the tradable market also drifts forward a chapter's worth of years
     const marketYears = STAGES[this.stageIndex] ? Math.max(2, Math.min(14, STAGES[this.stageIndex].ageEnd - STAGES[this.stageIndex].ageStart)) : 5;
     this.stepMarket(marketYears);
+    this.growFriends(); // your friendships drift closer (or apart) a little each chapter
 
     // spare properties pay rent every chapter
     if (this.rentalIncome > 0) {
@@ -4874,7 +4884,9 @@ export class Game {
     const spread = spec.ageSpread ?? 2;
     const ageOffset = Math.round((Math.random() * 2 - 1) * spread);
     const iq = Math.max(70, Math.min(145, Math.round(gaussian(100, 12) + (spec.iqBias ?? 0))));
-    return { id: "fr" + this.friendNextId++, name: `${first} ${last}`, gender, ageOffset, iq, how: spec.how, since: STAGES[this.stageIndex]?.name ?? "school" };
+    const bond = Math.max(8, Math.min(96, Math.round((FRIEND_BOND_BASE[spec.how] ?? 44) + (Math.random() * 16 - 8))));
+    const vibe = FRIEND_VIBES[Math.floor(Math.random() * FRIEND_VIBES.length)];
+    return { id: "fr" + this.friendNextId++, name: `${first} ${last}`, gender, ageOffset, iq, how: spec.how, since: STAGES[this.stageIndex]?.name ?? "school", bond, vibe };
   }
 
   /** On entering a new chapter (elementary onward), add that stage's new friends. */
@@ -4887,6 +4899,22 @@ export class Game {
       if (this.friends.length >= FRIEND_CAP) break;
       this.friends.push(this.makeFriend(spec));
     }
+  }
+
+  /** Friendships evolve each chapter — most grow closer, a few quietly drift apart. */
+  private growFriends(): void {
+    for (const f of this.friends) {
+      if (Math.random() < 0.15) f.bond = Math.max(0, f.bond - (3 + Math.floor(Math.random() * 9)));
+      else f.bond = Math.min(100, f.bond + (2 + Math.floor(Math.random() * 6)));
+    }
+  }
+
+  /** Closeness tier (label + css class) for a bond score. */
+  private bondTier(b: number): { label: string; cls: string } {
+    if (b >= 80) return { label: "inseparable", cls: "is-best" };
+    if (b >= 60) return { label: "close", cls: "is-close" };
+    if (b >= 35) return { label: "good", cls: "is-good" };
+    return { label: "drifting", cls: "is-far" };
   }
 
   /** A face emoji for a friend that matches their gender + current age. */
@@ -4907,12 +4935,12 @@ export class Game {
     const list = this.friends.length
       ? this.friends.map((f) => {
           const age = Math.max(0, Math.round(this.age + f.ageOffset));
+          const t = this.bondTier(f.bond);
           return `
         <div class="plj-friend-row">
           <span class="plj-friend-face">${this.friendFace(f)}</span>
-          <span class="plj-friend-main"><b>${esc(f.name)}</b><small>${esc(f.how)} · ${f.gender === "female" ? "she/her" : "he/him"} · since ${esc(f.since)}</small></span>
-          <span class="plj-friend-meta">${age} yrs</span>
-          <span class="plj-friend-meta">🧠 ${f.iq}</span>
+          <span class="plj-friend-main"><b>${esc(f.name)}</b><small>${esc(f.vibe)} ${esc(f.how)} · ${age}y · 🧠 ${f.iq} · since ${esc(f.since)}</small></span>
+          <span class="plj-friend-bond ${t.cls}"><b>💛 ${f.bond}</b><small>${t.label}</small></span>
         </div>`;
         }).join("")
       : `<p class="plj-sub">No friends yet — you'll meet them as you go through school.</p>`;
