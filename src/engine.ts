@@ -2311,7 +2311,7 @@ export class Game {
     if (st.kind === "person") {
       const before = { health: this.stats.health, happiness: this.stats.happiness, fun: this.stats.fun, smarts: this.stats.smarts, money: this.money };
       this.applyOption(opt);
-      this.showPersonSky(opt, before);
+      this.showOptionSky(opt, before);
     } else {
       this.applyOption(opt);
     }
@@ -3213,11 +3213,12 @@ export class Game {
     this.cooldown = 0.22;
     this.foodCooldown = FOOD_USE_COOLDOWN;
     this.markGuideSeen();
+    const before = { health: this.stats.health, happiness: this.stats.happiness, fun: this.stats.fun, smarts: this.stats.smarts, money: this.money };
     this.consumeSelectedInventoryItem();
     this.applyOption(opt);
     this.floats.push({ x: this.px, y: this.py - 86, text: `${opt.icon} eaten`, color: "#9fe870", life: 1.25 });
     if (this.mode !== "playing") return;
-    this.hint(`${opt.label} eaten. Wait ${FOOD_USE_COOLDOWN}s before eating again.`);
+    this.showOptionSky(opt, before);
     this.renderFocusPanel();
     this.renderInventory();
   }
@@ -3263,6 +3264,7 @@ export class Game {
 
     this.cooldown = 0.22;
     this.markGuideSeen();
+    const before = { health: this.stats.health, happiness: this.stats.happiness, fun: this.stats.fun, smarts: this.stats.smarts, money: this.money };
     const effects = this.inventoryReactionEffects(slot.opt, person.opt);
     this.applyEff(effects, "mental");
     this.connections += this.isFamilyOption(person.opt) ? 1 : 3;
@@ -3270,7 +3272,7 @@ export class Game {
     this.consumeSelectedInventoryItem();
     this.floats.push({ x: person.x, y: person.y - 92, text: `${slot.opt.icon} + ${person.opt.icon}`, color: "#ffd23f", life: 1.35 });
     this.spawnFloats(effects);
-    this.hint(`${person.opt.label} liked ${slot.opt.label}.`);
+    this.showOptionSky(person.opt, before, `${person.opt.icon} ${person.opt.label} liked your ${slot.opt.icon} ${slot.opt.label}`);
     this.renderFocusPanel();
     this.renderInventory();
   }
@@ -3287,10 +3289,17 @@ export class Game {
       this.addInventoryItem(st.opt);
       if (st.opt.category === "food") {
         this.floats.push({ x: st.x, y: st.y - 52, text: `${st.opt.icon} stored`, color: "#9fe870", life: 1.1 });
-        this.hint(`${st.opt.label} stored. Swipe up to eat it, or give it to someone.`);
+        this.skyMessage = {
+          text: `${st.opt.icon} ${st.opt.desc || st.opt.label}`,
+          sub: "📦 stored · swipe ↑ to eat or give",
+          color: "#bfe0ff",
+          timer: 3,
+        };
       } else {
+        const before = { health: this.stats.health, happiness: this.stats.happiness, fun: this.stats.fun, smarts: this.stats.smarts, money: this.money };
         this.applyOption(st.opt);
         if (this.mode !== "playing") return;
+        this.showOptionSky(st.opt, before);
       }
       this.respawnCommonItem(st);
       this.focusIndex = -1;
@@ -3861,7 +3870,7 @@ export class Game {
   }
 
   /** After interacting with a person, announce who + the point change in the sky. */
-  private showPersonSky(opt: LifeOption, before: { health: number; happiness: number; fun: number; smarts: number; money: number }): void {
+  private showOptionSky(opt: LifeOption, before: { health: number; happiness: number; fun: number; smarts: number; money: number }, overrideText?: string): void {
     const parts: string[] = [];
     const add = (now: number, was: number, icon: string): void => {
       const d = Math.round(now - was);
@@ -3876,7 +3885,7 @@ export class Game {
     const desc = (opt.desc || opt.label || "Nice to see you.").trim();
     const good = this.stats.happiness - before.happiness + (this.stats.health - before.health) >= 0;
     this.skyMessage = {
-      text: `${opt.icon} ${desc}`,
+      text: overrideText || `${opt.icon} ${desc}`,
       sub: parts.join("   "),
       color: good ? "#bdf0c6" : "#ffb3c0",
       timer: 3.2,
