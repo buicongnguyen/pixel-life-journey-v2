@@ -1110,6 +1110,7 @@ type Mode =
   | "bioauthor"
   | "profile"
   | "familytree"
+  | "friends"
   | "assets"
   | "training"
   | "careermove"
@@ -1179,6 +1180,34 @@ const MARKET_ASSETS: { key: MarketKey; icon: string; name: string; drift: number
   { key: "property", icon: "🏘️", name: "Property fund", drift: 0.05, vol: 0.05 },
 ];
 
+// Friends you make from elementary school on. Each is generated to "fit logic":
+// age near yours (they grow up alongside you), a gender, a plausible IQ, and how
+// you met. Lists grow a little each chapter, capped so it stays readable.
+interface Friend {
+  id: string;
+  name: string;
+  gender: Gender;
+  ageOffset: number; // age relative to the player's, so a classmate stays your age
+  iq: number;
+  how: string;
+  since: string;
+}
+const FRIEND_CAP = 16;
+const FRIEND_FIRST_M = ["Liam", "Noah", "Ethan", "Mason", "Lucas", "Oliver", "Aiden", "Caleb", "Leo", "Max", "Nathan", "Owen", "Eli", "Theo", "Jude", "Felix", "Marcus", "Hugo", "Andre", "Kai", "Diego", "Omar", "Jonah", "Reza"];
+const FRIEND_FIRST_F = ["Emma", "Olivia", "Ava", "Sophia", "Isla", "Mia", "Chloe", "Lily", "Zoe", "Nora", "Maya", "Ruby", "Ella", "Grace", "Hana", "Aria", "Iris", "Nina", "Clara", "Leah", "Amara", "Yuki", "Priya", "Sofia"];
+const FRIEND_LAST = ["Tran", "Nguyen", "Park", "Kim", "Lee", "Smith", "Jones", "Garcia", "Khan", "Silva", "Rossi", "Wang", "Cohen", "Okafor", "Diaz", "Novak", "Singh", "Tanaka", "Brown", "Hassan", "Mendez", "Ito", "Adler", "Costa"];
+const FRIEND_PLAN: Record<string, { how: string; iqBias?: number; ageSpread?: number }[]> = {
+  elementary: [{ how: "classmate" }, { how: "classmate" }, { how: "best friend" }],
+  middle: [{ how: "classmate" }, { how: "study buddy", iqBias: 12 }],
+  high: [{ how: "schoolmate" }, { how: "teammate", iqBias: -3, ageSpread: 1 }, { how: "study buddy", iqBias: 14 }],
+  university: [{ how: "roommate", ageSpread: 3 }, { how: "lab partner", iqBias: 16, ageSpread: 3 }, { how: "classmate", ageSpread: 3 }],
+  career: [{ how: "coworker", iqBias: 8, ageSpread: 8 }, { how: "coworker", ageSpread: 8 }],
+  marriage: [{ how: "couple friend", ageSpread: 5 }],
+  midlife: [{ how: "neighbour", ageSpread: 9 }, { how: "coworker", iqBias: 6, ageSpread: 8 }],
+  senior: [{ how: "neighbour", ageSpread: 8 }, { how: "club friend", ageSpread: 10 }],
+  retirement: [{ how: "old friend", ageSpread: 6 }],
+};
+
 interface Snapshot {
   stageIndex: number;
   age: number;
@@ -1207,6 +1236,8 @@ interface Snapshot {
   investments: number;
   market: Record<MarketKey, number>;
   holdings: Record<MarketKey, number>;
+  friends: Friend[];
+  friendNextId: number;
   moneyWise: boolean;
   iqCeiling: number;
   geneBonus: number;
@@ -1338,6 +1369,8 @@ export class Game {
   // a small buy/sell market shown on the Assets page (price index + units held)
   private market: Record<MarketKey, number> = { stock: 100, gold: 100, property: 100 };
   private holdings: Record<MarketKey, number> = { stock: 0, gold: 0, property: 0 };
+  private friends: Friend[] = [];
+  private friendNextId = 0;
   private floats: FloatText[] = [];
   private focusIndex = -1;
 
@@ -1609,6 +1642,8 @@ export class Game {
     this.investments = 0;
     this.market = { stock: 100, gold: 100, property: 100 };
     this.holdings = { stock: 0, gold: 0, property: 0 };
+    this.friends = [];
+    this.friendNextId = 0;
     this.moneyWise = false;
     // roll a lifelong IQ potential (mean 100, sd 15, clamped) + a rare gifted bump
     this.iqCeiling = Math.max(70, Math.min(145, Math.round(gaussian(100, 15))));
@@ -1675,6 +1710,7 @@ export class Game {
     // timeline[i] (which already counts this entry's sample) — re-sampling and
     // re-snapshotting here would double-count it and drift life expectancy.
     if (!restoring) {
+      this.addFriendsForStage(); // make this chapter's new friends before snapshotting
       this.sampleHealth();
       this.timeline[i] = this.snapshot(); // capture entry state for time travel
     }
@@ -1720,6 +1756,8 @@ export class Game {
       investments: this.investments,
       market: { ...this.market },
       holdings: { ...this.holdings },
+      friends: this.friends.map((f) => ({ ...f })),
+      friendNextId: this.friendNextId,
       moneyWise: this.moneyWise,
       iqCeiling: this.iqCeiling,
       geneBonus: this.geneBonus,
@@ -2958,6 +2996,8 @@ export class Game {
     this.investments = snap.investments;
     this.market = snap.market ? { ...snap.market } : { stock: 100, gold: 100, property: 100 };
     this.holdings = snap.holdings ? { ...snap.holdings } : { stock: 0, gold: 0, property: 0 };
+    this.friends = (snap.friends ?? []).map((f) => ({ ...f }));
+    this.friendNextId = snap.friendNextId ?? this.friends.length;
     this.moneyWise = snap.moneyWise;
     this.iqCeiling = snap.iqCeiling;
     this.geneBonus = snap.geneBonus;
@@ -4314,6 +4354,7 @@ export class Game {
       <div class="plj-mini-actions">
         <button class="plj-mini-pill" id="plj-tree-training">🏫 Training</button>
         ${this.canShowAssetsGate() ? `<button class="plj-mini-pill" id="plj-tree-assets">💼 Assets</button>` : ""}
+        <button class="plj-mini-pill" id="plj-tree-friends">👥 Friends</button>
       </div>`;
     this.ui.overlay.innerHTML = `
       <div class="plj-card plj-family-card">
@@ -4422,6 +4463,11 @@ export class Game {
       this.mode = "playing";
       this.clearOverlay();
       this.showTraining();
+    };
+    ov.querySelector<HTMLButtonElement>("#plj-tree-friends")!.onclick = () => {
+      this.mode = "playing";
+      this.clearOverlay();
+      this.showFriends();
     };
   }
 
@@ -4691,6 +4737,7 @@ export class Game {
           <div class="plj-mini-actions">
             ${this.canShowAssetsGate() ? `<button class="plj-mini-pill" id="plj-training-assets">💼 Assets</button>` : ""}
             ${this.canShowFamilyTreeGate() ? `<button class="plj-mini-pill" id="plj-training-tree">🌳 Family Tree</button>` : ""}
+            ${this.canShowFamilyTreeGate() ? `<button class="plj-mini-pill" id="plj-training-friends">👥 Friends</button>` : ""}
           </div>
         </div>
         <p class="plj-sub">Practice thinking, EQ, and career strategy. ${this.trainingTotalQuestions()} built-in questions are split across three levels; each session takes a tiny slice of life time.</p>
@@ -4748,6 +4795,12 @@ export class Game {
       this.mode = "playing";
       this.clearOverlay();
       this.showFamilyTree();
+    };
+    const friendsBtn = this.ui.overlay.querySelector<HTMLButtonElement>("#plj-training-friends");
+    if (friendsBtn) friendsBtn.onclick = () => {
+      this.mode = "playing";
+      this.clearOverlay();
+      this.showFriends();
     };
     this.ui.overlay.querySelector<HTMLButtonElement>("#plj-training-close")!.onclick = () => {
       this.mode = "playing";
@@ -4812,6 +4865,82 @@ export class Game {
     }).join("");
   }
 
+  /** Generate one friend that fits the moment: age near yours, plausible IQ. */
+  private makeFriend(spec: { how: string; iqBias?: number; ageSpread?: number }): Friend {
+    const gender: Gender = Math.random() < 0.5 ? "male" : "female";
+    const firsts = gender === "female" ? FRIEND_FIRST_F : FRIEND_FIRST_M;
+    const first = firsts[Math.floor(Math.random() * firsts.length)];
+    const last = FRIEND_LAST[Math.floor(Math.random() * FRIEND_LAST.length)];
+    const spread = spec.ageSpread ?? 2;
+    const ageOffset = Math.round((Math.random() * 2 - 1) * spread);
+    const iq = Math.max(70, Math.min(145, Math.round(gaussian(100, 12) + (spec.iqBias ?? 0))));
+    return { id: "fr" + this.friendNextId++, name: `${first} ${last}`, gender, ageOffset, iq, how: spec.how, since: STAGES[this.stageIndex]?.name ?? "school" };
+  }
+
+  /** On entering a new chapter (elementary onward), add that stage's new friends. */
+  private addFriendsForStage(): void {
+    const stage = STAGES[this.stageIndex];
+    if (!stage || this.stageIndex < ELEMENTARY_INDEX) return;
+    const plan = FRIEND_PLAN[stage.id];
+    if (!plan) return;
+    for (const spec of plan) {
+      if (this.friends.length >= FRIEND_CAP) break;
+      this.friends.push(this.makeFriend(spec));
+    }
+  }
+
+  /** A face emoji for a friend that matches their gender + current age. */
+  private friendFace(f: Friend): string {
+    const age = this.age + f.ageOffset;
+    if (age < 3) return "👶";
+    if (f.gender === "female") return age < 18 ? "👧" : age < 62 ? "👩" : "👵";
+    return age < 18 ? "👦" : age < 62 ? "👨" : "👴";
+  }
+
+  private showFriends(): void {
+    if (this.mode !== "playing" && this.mode !== "friends") return;
+    if (this.stageIndex < ELEMENTARY_INDEX) {
+      this.hint("You start making friends at elementary school.");
+      return;
+    }
+    this.mode = "friends";
+    const list = this.friends.length
+      ? this.friends.map((f) => {
+          const age = Math.max(0, Math.round(this.age + f.ageOffset));
+          return `
+        <div class="plj-friend-row">
+          <span class="plj-friend-face">${this.friendFace(f)}</span>
+          <span class="plj-friend-main"><b>${esc(f.name)}</b><small>${esc(f.how)} · ${f.gender === "female" ? "she/her" : "he/him"} · since ${esc(f.since)}</small></span>
+          <span class="plj-friend-meta">${age} yrs</span>
+          <span class="plj-friend-meta">🧠 ${f.iq}</span>
+        </div>`;
+        }).join("")
+      : `<p class="plj-sub">No friends yet — you'll meet them as you go through school.</p>`;
+    this.ui.overlay.innerHTML = `
+      <div class="plj-card plj-friends-card">
+        <div class="plj-family-head">
+          <h2>👥 Friends</h2>
+          <div class="plj-mini-actions">
+            <button class="plj-mini-pill" id="plj-friends-tree">🌳 Family Tree</button>
+            ${this.canShowAssetsGate() ? `<button class="plj-mini-pill" id="plj-friends-assets">💼 Assets</button>` : ""}
+            <button class="plj-mini-pill" id="plj-friends-training">🏫 Training</button>
+          </div>
+        </div>
+        <p class="plj-sub">The ${this.friends.length} ${this.friends.length === 1 ? "person" : "people"} you've met along the way — they grow up right alongside you.</p>
+        <div class="plj-friends-list">${list}</div>
+        <div class="plj-title-row">
+          <button class="plj-btn plj-btn-ghost" id="plj-friends-close">← Back</button>
+        </div>
+      </div>`;
+    this.ui.overlay.classList.add("show");
+    const ov = this.ui.overlay;
+    ov.querySelector<HTMLButtonElement>("#plj-friends-close")!.onclick = () => { this.mode = "playing"; this.clearOverlay(); };
+    ov.querySelector<HTMLButtonElement>("#plj-friends-tree")!.onclick = () => { this.mode = "playing"; this.clearOverlay(); this.showFamilyTree(); };
+    ov.querySelector<HTMLButtonElement>("#plj-friends-training")!.onclick = () => { this.mode = "playing"; this.clearOverlay(); this.showTraining(); };
+    const a = ov.querySelector<HTMLButtonElement>("#plj-friends-assets");
+    if (a) a.onclick = () => { this.mode = "playing"; this.clearOverlay(); this.showAssets(); };
+  }
+
   private showAssets(): void {
     if (this.mode !== "playing" && this.mode !== "assets") return;
     if (!this.canShowAssetsGate()) {
@@ -4856,6 +4985,7 @@ export class Game {
           <div class="plj-mini-actions">
             <button class="plj-mini-pill" id="plj-assets-training">🏫 Training</button>
             <button class="plj-mini-pill" id="plj-assets-tree">🌳 Family Tree</button>
+            <button class="plj-mini-pill" id="plj-assets-friends">👥 Friends</button>
           </div>
         </div>
         <div class="plj-networth">
@@ -4893,6 +5023,11 @@ export class Game {
       this.mode = "playing";
       this.clearOverlay();
       this.showFamilyTree();
+    };
+    this.ui.overlay.querySelector<HTMLButtonElement>("#plj-assets-friends")!.onclick = () => {
+      this.mode = "playing";
+      this.clearOverlay();
+      this.showFriends();
     };
     this.ui.overlay.querySelector<HTMLButtonElement>("#plj-assets-training")!.onclick = () => {
       this.mode = "playing";
