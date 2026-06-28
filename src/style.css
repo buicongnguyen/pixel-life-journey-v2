@@ -460,6 +460,29 @@ body {
   font-weight: 800;
   line-height: 14px;
 }
+/* freshness countdown on collected food — eat or give it before it auto-eats */
+.plj-inv-timer {
+  position: absolute;
+  left: 2px;
+  top: 1px;
+  min-width: 14px;
+  padding: 0 2px;
+  border-radius: 7px;
+  background: rgba(61, 220, 132, 0.92);
+  color: #07331c;
+  font-size: 9px;
+  font-weight: 800;
+  line-height: 13px;
+  text-align: center;
+}
+.plj-inv-timer.is-low {
+  background: var(--bad, #ff5d6c);
+  color: #fff;
+  animation: plj-inv-pulse 0.6s ease-in-out infinite;
+}
+@keyframes plj-inv-pulse {
+  50% { opacity: 0.55; }
+}
 .plj-inventory.can-use {
   border-color: rgba(61, 220, 132, 0.72);
 }

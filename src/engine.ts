@@ -107,6 +107,7 @@ const BAD_SOCIAL_TAGS = ["smoker_friend", "gangster_friend", "playboy_friend"];
 const INVENTORY_MAX_SLOTS = 8;
 const INVENTORY_MAX_COUNT = 9;
 const FOOD_USE_COOLDOWN = 5;
+const FOOD_FRESH = 5; // collected food auto-eats this many seconds after pickup
 const ELEMENTARY_INDEX = STAGES.findIndex((s) => s.id === "elementary");
 const MIDDLE_INDEX = STAGES.findIndex((s) => s.id === "middle");
 const CAREER_INDEX = STAGES.findIndex((s) => s.id === "career");
@@ -1150,6 +1151,7 @@ interface RenderLayout {
 interface InventorySlot {
   opt: LifeOption;
   count: number;
+  eatBy?: number; // seconds left before collected food auto-eats (food slots only)
 }
 
 type FamilyRelationKind = "parent" | "child" | "partner" | "sibling";
@@ -1784,7 +1786,7 @@ export class Game {
       owned: [...this.owned],
       vehiclePurchaseAges: [...this.vehiclePurchaseAges.entries()],
       jobsTaken: [...this.jobsTaken],
-      inventory: this.inventory.map((slot) => ({ opt: slot.opt, count: slot.count })),
+      inventory: this.inventory.map((slot) => ({ opt: slot.opt, count: slot.count, eatBy: slot.eatBy })),
       selectedInventory: this.selectedInventory,
       familyMembers: this.familyMembers.map((m) => ({ ...m })),
       familyEdges: this.familyEdges.map((e) => ({ ...e })),
@@ -3025,7 +3027,7 @@ export class Game {
     this.owned = new Set(snap.owned);
     this.vehiclePurchaseAges = new Map(snap.vehiclePurchaseAges ?? []);
     this.jobsTaken = new Set(snap.jobsTaken);
-    this.inventory = snap.inventory.map((slot) => ({ opt: slot.opt, count: slot.count }));
+    this.inventory = snap.inventory.map((slot) => ({ opt: slot.opt, count: slot.count, eatBy: slot.eatBy }));
     this.selectedInventory = Math.max(0, Math.min(snap.selectedInventory, this.inventory.length - 1));
     this.familyMembers = snap.familyMembers.map((m) => ({ ...m }));
     this.familyEdges = snap.familyEdges.map((e) => ({ ...e }));
@@ -3079,6 +3081,7 @@ export class Game {
   private update(dt: number): void {
     if (this.cooldown > 0) this.cooldown -= dt;
     if (this.foodCooldown > 0) this.foodCooldown = Math.max(0, this.foodCooldown - dt);
+    if (this.mode === "playing") this.tickFoodFreshness(dt);
     if (this.hintTimer > 0) {
       this.hintTimer -= dt;
       if (this.hintTimer <= 0) this.ui.hint.textContent = "";
@@ -3265,15 +3268,17 @@ export class Game {
 
   private addInventoryItem(opt: LifeOption): void {
     const existing = this.inventory.find((slot) => slot.opt.id === opt.id);
+    const fresh = opt.category === "food" ? FOOD_FRESH : undefined;
     if (existing) {
       existing.count = Math.min(INVENTORY_MAX_COUNT, existing.count + 1);
+      if (fresh !== undefined) existing.eatBy = fresh; // refresh the freshness window
       this.selectedInventory = this.inventory.indexOf(existing);
     } else {
       if (this.inventory.length >= INVENTORY_MAX_SLOTS) {
         this.inventory.shift();
         this.selectedInventory = Math.max(0, this.selectedInventory - 1);
       }
-      this.inventory.push({ opt, count: 1 });
+      this.inventory.push({ opt, count: 1, eatBy: fresh });
       this.selectedInventory = this.inventory.length - 1;
     }
     this.renderInventory();
@@ -3332,6 +3337,47 @@ export class Game {
     this.showOptionSky(opt, before);
     this.renderFocusPanel();
     this.renderInventory();
+  }
+
+  /** Auto-eat the food at `index` (its freshness ran out) — like eating it, but no
+   *  cooldown/selection needed; consumes one unit. */
+  private autoEatFood(index: number): void {
+    const slot = this.inventory[index];
+    if (!slot || slot.opt.category !== "food") return;
+    const opt = slot.opt;
+    const before = { health: this.stats.health, happiness: this.stats.happiness, fun: this.stats.fun, smarts: this.stats.smarts, money: this.money };
+    slot.count -= 1;
+    if (slot.count <= 0) {
+      this.inventory.splice(index, 1);
+      this.selectedInventory = Math.max(0, Math.min(this.selectedInventory, this.inventory.length - 1));
+    } else {
+      slot.eatBy = FOOD_FRESH; // the next unit gets its own fresh window
+    }
+    this.applyOption(opt);
+    this.floats.push({ x: this.px, y: this.py - 86, text: `${opt.icon} eaten`, color: "#9fe870", life: 1.25 });
+    if (this.mode !== "playing") return;
+    this.showOptionSky(opt, before);
+    this.renderFocusPanel();
+    this.renderInventory();
+  }
+
+  /** Collected food must be eaten within FOOD_FRESH seconds — or it auto-eats. */
+  private tickFoodFreshness(dt: number): void {
+    let needsRender = false;
+    for (let i = this.inventory.length - 1; i >= 0; i--) {
+      const slot = this.inventory[i];
+      if (slot.opt.category !== "food" || slot.eatBy === undefined) continue;
+      const was = Math.ceil(slot.eatBy);
+      slot.eatBy -= dt;
+      if (slot.eatBy <= 0) {
+        this.autoEatFood(i); // already re-renders + may end the life / open an overlay
+        if (this.mode !== "playing") return;
+        needsRender = false;
+      } else if (Math.ceil(slot.eatBy) !== was) {
+        needsRender = true; // the countdown ticked down a second — refresh its badge
+      }
+    }
+    if (needsRender) this.renderInventory();
   }
 
   private personUseTarget(): Station | null {
@@ -4014,7 +4060,10 @@ export class Game {
     track.innerHTML = this.inventory.map((slot, i) => {
       const selected = i === this.selectedInventory ? " is-selected" : "";
       const count = slot.count > 1 ? `<span class="plj-inv-count">${slot.count}</span>` : "";
-      return `<button class="plj-inv-item${selected}" data-inv-index="${i}" title="${esc(slot.opt.label)}"><span class="plj-inv-emoji">${esc(slot.opt.icon)}</span>${count}</button>`;
+      const timer = slot.opt.category === "food" && slot.eatBy !== undefined
+        ? `<span class="plj-inv-timer${slot.eatBy <= 2 ? " is-low" : ""}">${Math.max(0, Math.ceil(slot.eatBy))}</span>`
+        : "";
+      return `<button class="plj-inv-item${selected}" data-inv-index="${i}" title="${esc(slot.opt.label)}"><span class="plj-inv-emoji">${esc(slot.opt.icon)}</span>${count}${timer}</button>`;
     }).join("");
   }
 
@@ -6011,6 +6060,14 @@ export class Game {
       if (Math.abs(delta) < 10) return;
       e.preventDefault();
       this.stepInventorySelection(delta > 0 ? 1 : -1);
+    });
+    // double-click an item → use it now: give to a nearby person, else eat (if food)
+    this.ui.inventoryWrap.addEventListener("dblclick", (e) => {
+      e.preventDefault();
+      const index = inventoryIndexFrom(e.target);
+      if (index === null) return;
+      this.setInventorySelection(index, false);
+      this.useSelectedInventoryItem();
     });
     this.ui.timeTravel.addEventListener("click", () => this.showTimeTravel());
     this.ui.profileBtn.addEventListener("click", () => this.showProfile());
