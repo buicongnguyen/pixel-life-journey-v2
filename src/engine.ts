@@ -3447,7 +3447,7 @@ export class Game {
     const familyY = this.toScreenY(this.familyTreeGateY(), layout);
     const assetsY = this.toScreenY(this.assetsGateY(), layout);
     const trainingY = this.toScreenY(this.trainingGateY(), layout);
-    if (canTraining) this.drawTrainingSchoolGate(ctx, gateX, trainingY, t);
+    if (canTraining) this.drawUtilityGate(ctx, gateX, trainingY, TRAINING_GATE_R, "Training", "🏫", "#5db8ff", t);
     if (canAssets) this.drawUtilityGate(ctx, gateX, assetsY, ASSETS_GATE_R, "Assets", "💼", "#7ed957", t);
     if (canFamilyTree) this.drawUtilityGate(ctx, gateX, familyY, FAMILY_TREE_GATE_R, "Family Tree", "🌳", "#ffd23f", t);
   }
@@ -4294,7 +4294,7 @@ export class Game {
           <h2>🌳 Family Tree</h2>
           ${utilityButtons}
         </div>
-        <p class="plj-sub">Tap a person to edit details. Use relationships to draw parent, child, partner, and sibling lines.</p>
+        <p class="plj-sub">Tap a person to edit them — or use <b>Add person</b> below to put a new relative on the graph (pick parent / child / partner / sibling). Relationships draw the lines between them.</p>
         <div class="plj-family-map">${this.familyGraphMarkup()}</div>
         ${this.familyEditorMarkup()}
         <h3 class="plj-prof-h3">🏘️ Houses</h3>
@@ -4627,6 +4627,16 @@ export class Game {
     const answers = stableAnswerOrder(`${category}-${level}-${questionNumber}-${puzzle.q}`, puzzle.answers.length).map((answerIndex) =>
       `<button class="plj-training-answer" data-training-category="${category}" data-answer="${answerIndex}">${esc(puzzle.answers[answerIndex])}</button>`
     ).join("");
+    // Questions carry an auto-generated flavor wrapper ending in a code like
+    // "...card S008:". Pull that code out as a small index badge at the front so
+    // players don't read it as part of the actual question.
+    let qIndex = "";
+    let qText = puzzle.q;
+    const colonAt = puzzle.q.indexOf(": ");
+    if (colonAt > 0) {
+      const codeMatch = puzzle.q.slice(0, colonAt).match(/\b([A-Z]\d{2,})\b/);
+      if (codeMatch) { qIndex = codeMatch[1]; qText = puzzle.q.slice(colonAt + 2).trim(); }
+    }
     return `
       <section class="plj-training-puzzle is-${category}">
         <div class="plj-training-row-head">
@@ -4634,7 +4644,7 @@ export class Game {
           <div class="plj-training-levels" aria-label="${esc(meta.title)} level">${levels}</div>
         </div>
         <p class="plj-training-summary">${esc(meta.summary)}</p>
-        <p>${esc(puzzle.q)}</p>
+        <p class="plj-training-q">${qIndex ? `<span class="plj-q-index">${esc(qIndex)}</span>` : ""}${esc(qText)}</p>
         <div class="plj-training-answers">${answers}</div>
       </section>`;
   }
