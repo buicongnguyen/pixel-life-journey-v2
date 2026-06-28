@@ -106,7 +106,7 @@ const MIDDLE_INDEX = STAGES.findIndex((s) => s.id === "middle");
 const CAREER_INDEX = STAGES.findIndex((s) => s.id === "career");
 const ELEMENTARY_ASSETS_MONEY = 200000;
 const BAD_FIT_TAGS = ["sedentary", "gaming", "screen", "toy_phone", "cigarette"];
-const BAD_FOCUS_TAGS = ["wine", "whisky"];
+const BAD_FOCUS_TAGS = ["wine", "whisky", "beer"];
 const GOOD_PEER_TAGS = ["study", "sports", "exercise", "friends"];
 const FAMILY_MONEY_MIN = 10000;
 const FAMILY_MONEY_MAX = 2000000;
@@ -1769,6 +1769,7 @@ export class Game {
     if (opt.opensHousePicker || opt.opensVehiclePicker || opt.opensCareerDesk || opt.gamble || opt.invest || opt.moneyMgmt || opt.category === "special")
       return { kind: "neutral" };
     const t = opt.storyTag;
+    if (opt.treat) return { kind: "good" }; // candy & sweets: a treat you collect & can gift
     if (t === "junkfood") return { kind: "bad", guard: "diet" }; // avoid by eating well
     if (BAD_FIT_TAGS.includes(t ?? "")) return { kind: "bad", guard: "fit" }; // avoid by staying fit
     if (BAD_FOCUS_TAGS.includes(t ?? "")) return { kind: "bad", guard: "focus" }; // avoid by staying grounded
@@ -3240,7 +3241,8 @@ export class Game {
 
   private inventoryReactionEffects(item: LifeOption, person: LifeOption): Partial<Stats> {
     const effects: Partial<Stats> = { happiness: this.isFamilyOption(person) ? 4 : 3 };
-    if (item.category === "fun") effects.fun = 3;
+    if (item.treat) { effects.happiness = (effects.happiness ?? 0) + 2; effects.fun = 4; } // everyone loves a shared treat
+    else if (item.category === "fun") effects.fun = 3;
     else if (item.category === "food") effects.health = 1;
     else if (item.category === "health") effects.health = 2;
     else if (item.category === "rest") effects.health = 1;
@@ -3262,17 +3264,23 @@ export class Game {
       return;
     }
 
+    if (person.contactCd > 0) return; // one gift per person per ~0.9s — no time-free farming
     this.cooldown = 0.22;
+    person.contactCd = 0.9;
     this.markGuideSeen();
     const before = { health: this.stats.health, happiness: this.stats.happiness, fun: this.stats.fun, smarts: this.stats.smarts, money: this.money };
     const effects = this.inventoryReactionEffects(slot.opt, person.opt);
     this.applyEff(effects, "mental");
     this.connections += this.isFamilyOption(person.opt) ? 1 : 3;
-    if (this.isFamilyOption(person.opt)) this.familyBond += 1;
     this.consumeSelectedInventoryItem();
     this.floats.push({ x: person.x, y: person.y - 92, text: `${slot.opt.icon} + ${person.opt.icon}`, color: "#ffd23f", life: 1.35 });
     this.spawnFloats(effects);
     this.showOptionSky(person.opt, before, `${person.opt.icon} ${person.opt.label} liked your ${slot.opt.icon} ${slot.opt.label}`);
+    // a gift costs a turn of life like any other action — closes the no-time-cost stat/bond farm
+    this.age += this.optionAgeCost(slot.opt);
+    this.passiveTick();
+    this.sampleHealth();
+    if (this.mode !== "playing") return;
     this.renderFocusPanel();
     this.renderInventory();
   }
@@ -3659,7 +3667,7 @@ export class Game {
     ctx.globalAlpha = 1;
 
     // sky-area feedback banner — a nice line about who you met + the point change
-    if (this.skyMessage) {
+    if (inRoom && this.skyMessage) {
       const m = this.skyMessage;
       const alpha = Math.max(0, Math.min(1, m.timer / 0.5));
       ctx.save();
@@ -3862,11 +3870,6 @@ export class Game {
   private hint(text: string): void {
     this.ui.hint.textContent = text;
     this.hintTimer = 1.6;
-  }
-
-  /** Show a transient banner in the sky area at the top of the play field. */
-  private showSky(text: string, color: string): void {
-    this.skyMessage = { text, color, timer: 2.6 };
   }
 
   /** After interacting with a person, announce who + the point change in the sky. */
@@ -4154,7 +4157,7 @@ export class Game {
       return `
         <button class="plj-family-node ${esc(member.tone)}${selected}${locked}" data-family-id="${esc(member.id)}" style="left:${p.x}px;top:${p.y}px">
           <span class="plj-family-name">${esc(member.name)}</span>
-          <span class="plj-family-face">${member.icon}</span>
+          <span class="plj-family-face">${esc(member.icon)}</span>
           <span class="plj-family-role">${esc(member.role)}</span>
           <small>${this.familyAgeLabel(member)}</small>
         </button>`;
@@ -4934,9 +4937,9 @@ export class Game {
             <span class="plj-bio-item-sub">${esc(b.subtitle || "")}${b.subtitle ? " · " : ""}${bioMomentCount(b)} moments</span>
           </div>
           <div class="plj-bio-item-btns">
-            <button class="plj-btn plj-bio-play2" data-id="${b.id}">▶ Play</button>
-            <button class="plj-btn plj-btn-ghost plj-bio-edit" data-id="${b.id}" title="Edit">✎</button>
-            <button class="plj-btn plj-btn-ghost plj-bio-del2" data-id="${b.id}" title="Delete">🗑</button>
+            <button class="plj-btn plj-bio-play2" data-id="${esc(b.id)}">▶ Play</button>
+            <button class="plj-btn plj-btn-ghost plj-bio-edit" data-id="${esc(b.id)}" title="Edit">✎</button>
+            <button class="plj-btn plj-btn-ghost plj-bio-del2" data-id="${esc(b.id)}" title="Delete">🗑</button>
           </div>
         </div>`).join("")
       : `<p class="plj-sub">No biographies yet. Write one — or live a life and save it at the end.</p>`;
@@ -5627,7 +5630,7 @@ export class Game {
 
 function effectChips(effects: Partial<Stats>): string {
   return (Object.entries(effects) as [StatKey, number][])
-    .filter(([, v]) => v)
+    .filter(([k, v]) => v && STAT_META[k])
     .map(
       ([k, v]) =>
         `<span class="plj-chip" style="color:${v > 0 ? STAT_META[k].color : "#ff8a8a"}">${

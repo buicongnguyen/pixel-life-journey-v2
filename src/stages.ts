@@ -85,7 +85,7 @@ export const STAGES: Stage[] = [
     upperScenes: ["park", "amusementPark"],
     options: [
       { id: "fruit", label: "Fruit", icon: "🍓", desc: "Healthy fruit snacks — great for a growing body.", category: "food", effects: { health: 8 }, storyTag: "veggies" },
-      { id: "candy", label: "Candy", icon: "🍬", desc: "Sweet treats. Fun now, not so good for you.", category: "food", effects: { fun: 8, health: -6 }, storyTag: "junkfood" },
+      { id: "candy", label: "Candy", icon: "🍬", desc: "Sweet treats. A little sugary, but lovely to share with a friend.", category: "food", effects: { fun: 8, health: -3 }, storyTag: "junkfood", treat: true },
       { id: "blocks", label: "Blocks", icon: "🧱", desc: "Stack blocks — learning shapes and patience.", category: "smarts", effects: { smarts: 7, fun: 3 }, storyTag: "play_learn" },
       { id: "cartoons", label: "Cartoons", icon: "📺", desc: "Watch cartoons. Fun, but too much dulls the mind.", category: "fun", effects: { fun: 7, smarts: -2 }, storyTag: "screen" },
       { id: "slide", label: "Playground", icon: "🛝", desc: "Run and slide outside — active and joyful.", category: "health", effects: { health: 5, fun: 5 }, storyTag: "play_active" },
@@ -109,7 +109,7 @@ export const STAGES: Stage[] = [
     options: [
       { id: "books", label: "Story books", icon: "📚", desc: "Picture books spark imagination and early smarts.", category: "smarts", effects: { smarts: 8, happiness: 2 }, storyTag: "read" },
       { id: "veg", label: "Veggies", icon: "🥦", desc: "Eat your vegetables — fuel for a healthy body.", category: "food", effects: { health: 8 }, storyTag: "veggies" },
-      { id: "sweets", label: "Sweets", icon: "🍭", desc: "Lollipops and cake. Tasty but sugary.", category: "food", effects: { fun: 7, health: -6 }, storyTag: "junkfood" },
+      { id: "sweets", label: "Sweets", icon: "🍭", desc: "Lollipops and cake. A sugary treat — fun to collect and give away.", category: "food", effects: { fun: 7, health: -3 }, storyTag: "junkfood", treat: true },
       { id: "bike", label: "Ride bike", icon: "🚲", desc: "Learn to ride a bike — active fun outdoors.", category: "health", effects: { health: 6, fun: 4 }, storyTag: "sports" },
       { id: "music", label: "Music", icon: "🎵", desc: "Sing and dance to music. Pure happiness.", category: "fun", effects: { happiness: 6, fun: 4 }, storyTag: "music" },
       { id: "games", label: "Video games", icon: "🎮", desc: "Play video games. Loads of fun, a bit sedentary.", category: "fun", effects: { fun: 8, health: -3 }, storyTag: "gaming" },
