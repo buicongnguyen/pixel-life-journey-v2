@@ -1318,7 +1318,7 @@ export class Game {
   private stations: Station[] = [];
   private people: Station[] = []; // cached person stations (block bad items)
   // a transient banner shown in the sky area after you interact with a person
-  private skyMessage: { text: string; color: string; timer: number } | null = null;
+  private skyMessage: { text: string; sub?: string; color: string; timer: number } | null = null;
   private floats: FloatText[] = [];
   private focusIndex = -1;
 
@@ -3649,28 +3649,51 @@ export class Game {
     }
     ctx.globalAlpha = 1;
 
-    // sky-area feedback banner — who you just met + how your points moved
+    // sky-area feedback banner — a nice line about who you met + the point change
     if (this.skyMessage) {
       const m = this.skyMessage;
-      const alpha = Math.max(0, Math.min(1, m.timer / 0.45));
+      const alpha = Math.max(0, Math.min(1, m.timer / 0.5));
       ctx.save();
       ctx.globalAlpha = alpha;
-      ctx.font = "bold 21px 'Trebuchet MS', system-ui, sans-serif";
       ctx.textAlign = "center";
-      ctx.textBaseline = "middle";
-      const tw = ctx.measureText(m.text).width;
-      const bw = Math.min(W - 20, tw + 34);
-      const bh = 34;
+      const maxW = Math.min(W - 32, 540);
+      ctx.font = "bold 18px 'Trebuchet MS', system-ui, sans-serif";
+      const lines: string[] = [];
+      let cur = "";
+      for (const word of m.text.split(" ")) {
+        const test = cur ? cur + " " + word : word;
+        if (ctx.measureText(test).width > maxW && cur) { lines.push(cur); cur = word; }
+        else cur = test;
+      }
+      if (cur) lines.push(cur);
+      let contentW = 0;
+      for (const ln of lines) contentW = Math.max(contentW, ctx.measureText(ln).width);
+      ctx.font = "bold 16px 'Trebuchet MS', system-ui, sans-serif";
+      if (m.sub) contentW = Math.max(contentW, ctx.measureText(m.sub).width);
+      const lineH = 23;
+      const subH = m.sub ? 23 : 0;
+      const padX = 18;
+      const padY = 11;
+      const bw = Math.min(W - 10, contentW + padX * 2);
+      const bh = lines.length * lineH + subH + padY * 2;
       const bx = (W - bw) / 2;
-      const by = 12;
+      const by = 10;
       const cr = ctx as CanvasRenderingContext2D & { roundRect?: (x: number, y: number, w: number, h: number, r: number) => void };
       ctx.beginPath();
-      if (cr.roundRect) cr.roundRect(bx, by, bw, bh, 16);
+      if (cr.roundRect) cr.roundRect(bx, by, bw, bh, 14);
       else ctx.rect(bx, by, bw, bh);
-      ctx.fillStyle = "rgba(14, 9, 28, 0.82)";
+      ctx.fillStyle = "rgba(14, 9, 28, 0.85)";
       ctx.fill();
-      ctx.fillStyle = m.color;
-      ctx.fillText(m.text, W / 2, by + bh / 2 + 1);
+      ctx.textBaseline = "middle";
+      ctx.fillStyle = "#f4eefb";
+      ctx.font = "bold 18px 'Trebuchet MS', system-ui, sans-serif";
+      let ty = by + padY + lineH / 2;
+      for (const ln of lines) { ctx.fillText(ln, W / 2, ty); ty += lineH; }
+      if (m.sub) {
+        ctx.font = "bold 16px 'Trebuchet MS', system-ui, sans-serif";
+        ctx.fillStyle = m.color;
+        ctx.fillText(m.sub, W / 2, ty + 1);
+      }
       ctx.restore();
     }
 
@@ -3850,9 +3873,14 @@ export class Game {
     add(this.stats.smarts, before.smarts, "🧠");
     const dMoney = Math.round(this.money - before.money);
     if (dMoney !== 0) parts.push(`💰${dMoney > 0 ? "+" : "-"}${formatMoney(Math.abs(dMoney)).replace("$", "")}`);
-    const name = (opt.label || "someone").replace(/\s*\(.*\)\s*/, "").trim();
+    const desc = (opt.desc || opt.label || "Nice to see you.").trim();
     const good = this.stats.happiness - before.happiness + (this.stats.health - before.health) >= 0;
-    this.showSky(`${opt.icon} ${name}  ${parts.join("  ") || "nice to see you"}`, good ? "#bdf0c6" : "#ffb3c0");
+    this.skyMessage = {
+      text: `${opt.icon} ${desc}`,
+      sub: parts.join("   "),
+      color: good ? "#bdf0c6" : "#ffb3c0",
+      timer: 3.2,
+    };
   }
 
   /** The intro guide shows once, then stays tucked away (remembered across lives). */
