@@ -20,6 +20,7 @@ export interface UIRefs {
   weightBar: { fill: HTMLElement; val: HTMLElement };
   subBars: Record<"muscle" | "nutrition" | "mental", { fill: HTMLElement; val: HTMLElement }>;
   warn: HTMLElement;
+  skyText: HTMLElement;
   focusPanel: HTMLElement;
   hint: HTMLElement;
   timeTravel: HTMLElement;
@@ -29,6 +30,7 @@ export interface UIRefs {
   touchWrap: HTMLElement;
   inventoryWrap: HTMLElement;
   inventoryTrack: HTMLElement;
+  collectBtn: HTMLElement;
   overlay: HTMLElement;
   touch: Record<"up" | "down" | "left" | "right", HTMLElement>;
 }
@@ -126,6 +128,9 @@ export function createUI(mount: HTMLElement): UIRefs {
   ctx.imageSmoothingEnabled = true;
   ctx.imageSmoothingQuality = "high";
   const warn = el("div", "plj-warn", "⚠️ Your health is failing!");
+  // floating banner in the "sky" (top of the scene) that names whatever person
+  // or item you're currently touching/standing next to
+  const skyText = el("div", "plj-sky-text is-hidden");
   const hint = el("div", "plj-hint");
   const timeTravel = el("button", "plj-timetravel", "⏳");
   timeTravel.title = "Time travel (T)";
@@ -135,7 +140,7 @@ export function createUI(mount: HTMLElement): UIRefs {
   skipBtn.title = "Skip this chapter";
   const settingsBtn = el("button", "plj-corner-btn plj-settings-btn", "⚙️");
   settingsBtn.title = "Settings";
-  stage.append(canvas, warn, hint, timeTravel, profileBtn, skipBtn, settingsBtn);
+  stage.append(canvas, warn, skyText, hint, timeTravel, profileBtn, skipBtn, settingsBtn);
 
   // --- bottom focus panel ---------------------------------------------------
   const focusPanel = el(
@@ -156,7 +161,9 @@ export function createUI(mount: HTMLElement): UIRefs {
   inventoryWrap.title = "Swipe left/right to select. Swipe up to eat food, or near a person to give.";
   const inventoryTrack = el("div", "plj-inventory-track");
   inventoryWrap.append(inventoryTrack);
-  touchWrap.append(dpad, inventoryWrap);
+  const collectBtn = el("button", "plj-collect-btn", "<span class='plj-collect-ic'>🤝</span><span class='plj-collect-lbl'>Collect</span>");
+  collectBtn.title = "Collect / interact (or press SPACE)";
+  touchWrap.append(dpad, inventoryWrap, collectBtn);
   // the touch controls live INSIDE the stage so they overlay the canvas (thumbs
   // on the game), keeping everything on one mobile screen with no page scroll
   stage.append(touchWrap);
@@ -179,6 +186,7 @@ export function createUI(mount: HTMLElement): UIRefs {
     weightBar,
     subBars,
     warn,
+    skyText,
     focusPanel,
     hint,
     timeTravel,
@@ -188,6 +196,7 @@ export function createUI(mount: HTMLElement): UIRefs {
     touchWrap,
     inventoryWrap,
     inventoryTrack,
+    collectBtn,
     overlay,
     touch: { up, down, left, right },
   };
