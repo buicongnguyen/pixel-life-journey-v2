@@ -121,7 +121,8 @@ export function createUI(mount: HTMLElement): UIRefs {
   // Supersample: draw in a 640x700 coordinate space but back it with a 2× pixel
   // buffer, then let the browser downscale it smoothly — crisp, anti-aliased art
   // at a fraction of the fill cost (a 4× buffer made the bigger room lag).
-  const SS = 2;
+  // supersample to the display's pixel density (1 on standard screens, 2 on retina)
+  const SS = Math.min(2, Math.max(1, Math.ceil((typeof window !== "undefined" && window.devicePixelRatio) || 1)));
   canvas.width = 640 * SS;
   canvas.height = 800 * SS;
   const ctx = canvas.getContext("2d")!;

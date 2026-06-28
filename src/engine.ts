@@ -64,7 +64,12 @@ import { linePool } from "./messages";
 
 const W = 640;
 const H = 800; // a tall room with only a thin sky strip above the playfield
-const CANVAS_SCALE = 2;
+// Supersample to the display's pixel density — 1 on a standard screen, 2 on
+// retina/mobile. CANVAS_SCALE=2 everywhere drew 4× the pixels a 1× display can
+// even show, which is the main cause of the slow/janky canvas. (Mirrors ui.ts.)
+const CANVAS_SCALE = Math.min(2, Math.max(1, Math.ceil((typeof window !== "undefined" && window.devicePixelRatio) || 1)));
+/** Depth comparator for the render draw-list — reused so it isn't reallocated each frame. */
+const byDepth = (a: { y: number }, b: { y: number }): number => a.y - b.y;
 const LANDSCAPE_W = 960;
 const LANDSCAPE_H = 540;
 const LANDSCAPE_FLOOR_Y = 50;
@@ -1372,7 +1377,13 @@ export class Game {
   private stations: Station[] = [];
   private people: Station[] = []; // cached person stations (block bad items)
   // a transient banner shown in the sky area after you interact with a person
-  private skyMessage: { text: string; sub?: string; color: string; timer: number } | null = null;
+  private skyMessage: { text: string; sub?: string; color: string; timer: number; wrapW?: number; wrapLines?: string[]; wrapCW?: number } | null = null;
+  // reused scratch draw-list — avoids allocating an array + N wrapper objects every frame
+  private drawList: { y: number; station?: Station; pet?: boolean }[] = [];
+  // HUD dirty-check — skip the per-frame DOM writes when nothing relevant changed
+  private hudSig = NaN;
+  private hudMode = "";
+  private hudOcc = "";
   // rotating flavor-line cursor, keyed per person-kind / item-id (cosmetic)
   private lineIndex: Record<string, number> = {};
   // a small buy/sell market shown on the Assets page (price index + units held)
@@ -3078,7 +3089,9 @@ export class Game {
       if (this.skyMessage.timer <= 0) this.skyMessage = null;
     }
     // floats animate in every mode
-    this.floats = this.floats.filter((f) => (f.life -= dt) > 0);
+    for (let i = this.floats.length - 1; i >= 0; i--) {
+      if ((this.floats[i].life -= dt) <= 0) this.floats.splice(i, 1);
+    }
     for (const f of this.floats) f.y -= dt * 26;
 
     if (this.mode === "transition") {
@@ -3444,7 +3457,8 @@ export class Game {
 
   /** Bad-luck event objects are hazards; touching one applies it in-world. */
   private checkEventContacts(): void {
-    for (const st of [...this.stations]) {
+    for (let i = this.stations.length - 1; i >= 0; i--) {
+      const st = this.stations[i];
       if (st.kind !== "event" || !st.event || st.event.good !== false) continue;
       if (Math.hypot(this.px - st.x, this.py - st.y) > ITEM_R + 4) continue;
       this.collectEventItem(st);
@@ -3697,12 +3711,24 @@ export class Game {
 
       this.drawUtilityGates(ctx, t, layout);
 
-      // draw stations, people and the avatar together, sorted by depth (y)
-      type Drawable = { y: number; station?: Station; pet?: boolean };
-      const drawables: Drawable[] = this.stations.map((st) => ({ y: st.y, station: st }));
-      if (this.petKind) drawables.push({ y: this.petY, pet: true });
-      drawables.push({ y: this.py }); // the avatar
-      drawables.sort((a, b) => a.y - b.y);
+      // draw stations, people and the avatar together, sorted by depth (y).
+      // Reuse a pooled draw-list so we don't allocate an array + N objects each frame.
+      const drawables = this.drawList;
+      let dn = 0;
+      for (const st of this.stations) {
+        const o = drawables[dn] ?? (drawables[dn] = { y: 0 });
+        o.y = st.y; o.station = st; o.pet = false; dn++;
+      }
+      if (this.petKind) {
+        const o = drawables[dn] ?? (drawables[dn] = { y: 0 });
+        o.y = this.petY; o.station = undefined; o.pet = true; dn++;
+      }
+      {
+        const o = drawables[dn] ?? (drawables[dn] = { y: 0 });
+        o.y = this.py; o.station = undefined; o.pet = false; dn++; // the avatar
+      }
+      drawables.length = dn;
+      drawables.sort(byDepth);
       for (const d of drawables) {
         if (d.pet && this.petKind) {
           drawPet(ctx, this.toScreenX(this.petX, layout), this.toScreenY(this.petY, layout), this.petKind, t + this.petWalkPhase * 0.08, {
@@ -3770,20 +3796,27 @@ export class Game {
       ctx.save();
       ctx.globalAlpha = alpha;
       ctx.textAlign = "center";
-      const maxW = Math.min(W - 32, 540);
-      ctx.font = "bold 18px 'Trebuchet MS', system-ui, sans-serif";
-      const lines: string[] = [];
-      let cur = "";
-      for (const word of m.text.split(" ")) {
-        const test = cur ? cur + " " + word : word;
-        if (ctx.measureText(test).width > maxW && cur) { lines.push(cur); cur = word; }
-        else cur = test;
+      // Word-wrap once and cache it on the message — measureText is costly and the
+      // banner shows for ~3s, so re-wrapping it every frame was pure waste.
+      if (!m.wrapLines || m.wrapW !== W) {
+        const maxW = Math.min(W - 32, 540);
+        ctx.font = "bold 18px 'Trebuchet MS', system-ui, sans-serif";
+        const wl: string[] = [];
+        let cur = "";
+        for (const word of m.text.split(" ")) {
+          const test = cur ? cur + " " + word : word;
+          if (ctx.measureText(test).width > maxW && cur) { wl.push(cur); cur = word; }
+          else cur = test;
+        }
+        if (cur) wl.push(cur);
+        let cw = 0;
+        for (const ln of wl) cw = Math.max(cw, ctx.measureText(ln).width);
+        ctx.font = "bold 16px 'Trebuchet MS', system-ui, sans-serif";
+        if (m.sub) cw = Math.max(cw, ctx.measureText(m.sub).width);
+        m.wrapLines = wl; m.wrapCW = cw; m.wrapW = W;
       }
-      if (cur) lines.push(cur);
-      let contentW = 0;
-      for (const ln of lines) contentW = Math.max(contentW, ctx.measureText(ln).width);
-      ctx.font = "bold 16px 'Trebuchet MS', system-ui, sans-serif";
-      if (m.sub) contentW = Math.max(contentW, ctx.measureText(m.sub).width);
+      const lines = m.wrapLines;
+      const contentW = m.wrapCW ?? 0;
       const lineH = 23;
       const subH = m.sub ? 23 : 0;
       const padX = 18;
@@ -3815,6 +3848,24 @@ export class Game {
   }
 
   private renderHud(): void {
+    // Most of the HUD changes only on a discrete action / mode change, yet this runs
+    // every frame. A cheap numeric signature lets us skip the reflow-causing DOM
+    // writes when nothing relevant changed.
+    const sig = Math.round(this.money)
+      + Math.floor(this.age) * 131
+      + this.stageIndex * 100003
+      + Math.round(this.stats.health) * 7
+      + Math.round(this.stats.happiness) * 13
+      + Math.round(this.stats.fun) * 17
+      + Math.round(this.stats.smarts) * 19
+      + Math.round(this.weight) * 23
+      + Math.round(this.muscle) * 29
+      + Math.round(this.nutrition) * 31
+      + Math.round(this.mental) * 37
+      + this.lifeSpeed * 41;
+    const occId = this.occupation?.id ?? "";
+    if (sig !== this.hudSig || this.mode !== this.hudMode || occId !== this.hudOcc) {
+    this.hudSig = sig; this.hudMode = this.mode; this.hudOcc = occId;
     for (const k of STAT_KEYS) {
       const v = Math.round(this.stats[k]);
       const bar = this.ui.bars[k];
@@ -3875,12 +3926,15 @@ export class Game {
     this.ui.settingsBtn.style.display = playing ? "flex" : "none";
     this.ui.skipBtn.style.display = playing ? "flex" : "none";
     this.ui.touchWrap.style.visibility = playing ? "" : "hidden";
+    }
+    // Collect-button glow tracks the avatar's position/focus, so refresh it each frame.
+    const playing2 = this.mode === "playing";
     const nearGateForCollect =
       (this.canShowTrainingGate() && this.nearTrainingGate()) ||
       (this.canShowAssetsGate() && this.nearAssetsGate()) ||
       (this.canShowFamilyTreeGate() && this.nearFamilyTreeGate()) ||
       (this.doorOpen() && this.px > DOOR_X - 36 && this.nearGate());
-    this.ui.collectBtn.dataset.ready = playing && (this.focusIndex >= 0 || nearGateForCollect) ? "true" : "false";
+    this.ui.collectBtn.dataset.ready = playing2 && (this.focusIndex >= 0 || nearGateForCollect) ? "true" : "false";
   }
 
   /** Names the focused person/item in a floating banner up in the sky. */
