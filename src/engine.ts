@@ -63,6 +63,11 @@ import { generateStory, type CauseOfEnd, type LifeStory } from "./story";
 
 const W = 640;
 const H = 800; // a tall room with only a thin sky strip above the playfield
+const CANVAS_SCALE = 2;
+const LANDSCAPE_W = 960;
+const LANDSCAPE_H = 540;
+const LANDSCAPE_FLOOR_Y = 50;
+const LANDSCAPE_PY_MAX = 500;
 const FLOOR_Y = 72; // sky-only non-playable band; ground starts right below it
 const DOOR_X = W - 74;
 const STAGE_GATE_R = 31;
@@ -1128,6 +1133,13 @@ interface Station {
   satiated: number;
 }
 
+interface RenderLayout {
+  w: number;
+  h: number;
+  floorY: number;
+  landscape: boolean;
+}
+
 interface InventorySlot {
   opt: LifeOption;
   count: number;
@@ -1340,6 +1352,69 @@ export class Game {
     requestAnimationFrame(this.frame);
     // Debug handle for headless verification (mirrors other games' debug APIs).
     (window as unknown as { __pixelLife: Game }).__pixelLife = this;
+  }
+
+  private renderLayout(): RenderLayout {
+    const rect = this.ui.canvas.getBoundingClientRect();
+    const mediaLandscape = window.matchMedia
+      ? window.matchMedia("(orientation: landscape) and (max-height: 620px)").matches
+      : false;
+    const wideCanvas = rect.width > rect.height * 1.28 && rect.height < 620;
+    const landscape = mediaLandscape || wideCanvas;
+    return landscape
+      ? { w: LANDSCAPE_W, h: LANDSCAPE_H, floorY: LANDSCAPE_FLOOR_Y, landscape: true }
+      : { w: W, h: H, floorY: FLOOR_Y, landscape: false };
+  }
+
+  private ensureCanvasBuffer(layout: RenderLayout): void {
+    const pxW = layout.w * CANVAS_SCALE;
+    const pxH = layout.h * CANVAS_SCALE;
+    if (this.ui.canvas.width !== pxW || this.ui.canvas.height !== pxH) {
+      this.ui.canvas.width = pxW;
+      this.ui.canvas.height = pxH;
+    }
+    this.ui.ctx.setTransform(CANVAS_SCALE, 0, 0, CANVAS_SCALE, 0, 0);
+    this.ui.ctx.imageSmoothingEnabled = true;
+    this.ui.ctx.imageSmoothingQuality = "high";
+  }
+
+  private toScreenX(x: number, layout: RenderLayout): number {
+    if (!layout.landscape) return x;
+    const gateStopX = layout.w - 74;
+    if (x <= DOOR_X) return (x / DOOR_X) * gateStopX;
+    return gateStopX + ((x - DOOR_X) / (W - DOOR_X)) * (layout.w - gateStopX);
+  }
+
+  private fromScreenX(x: number, layout: RenderLayout): number {
+    if (!layout.landscape) return x;
+    const gateStopX = layout.w - 74;
+    if (x <= gateStopX) return (x / gateStopX) * DOOR_X;
+    return DOOR_X + ((x - gateStopX) / (layout.w - gateStopX)) * (W - DOOR_X);
+  }
+
+  private toScreenY(y: number, layout: RenderLayout): number {
+    if (!layout.landscape) return y;
+    if (y <= FLOOR_Y) return (y / FLOOR_Y) * layout.floorY;
+    return layout.floorY + ((y - FLOOR_Y) / (PY_MAX - FLOOR_Y)) * (LANDSCAPE_PY_MAX - layout.floorY);
+  }
+
+  private fromScreenY(y: number, layout: RenderLayout): number {
+    if (!layout.landscape) return y;
+    if (y <= layout.floorY) return (y / layout.floorY) * FLOOR_Y;
+    return FLOOR_Y + ((y - layout.floorY) / (LANDSCAPE_PY_MAX - layout.floorY)) * (PY_MAX - FLOOR_Y);
+  }
+
+  private canvasContentRect(layout: RenderLayout): { left: number; top: number; width: number; height: number } {
+    const rect = this.ui.canvas.getBoundingClientRect();
+    if (rect.width <= 0 || rect.height <= 0) return { left: rect.left, top: rect.top, width: 1, height: 1 };
+    const artAspect = layout.w / layout.h;
+    const boxAspect = rect.width / rect.height;
+    if (boxAspect > artAspect) {
+      const width = rect.height * artAspect;
+      return { left: rect.left + (rect.width - width) / 2, top: rect.top, width, height: rect.height };
+    }
+    const height = rect.width / artAspect;
+    return { left: rect.left, top: rect.top, width: rect.width, height };
   }
 
   /** Test/debug snapshot of the live game state. */
@@ -3302,24 +3377,28 @@ export class Game {
   }
 
   private canvasPoint(e: PointerEvent): { x: number; y: number } {
-    const rect = this.ui.canvas.getBoundingClientRect();
+    const layout = this.renderLayout();
+    const rect = this.canvasContentRect(layout);
+    const sx = Math.max(0, Math.min(layout.w, ((e.clientX - rect.left) / rect.width) * layout.w));
+    const sy = Math.max(0, Math.min(layout.h, ((e.clientY - rect.top) / rect.height) * layout.h));
     return {
-      x: ((e.clientX - rect.left) / rect.width) * W,
-      y: ((e.clientY - rect.top) / rect.height) * H,
+      x: this.fromScreenX(sx, layout),
+      y: this.fromScreenY(sy, layout),
     };
   }
 
-  private drawUtilityGates(ctx: CanvasRenderingContext2D, t: number): void {
+  private drawUtilityGates(ctx: CanvasRenderingContext2D, t: number, layout: RenderLayout): void {
     const canFamilyTree = this.canShowFamilyTreeGate();
     const canAssets = this.canShowAssetsGate();
     const canTraining = this.canShowTrainingGate();
     if (!canFamilyTree && !canAssets && !canTraining) return;
-    const familyY = this.familyTreeGateY();
-    const assetsY = this.assetsGateY();
-    const trainingY = this.trainingGateY();
-    if (canTraining) this.drawTrainingSchoolGate(ctx, UTILITY_GATE_X, trainingY, t);
-    if (canAssets) this.drawUtilityGate(ctx, UTILITY_GATE_X, assetsY, ASSETS_GATE_R, "Assets", "💼", "#7ed957", t);
-    if (canFamilyTree) this.drawUtilityGate(ctx, UTILITY_GATE_X, familyY, FAMILY_TREE_GATE_R, "Family Tree", "🌳", "#ffd23f", t);
+    const gateX = this.toScreenX(UTILITY_GATE_X, layout);
+    const familyY = this.toScreenY(this.familyTreeGateY(), layout);
+    const assetsY = this.toScreenY(this.assetsGateY(), layout);
+    const trainingY = this.toScreenY(this.trainingGateY(), layout);
+    if (canTraining) this.drawTrainingSchoolGate(ctx, gateX, trainingY, t);
+    if (canAssets) this.drawUtilityGate(ctx, gateX, assetsY, ASSETS_GATE_R, "Assets", "💼", "#7ed957", t);
+    if (canFamilyTree) this.drawUtilityGate(ctx, gateX, familyY, FAMILY_TREE_GATE_R, "Family Tree", "🌳", "#ffd23f", t);
   }
 
   private drawTrainingSchoolGate(ctx: CanvasRenderingContext2D, x: number, y: number, t: number): void {
@@ -3453,9 +3532,11 @@ export class Game {
   // --- rendering ------------------------------------------------------------
 
   private render(): void {
+    const layout = this.renderLayout();
+    this.ensureCanvasBuffer(layout);
     const ctx = this.ui.ctx;
     ctx.fillStyle = "#140d24";
-    ctx.fillRect(0, 0, W, H);
+    ctx.fillRect(0, 0, layout.w, layout.h);
 
     const inRoom =
       this.mode === "playing" ||
@@ -3476,17 +3557,17 @@ export class Game {
       const s = STAGES[this.stageIndex];
       const t = this.walkPhase;
       const doorActive = this.doorOpen();
-      drawRoom(ctx, s.theme, W, H, FLOOR_Y, doorActive, t, {
+      drawRoom(ctx, s.theme, layout.w, layout.h, layout.floorY, doorActive, t, {
         scene: s.scene,
         upperScene: this.upperScene(),
         atHome: !!s.atHome,
         homeQuality: this.homeQuality,
-        splitY: this.zoneSplitY(),
+        splitY: this.toScreenY(this.zoneSplitY(), layout),
         ownedVehicles: this.ownedVehicles(),
         ownedHome: this.liveHome(),
       });
 
-      this.drawUtilityGates(ctx, t);
+      this.drawUtilityGates(ctx, t, layout);
 
       // draw stations, people and the avatar together, sorted by depth (y)
       type Drawable = { y: number; station?: Station; pet?: boolean };
@@ -3496,14 +3577,14 @@ export class Game {
       drawables.sort((a, b) => a.y - b.y);
       for (const d of drawables) {
         if (d.pet && this.petKind) {
-          drawPet(ctx, this.petX, this.petY, this.petKind, t + this.petWalkPhase * 0.08, {
+          drawPet(ctx, this.toScreenX(this.petX, layout), this.toScreenY(this.petY, layout), this.petKind, t + this.petWalkPhase * 0.08, {
             facing: this.petFacing,
             sitting: this.petKind === "cat",
           });
           continue;
         }
         if (!d.station) {
-          drawAvatar(ctx, this.px, this.py, avatarLook(this.stageIndex, this.gender, this.heritage), this.walkPhase, {
+          drawAvatar(ctx, this.toScreenX(this.px, layout), this.toScreenY(this.py, layout), avatarLook(this.stageIndex, this.gender, this.heritage), this.walkPhase, {
             moving: this.moving,
             facing: this.facing,
             verticalBias: this.verticalBias,
@@ -3526,18 +3607,18 @@ export class Game {
           ctx.save();
           ctx.globalAlpha = pulse;
           ctx.fillStyle = bad ? "#ff5d6c" : eventMoney ? "#ffd23f" : "#3ddc84";
-          ellipseRing(ctx, st.x, st.y + 16, 22, 7);
+          ellipseRing(ctx, this.toScreenX(st.x, layout), this.toScreenY(st.y + 16, layout), 22, 7);
           ctx.restore();
         }
         if (fadedSatiated) ctx.globalAlpha = 0.18;
         if (st.kind === "event" && st.event) {
-          drawEventItem(ctx, st.x, st.y, st.event.id, st.event.emoji, st.event.title, st.event.good !== false, focused, t);
+          drawEventItem(ctx, this.toScreenX(st.x, layout), this.toScreenY(st.y, layout), st.event.id, st.event.emoji, st.event.title, st.event.good !== false, focused, t);
         } else if (st.opt.person) {
-          drawPerson(ctx, st.x, st.y, st.opt.person, this.gender, st.opt.label, focused, used, t, this.stageIndex, this.heritage, {
+          drawPerson(ctx, this.toScreenX(st.x, layout), this.toScreenY(st.y, layout), st.opt.person, this.gender, st.opt.label, focused, used, t, this.stageIndex, this.heritage, {
             seated: this.shouldSitWithNewborn(st),
           });
         } else {
-          drawStation(ctx, st.x, st.y, st.opt.icon, st.opt.label, st.opt.category, focused, used, t);
+          drawStation(ctx, this.toScreenX(st.x, layout), this.toScreenY(st.y, layout), st.opt.icon, st.opt.label, st.opt.category, focused, used, t);
         }
         if (fadedSatiated) ctx.globalAlpha = 1;
       }
@@ -3550,7 +3631,7 @@ export class Game {
     for (const f of this.floats) {
       ctx.globalAlpha = Math.max(0, Math.min(1, f.life));
       ctx.fillStyle = f.color;
-      ctx.fillText(f.text, f.x, f.y);
+      ctx.fillText(f.text, this.toScreenX(f.x, layout), this.toScreenY(f.y, layout));
     }
     ctx.globalAlpha = 1;
 
