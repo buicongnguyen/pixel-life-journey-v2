@@ -124,7 +124,7 @@ export function createUI(mount: HTMLElement): UIRefs {
   // supersample to the display's pixel density (1 on standard screens, 2 on retina)
   const SS = Math.min(2, Math.max(1, Math.ceil((typeof window !== "undefined" && window.devicePixelRatio) || 1)));
   canvas.width = 640 * SS;
-  canvas.height = 800 * SS;
+  canvas.height = 1000 * SS;
   const ctx = canvas.getContext("2d")!;
   ctx.scale(SS, SS);
   ctx.imageSmoothingEnabled = true;

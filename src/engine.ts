@@ -64,7 +64,7 @@ import { generateStory, type CauseOfEnd, type LifeStory } from "./story";
 import { linePool } from "./messages";
 
 const W = 640;
-const H = 800; // a tall room with only a thin sky strip above the playfield
+const H = 1000; // a tall room with only a thin sky strip above the playfield
 // Supersample to the display's pixel density — 1 on a standard screen, 2 on
 // retina/mobile. CANVAS_SCALE=2 everywhere drew 4× the pixels a 1× display can
 // even show, which is the main cause of the slow/janky canvas. (Mirrors ui.ts.)
@@ -86,7 +86,7 @@ const TRAINING_GATE_R = 21;
 const UTILITY_GATE_GAP = 54;
 const SPEED = 205; // base move speed (scaled up by your IQ — smart = nimble)
 const PY_MIN = 142; // feet stay on ground while the sky remains scenic only
-const PY_MAX = 782;
+const PY_MAX = 982;
 const SOCIAL_Y_MIN = PY_MIN + 48;
 const FAMILY_Y_MAX = PY_MAX - 24;
 const ZONE_GATE_GAP = 48;
