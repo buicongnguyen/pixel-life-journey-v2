@@ -9,6 +9,7 @@ import type {
   Partner,
   PersonKind,
   PetKind,
+  Stage,
   Stats,
   StatKey,
   UpperSceneKind,
@@ -118,6 +119,7 @@ const GOOD_PEER_TAGS = ["study", "sports", "exercise", "friends"];
 const FAMILY_MONEY_MIN = 10000;
 const FAMILY_MONEY_MAX = 2000000;
 const FAMILY_MONEY_SKEW = 3.25; // higher = richer births are rarer
+const FAMILY_PARENTS_UNTIL = 36; // Mum/Dad/sibling stay in the family area until you reach middle age (the midlife chapter)
 const PARENT_SUPPORT_END_AGE = 18;
 const PARENT_SUPPORT_MIN = 800;
 const PARENT_SUPPORT_MAX = 160000;
@@ -1833,7 +1835,29 @@ export class Game {
       if (ch && ch.moments.length) return ch.moments.map((m) => this.sanitizeMoment(m));
       return []; // an authored life with nothing recorded for this chapter — a quiet time
     }
-    return s.options.filter((o) => this.optionAvailable(o));
+    return this.withFamilyPresence(s.options.filter((o) => this.optionAvailable(o)), s);
+  }
+
+  /**
+   * Keep your parents and sibling in the family area through the whole first half
+   * of life, not just the cot. They appear from birth until you reach middle age
+   * (the midlife chapter, age 36) — aging as you age (👩→👵, 👨→👴) — and then
+   * they've passed on, leaving the area to your own spouse, kids and grandkids.
+   * Only the family members a chapter doesn't already feature are added, so nothing
+   * is ever doubled up.
+   */
+  private withFamilyPresence(base: LifeOption[], s: Stage): LifeOption[] {
+    if (this.biography || s.ageStart >= FAMILY_PARENTS_UNTIL) return base;
+    const present = (k: PersonKind) => base.some((o) => o.person === k);
+    const elderly = s.ageStart >= 30; // by the time you're a grown adult, they're white-haired
+    const extra: LifeOption[] = [];
+    if (!present("mother"))
+      extra.push({ id: "mum", label: "Mum", icon: elderly ? "👵" : "👩", person: "mother", desc: "Time with Mum — warmth and a proud smile, however old you grow.", category: "social", effects: { happiness: 7, health: 2 }, storyTag: "family_love" });
+    if (!present("father"))
+      extra.push({ id: "dad", label: "Dad", icon: elderly ? "👴" : "👨", person: "father", desc: "Dad's still in your corner — a word of advice and a clap on the back.", category: "social", effects: { happiness: 6, fun: 3 }, storyTag: "family_love" });
+    if (!present("sibling") && !present("babySibling"))
+      extra.push({ id: "sibling", label: "Sibling", icon: "🧑", person: "sibling", desc: "Your brother or sister — a partner in crime through all of it.", category: "social", effects: { happiness: 6, fun: 3 }, storyTag: "friends" });
+    return extra.length ? [...base, ...extra] : base;
   }
 
   /** Reduce a loaded biography moment to known-safe fields (localStorage is untrusted,
